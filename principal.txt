@@ -1,8 +1,9 @@
 #contractflow
-
+Responsável pela atualização: Ulisses Santini Gomes 
 Integantes:
 - Guilherme Bazon Garcia Neves
 - Ulisses Santini Gomes
 - Renam Vieira Mobrise
 - João Victor Oliveira Silva
 - Eduardo Augusto Tognati
+
