@@ -1,4 +1,4 @@
-#contractflow
+Responsável pela atualização: João Victor Oliveira Silva
 
 Integantes:
 - Guilherme Bazon Garcia Neves
