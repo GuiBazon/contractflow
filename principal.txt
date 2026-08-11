@@ -3,6 +3,7 @@ Responsável pela atualização: Equipe do Projeto
 Responsável pela atualização: Ulisses Santini Gomes 
 Responsável pela atualização: Renan Vieira Mobrise
 #contractflow
+Responsável pela atualização: João Victor Oliveira Silva
 
 Integantes:
 - Guilherme Bazon Garcia Neves
