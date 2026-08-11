@@ -1,5 +1,6 @@
 Responsável pela atualização: Equipe do Projeto
 
+Responsável pela atualização: Ulisses Santini Gomes 
 #contractflow
 
 Integantes:
@@ -8,3 +9,4 @@ Integantes:
 - Renam Vieira Mobrise
 - João Victor Oliveira Silva
 - Eduardo Augusto Tognati
+
