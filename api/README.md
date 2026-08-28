@@ -1,4 +1,4 @@
 # contractflow
 
-## BackEnd
+## Backend
 - Guilherme Bazon Garcia Neves
