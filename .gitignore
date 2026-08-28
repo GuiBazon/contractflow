@@ -1,0 +1,9 @@
+node_modules/
+api/node_modules/
+web/node_modules/
+mobile/node_modules/
+.env
+.env.*
+!.env.example
+npm-debug.log*
+.DS_Store
