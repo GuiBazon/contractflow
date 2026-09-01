@@ -1,20 +1,34 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
+const { isEmail, str } = require('../utils/validators');
 
 async function register(req, res) {
-  const { nome, email, senha, perfil } = req.body;
+  const nome = str(req.body.nome);
+  const email = str(req.body.email);
+  const senha = req.body.senha;
 
-  if (!nome || !email || !senha) {
-    return res.status(400).json({ message: 'Nome, email e senha são obrigatórios' });
+  if (!nome || nome.length < 2) {
+    return res.status(400).json({ message: 'Informe um nome válido' });
+  }
+  if (!isEmail(email)) {
+    return res.status(400).json({ message: 'Informe um e-mail válido' });
+  }
+  if (!senha || String(senha).length < 6) {
+    return res.status(400).json({ message: 'A senha deve ter no mínimo 6 caracteres' });
   }
 
   try {
-    const senhaHash = await bcrypt.hash(senha, 10);
+    const senhaHash = await bcrypt.hash(String(senha), 10);
+
+    // Perfil nao e escolhido pelo proprio usuario (RF03/RNF04).
+    // O primeiro usuario cadastrado vira ADMIN (bootstrap); os demais sao USUARIO.
+    const [[{ total }]] = await db.query('SELECT COUNT(*) AS total FROM usuarios');
+    const perfil = total === 0 ? 'ADMIN' : 'USUARIO';
 
     const [result] = await db.execute(
       'INSERT INTO usuarios (nome, email, senha_hash, perfil) VALUES (?, ?, ?, ?)',
-      [nome, email, senhaHash, perfil || 'USUARIO']
+      [nome, email.toLowerCase(), senhaHash, perfil]
     );
 
     return res.status(201).json({
@@ -22,21 +36,22 @@ async function register(req, res) {
       usuario: {
         id: result.insertId,
         nome,
-        email,
-        perfil: perfil || 'USUARIO',
+        email: email.toLowerCase(),
+        perfil,
       },
     });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ message: 'E-mail já cadastrado' });
     }
-
+    console.error('erro ao cadastrar usuario:', error);
     return res.status(500).json({ message: 'Erro ao cadastrar usuário' });
   }
 }
 
 async function login(req, res) {
-  const { email, senha } = req.body;
+  const email = str(req.body.email).toLowerCase();
+  const senha = req.body.senha;
 
   if (!email || !senha) {
     return res.status(400).json({ message: 'Email e senha são obrigatórios' });
@@ -50,7 +65,12 @@ async function login(req, res) {
     }
 
     const usuario = rows[0];
-    const senhaValida = await bcrypt.compare(senha, usuario.senha_hash);
+
+    if (usuario.ativo !== 1) {
+      return res.status(403).json({ message: 'Usuário desativado' });
+    }
+
+    const senhaValida = await bcrypt.compare(String(senha), usuario.senha_hash);
 
     if (!senhaValida) {
       return res.status(401).json({ message: 'Credenciais inválidas' });
@@ -78,6 +98,7 @@ async function login(req, res) {
       },
     });
   } catch (error) {
+    console.error('erro ao realizar login:', error);
     return res.status(500).json({ message: 'Erro ao realizar login' });
   }
 }
