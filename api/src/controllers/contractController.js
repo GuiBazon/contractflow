@@ -1,7 +1,6 @@
 const db = require('../config/db');
 const {
   obterContratoDono,
-  validarDados,
   VALID_STATUS,
   criarContratoComParcelas,
   podeGerarParcelas,
@@ -156,7 +155,8 @@ async function updateContrato(req, res) {
 
     // numero e valor_total podem ser alterados apenas se nao houver parcelas pagas
     if (Object.prototype.hasOwnProperty.call(req.body, 'numero') && contrato.numero !== req.body.numero) {
-      if (contrato.parcelas_pagas > 0) {
+      const haPagamentos = await hasPayments(req.user.id, id);
+      if (haPagamentos) {
         return res.status(400).json({ message: 'Número do contrato não pode ser alterado após pagamentos' });
       }
       campos.numero = str(req.body.numero).toUpperCase();
@@ -287,14 +287,18 @@ async function updateContratoStatus(req, res) {
   }
 }
 
-// gera parcelas adicionais para o contrato (RN12: bloqueado em control ENCERRADO/CANCELADO)
+// gera parcelas adicionais para o contrato (RN12: bloqueado em contrato ENCERRADO/CANCELADO)
 async function generateParcelas(req, res) {
   const { id } = req.params;
   const quantidade = Number(req.body.quantidade_parcelas);
   const vencimentos = req.body.vencimentos;
+  const valorParcela = Number(req.body.valor_parcela);
 
   if (!Number.isInteger(quantidade) || quantidade < 1) {
     return res.status(400).json({ message: 'Informe a quantidade de parcelas a gerar' });
+  }
+  if (!Number.isFinite(valorParcela) || valorParcela <= 0) {
+    return res.status(400).json({ message: 'Informe o valor da parcela a gerar' });
   }
 
   try {
@@ -319,7 +323,7 @@ async function generateParcelas(req, res) {
       return res.status(e.status || 400).json({ message: e.message });
     }
 
-    const valores = Array(quantidade).fill(Number(req.body.valor_parcela) || 0);
+    const valores = Array(quantidade).fill(Number(valorParcela.toFixed(2)));
 
     const conn = await db.getConnection();
     try {
