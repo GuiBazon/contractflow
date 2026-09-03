@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { getToken, limparSessao } from './storage';
 
-const API_URL = 'http://10.0.2.2:3000/api';
+const API_URL = 'http://172.19.16.1:3000/api';
 
 const apiClient = axios.create({
   baseURL: API_URL,
