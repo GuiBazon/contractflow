@@ -10,6 +10,11 @@ export function ClientCard({ cliente }) {
     .join('')
     .toUpperCase();
 
+  const doc = cliente.cpf_cnpj;
+  const isCnpj = doc.replace(/\D/g, '').length > 11;
+  const docLabel = isCnpj ? 'CNPJ' : 'CPF';
+  const contratosLabel = `${cliente.contratos_ativos} ${cliente.contratos_ativos === 1 ? 'Ativo' : 'Ativos'}`;
+
   return (
     <View style={styles.card}>
       <View style={styles.avatar}>
@@ -17,11 +22,10 @@ export function ClientCard({ cliente }) {
       </View>
       <View style={styles.info}>
         <Text style={styles.nome} numberOfLines={1}>{cliente.nome_razao_social}</Text>
-        <Text style={styles.doc}>CPF/CNPJ {cliente.cpf_cnpj}</Text>
-        <Text style={styles.contratos}>
-          {cliente.contratos_ativos} {cliente.contratos_ativos === 1 ? 'Ativo' : 'Ativos'}
-        </Text>
+        <Text style={styles.doc}>{docLabel} {doc}</Text>
+        <Text style={styles.contratos}>{contratosLabel}</Text>
       </View>
+      <View style={styles.statusDot} />
     </View>
   );
 }
@@ -69,5 +73,12 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     color: colors.primary,
     fontWeight: typography.weights.medium,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.success,
+    marginLeft: spacing.sm,
   },
 });

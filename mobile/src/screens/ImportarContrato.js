@@ -1,95 +1,100 @@
 ﻿import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../theme';
-import { Header, PrimaryButton } from '../components';
+import { Header, PrimaryButton, SecondaryButton } from '../components';
 
-const passos = [
-  {
-    id: 1,
-    title: 'Escolha o formato',
-    subtitle: 'Excel (.xlsx), CSV ou PDF',
-    icon: 'document-text-outline',
-  },
-  {
-    id: 2,
-    title: 'Selecione o arquivo',
-    subtitle: 'Compra ou anexo do sistema legado',
-    icon: 'folder-open-outline',
-  },
-  {
-    id: 3,
-    title: 'Revise os dados',
-    subtitle: 'Conferência antes de importar',
-    icon: 'eye-outline',
-  },
+const ETAPAS = ['Upload', 'Processo', 'Revisão', 'Confirmação'];
+
+const ORIGENS = [
+  { key: 'pdf', icon: 'document-text-outline', title: 'Selecionar PDF', sub: 'Contrato em PDF' },
+  { key: 'foto', icon: 'camera-outline', title: 'Tirar foto', sub: 'Câmera ou scanner' },
+  { key: 'galeria', icon: 'images-outline', title: 'Galeria', sub: 'Imagem salva' },
 ];
 
 export function ImportarContrato() {
   const navigation = useNavigation();
-  const [arquivo, setArquivo] = useState(null);
+  const [origem, setOrigem] = useState(null);
+  const [processando, setProcessando] = useState(false);
+  const [concluido, setConcluido] = useState(false);
+
+  const etapaAtual = origem == null ? 0 : processando ? 1 : concluido ? 2 : 0;
+
+  function escolher(o) {
+    setOrigem(o);
+    setProcessando(true);
+    setConcluido(false);
+    setTimeout(() => {
+      setProcessando(false);
+      setConcluido(true);
+    }, 1800);
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
-      <Header title="Importação" leftIcon="arrow-back" onLeftPress={() => navigation.goBack()} />
+      <Header title="Importação Inteligente IA" leftIcon="arrow-back" onLeftPress={() => navigation.goBack()} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        <View style={styles.dropArea}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="cloud-upload-outline" size={36} color={colors.primary} />
-          </View>
-          <Text style={styles.dropTitle}>Arraste seu arquivo aqui</Text>
-          <Text style={styles.dropSub}>ou toque para selecionar</Text>
-          <TouchableOpacity style={styles.browseBtn} onPress={() => setArquivo('planilha_contratos.xlsx')}>
-            <Ionicons name="folder-outline" size={18} color={colors.primary} />
-            <Text style={styles.browseText}>Escolher arquivo</Text>
-          </TouchableOpacity>
-        </View>
-
-        {arquivo && (
-          <View style={styles.fileCard}>
-            <Ionicons name="document-attach-outline" size={20} color={colors.primary} />
-            <View style={styles.fileInfo}>
-              <Text style={styles.fileName}>{arquivo}</Text>
-              <Text style={styles.fileSize}>24.6 KB</Text>
-            </View>
-            <TouchableOpacity onPress={() => setArquivo(null)}>
-              <Ionicons name="close-circle" size={20} color={colors.textMuted} />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        <Text style={styles.sectionTitle}>Passos para importar</Text>
-        <View style={styles.passos}>
-          {passos.map((p, i) => (
-            <View key={p.id} style={styles.passoRow}>
-              <View style={styles.passoNumber}>
-                <Text style={styles.passoNumberText}>{p.id}</Text>
+        <View style={styles.stepper}>
+          {ETAPAS.map((e, i) => (
+            <React.Fragment key={e}>
+              <View style={styles.stepWrap}>
+                <View
+                  style={[styles.stepCircle, (i <= etapaAtual || concluido) && styles.stepCircleActive]}
+                >
+                  {i < etapaAtual || (concluido && i < 3)
+                    ? <Ionicons name="checkmark" size={14} color={colors.white} />
+                    : <Text style={[styles.stepNum, (i <= etapaAtual) && styles.stepNumActive]}>{i + 1}</Text>}
+                </View>
+                <Text style={[styles.stepLabel, (i <= etapaAtual) && styles.stepLabelActive]}>{e}</Text>
               </View>
-              <View style={styles.passoContent}>
-                <Text style={styles.passoTitle}>{p.title}</Text>
-                <Text style={styles.passoSub}>{p.subtitle}</Text>
-              </View>
-              {i < passos.length - 1 && <View style={styles.passoLine} />}
-            </View>
+              {i < ETAPAS.length - 1 && <View style={[styles.stepLine, i < etapaAtual && styles.stepLineActive]} />}
+            </React.Fragment>
           ))}
         </View>
 
-        <View style={styles.nota}>
-          <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
-          <Text style={styles.notaText}>
-            Após a importação, você poderá revisar e confirmar os dados antes de salvar.
-          </Text>
-        </View>
-
-        <PrimaryButton
-          title={arquivo ? 'Continuar importação' : 'Selecionar arquivo'}
-          onPress={() => {
-            if (arquivo) navigation.navigate('RevisaoContrato');
-            else setArquivo('planilha_contratos.xlsx');
-          }}
-          disabled={!arquivo}
-        />
+        {!origem ? (
+          <>
+            <Text style={styles.caption}>Como deseja importar o contrato?</Text>
+            {ORIGENS.map((o) => (
+              <TouchableOpacity key={o.key} style={styles.origemCard} onPress={() => escolher(o)} activeOpacity={0.7}>
+                <View style={styles.origemIcon}>
+                  <Ionicons name={o.icon} size={22} color={colors.primary} />
+                </View>
+                <View style={styles.origemInfo}>
+                  <Text style={styles.origemTitle}>{o.title}</Text>
+                  <Text style={styles.origemSub}>{o.sub}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+            ))}
+          </>
+        ) : processando ? (
+          <View style={styles.processingCard}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.processingTitle}>Processando documento</Text>
+            <Text style={styles.processingSub}>
+              Lendo dados com a inteligência artificial... isso pode levar alguns segundos.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.doneCard}>
+            <View style={styles.doneIcon}>
+              <Ionicons name="checkmark" size={40} color={colors.success} />
+            </View>
+            <Text style={styles.doneTitle}>Documento processado!</Text>
+            <Text style={styles.doneSub}>
+              Estruturação do documento concluída. Revise os dados detectados antes de confirmar.
+            </Text>
+            <View style={styles.fileRow}>
+              <Ionicons name="document-attach-outline" size={18} color={colors.primary} />
+              <Text style={styles.fileName}>documento_contrato_carol.pdf</Text>
+            </View>
+            <PrimaryButton title="Revisar dados" onPress={() => navigation.navigate('RevisaoContrato')} />
+            <View style={styles.spacer} />
+            <SecondaryButton title="Refazer" onPress={() => setOrigem(null)} />
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -107,126 +112,158 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
-  dropArea: {
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: spacing.xl,
+  },
+  stepWrap: {
+    alignItems: 'center',
+    width: 64,
+  },
+  stepCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepCircleActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  stepNum: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.textMuted,
+  },
+  stepNumActive: {
+    color: colors.white,
+  },
+  stepLabel: {
+    fontSize: typography.sizes.xs,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+    textAlign: 'center',
+  },
+  stepLabelActive: {
+    color: colors.textPrimary,
+    fontWeight: typography.weights.semibold,
+  },
+  stepLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: colors.border,
+    marginTop: 14,
+  },
+  stepLineActive: {
+    backgroundColor: colors.primary,
+  },
+  caption: {
+    fontSize: typography.sizes.md,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+  },
+  origemCard: {
+    flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.white,
     borderRadius: 14,
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
-    padding: spacing.xxl,
-    marginBottom: spacing.lg,
-  },
-  iconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
-  },
-  dropTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  dropSub: {
-    fontSize: typography.sizes.md,
-    color: colors.textSecondary,
-    marginBottom: spacing.lg,
-  },
-  browseBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: 10,
-    backgroundColor: colors.primaryLight,
-  },
-  browseText: {
-    color: colors.primary,
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
-  },
-  fileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.white,
-    borderRadius: 12,
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     gap: spacing.md,
   },
-  fileInfo: {
-    flex: 1,
-  },
-  fileName: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
-    color: colors.textPrimary,
-  },
-  fileSize: {
-    fontSize: typography.sizes.xs,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  sectionTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
-    color: colors.textPrimary,
-    marginBottom: spacing.lg,
-  },
-  passos: {
-    marginBottom: spacing.lg,
-  },
-  passoRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  passoNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.primary,
+  origemIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  passoNumberText: {
-    color: colors.white,
-    fontWeight: typography.weights.bold,
-    fontSize: typography.sizes.md,
-  },
-  passoContent: {
+  origemInfo: {
     flex: 1,
-    paddingBottom: spacing.lg,
   },
-  passoTitle: {
+  origemTitle: {
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.semibold,
     color: colors.textPrimary,
   },
-  passoSub: {
+  origemSub: {
     fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
+    color: colors.textMuted,
     marginTop: 2,
   },
-  nota: {
+  processingCard: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 14,
+    padding: spacing.xxl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.md,
+  },
+  processingTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginTop: spacing.sm,
+  },
+  processingSub: {
+    fontSize: typography.sizes.md,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  doneCard: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 14,
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  doneIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.successLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
+  doneTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  doneSub: {
+    fontSize: typography.sizes.md,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  fileRow: {
     flexDirection: 'row',
-    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
     borderRadius: 10,
     padding: spacing.md,
-    gap: spacing.sm,
     marginBottom: spacing.lg,
-    alignItems: 'flex-start',
+    alignSelf: 'stretch',
   },
-  notaText: {
-    flex: 1,
+  fileName: {
     fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
+    color: colors.textPrimary,
+    flex: 1,
+  },
+  spacer: {
+    marginVertical: spacing.xs,
   },
 });

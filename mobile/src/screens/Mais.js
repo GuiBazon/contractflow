@@ -1,32 +1,34 @@
-﻿import React from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../theme';
 import { Header } from '../components';
+import { getUsuario, limparSessao } from '../services/storage';
 
 const itensMenu = [
-  { key: 'perfil', icon: 'person-outline', title: 'Perfil', subtitle: 'Ana Souza' },
-  { key: 'clientes', icon: 'people-outline', title: 'Importar clientes', subtitle: 'importar de planilha' },
-  { key: 'contratos', icon: 'document-text-outline', title: 'Importar contratos', subtitle: 'importar de planilha' },
-  { key: 'notificacoes', icon: 'notifications-outline', title: 'Notificações', subtitle: 'alertas e lembretes' },
-  { key: 'configuracoes', icon: 'settings-outline', title: 'Configurações', subtitle: 'preferências ou conta' },
-  { key: 'ajuda', icon: 'help-circle-outline', title: 'Central de ajuda', subtitle: 'dúvidas frequentes' },
+  { key: 'relatorios', icon: 'bar-chart-outline', title: 'Relatórios' },
+  { key: 'configuracoes', icon: 'settings-outline', title: 'Configurações' },
+  { key: 'notificacoes', icon: 'notifications-outline', title: 'Notificações' },
+  { key: 'ajuda', icon: 'help-circle-outline', title: 'Ajuda & Suporte' },
+  { key: 'sobre', icon: 'information-circle-outline', title: 'Sobre o App' },
 ];
-
-const versao = {
-  nome: 'ContractFlow',
-  versao: 'v1.0.0',
-  desc: 'Gestão de contratos e recebíveis',
-};
 
 export function Mais() {
   const navigation = useNavigation();
+  const [usuario, setUsuario] = useState(null);
 
-  function handlePress(key) {
-    if (key === 'clientes' || key === 'contratos') {
-      navigation.navigate('ImportarContrato');
-    }
+  useEffect(() => {
+    getUsuario().then((u) => setUsuario(u));
+  }, []);
+
+  const nome = usuario ? usuario.nome : 'Ana Souza';
+  const email = usuario ? usuario.email : 'ana@contractflow.com';
+  const inicial = nome.split(' ')[0][0].toUpperCase();
+
+  async function handleSair() {
+    await limparSessao();
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   }
 
   return (
@@ -35,13 +37,13 @@ export function Mais() {
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <View style={styles.perfilCard}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>A</Text>
+            <Text style={styles.avatarText}>{inicial}</Text>
           </View>
           <View style={styles.perfilInfo}>
-            <Text style={styles.perfilNome}>Ana Souza</Text>
-            <Text style={styles.perfilEmail}>ana@contractflow.com</Text>
+            <Text style={styles.perfilNome}>{nome}</Text>
+            <Text style={styles.perfilEmail}>{email}</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          <Ionicons name="chevron-forward" size={20} color={colors.white} />
         </View>
 
         <View style={styles.menu}>
@@ -49,26 +51,22 @@ export function Mais() {
             <TouchableOpacity
               key={item.key}
               style={[styles.menuItem, idx > 0 && styles.menuItemBorder]}
-              onPress={() => handlePress(item.key)}
+              onPress={() => {}}
               activeOpacity={0.7}
             >
               <Ionicons name={item.icon} size={20} color={colors.primary} />
-              <View style={styles.menuInfo}>
-                <Text style={styles.menuTitle}>{item.title}</Text>
-                <Text style={styles.menuSub}>{item.subtitle}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+              <Text style={styles.menuTitle}>{item.title}</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           ))}
         </View>
 
-        <View style={styles.versaoCard}>
-          <Ionicons name="logo-react" size={20} color={colors.primary} />
-          <View style={styles.versaoInfo}>
-            <Text style={styles.versaoNome}>{versao.nome} {versao.versao}</Text>
-            <Text style={styles.versaoDesc}>{versao.desc}</Text>
-          </View>
-        </View>
+        <TouchableOpacity style={styles.sairBtn} onPress={handleSair} activeOpacity={0.8}>
+          <Ionicons name="log-out-outline" size={18} color={colors.danger} />
+          <Text style={styles.sairText}>Sair da Conta</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.versao}>ContractFlow v1.0.0</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -89,24 +87,27 @@ const styles = StyleSheet.create({
   perfilCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.primary,
     borderRadius: 14,
     padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
     marginBottom: spacing.lg,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
   },
   avatarText: {
-    color: colors.white,
+    color: colors.primary,
     fontSize: typography.sizes.lg,
     fontWeight: typography.weights.bold,
   },
@@ -117,11 +118,12 @@ const styles = StyleSheet.create({
   perfilNome: {
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.semibold,
-    color: colors.textPrimary,
+    color: colors.white,
   },
   perfilEmail: {
     fontSize: typography.sizes.sm,
-    color: colors.textMuted,
+    color: colors.white,
+    opacity: 0.85,
     marginTop: 2,
   },
   menu: {
@@ -141,40 +143,32 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-  menuInfo: {
-    flex: 1,
-  },
   menuTitle: {
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.medium,
     color: colors.textPrimary,
+    flex: 1,
   },
-  menuSub: {
-    fontSize: typography.sizes.xs,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  versaoCard: {
+  sairBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
     backgroundColor: colors.white,
-    borderRadius: 14,
+    borderRadius: 12,
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    gap: spacing.md,
+    marginBottom: spacing.xl,
   },
-  versaoInfo: {
-    flex: 1,
-  },
-  versaoNome: {
+  sairText: {
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.semibold,
-    color: colors.textPrimary,
+    color: colors.danger,
   },
-  versaoDesc: {
+  versao: {
+    textAlign: 'center',
     fontSize: typography.sizes.xs,
     color: colors.textMuted,
-    marginTop: 2,
   },
 });

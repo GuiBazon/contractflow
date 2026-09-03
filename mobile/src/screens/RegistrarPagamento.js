@@ -10,6 +10,13 @@ import { formatCurrency } from '../utils/format';
 import { contratos } from '../data';
 import { Header, Input, PrimaryButton, StatusBadge } from '../components';
 
+const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+
+function formatVencimento(data) {
+  const [ano, mes, dia] = data.split('-').map(Number);
+  return `${dia} ${MESES[mes - 1]}`;
+}
+
 export function RegistrarPagamento() {
   const route = useRoute();
   const navigation = useNavigation();
@@ -70,15 +77,17 @@ export function RegistrarPagamento() {
       <Header title="Registrar pagamento" leftIcon="arrow-back" onLeftPress={() => navigation.goBack()} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <View style={styles.contratoCard}>
-          <Text style={styles.contratoNome}>{contrato.nome}</Text>
-          <Text style={styles.contratoCliente}>{contrato.cliente}</Text>
-          <Text style={styles.contratoCodigo}>{contrato.codigo}</Text>
-          <View style={styles.parcelaRow}>
-            <Text style={styles.parcelaLabel}>Parcela</Text>
+          <View style={styles.parcelaRowTop}>
+            <Text style={styles.parcelaResumo}>
+              Parcela {String(parcela.numero).padStart(2, '0')} • {contrato.codigo}
+            </Text>
             <StatusBadge status={parcela.status} />
           </View>
+          <Text style={styles.contratoNome}>{contrato.nome}</Text>
+          <Text style={styles.contratoCliente}>{contrato.cliente}</Text>
+          <View style={styles.divider} />
           <Text style={styles.parcelaValor}>{formatCurrency(parcela.valor)}</Text>
-          <Text style={styles.parcelaData}>Vencimento: {parcela.data_vencimento}</Text>
+          <Text style={styles.parcelaData}>Vencimento: {formatVencimento(parcela.data_vencimento)}</Text>
         </View>
 
         <Text style={styles.sectionTitle}>Dados do pagamento</Text>
@@ -171,20 +180,21 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: 2,
   },
-  contratoCodigo: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
-    marginBottom: spacing.lg,
-  },
-  parcelaRow: {
+  parcelaRowTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
-  parcelaLabel: {
-    fontSize: typography.sizes.md,
-    color: colors.textSecondary,
+  parcelaResumo: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+    color: colors.primary,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.md,
   },
   parcelaValor: {
     fontSize: typography.sizes.xxl,

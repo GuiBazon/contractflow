@@ -6,93 +6,83 @@ import { colors, spacing, typography } from '../theme';
 import { formatCurrency } from '../utils/format';
 import { Header, PrimaryButton, SecondaryButton } from '../components';
 
-const itens = [
-  { id: 1, codigo: 'CT-2023-001', cliente: 'João Oliveira', valor: 15000, status: 'OK' },
-  { id: 2, codigo: 'CT-2023-002', cliente: 'Maria Santos', valor: 20000, status: 'OK' },
-  { id: 3, codigo: 'CT-2023-003', cliente: 'Carlos Pereira', valor: 8500, status: 'OK' },
-  { id: 4, codigo: 'CT-2023-004', cliente: 'Empresa XPTO LTDA', valor: 45000, status: 'ATENÇÃO' },
-  { id: 5, codigo: 'CT-2023-005', cliente: 'Fernanda Lima', valor: 12000, status: 'DUPLICADO' },
+const campos = [
+  { key: 'cliente', label: 'Cliente', value: 'Carol Antunes' },
+  { key: 'cnpj', label: 'CNPJ', value: '12.871.002/0001-99' },
+  { key: 'valor', label: 'Valor', value: 'R$ 24.000,00' },
+  { key: 'parcelas', label: 'Parcelas', value: '12x de R$ 2.000,00' },
+  { key: 'inicio', label: 'Início', value: '10/03/2026' },
+  { key: 'vencimento', label: 'Vencimento', value: 'Dia 15 de cada mês' },
 ];
+
+const confidence = [
+  { field: 'Cliente', level: 'ALTA' },
+  { field: 'CNPJ', level: 'ALTA' },
+  { field: 'Valor', level: 'ALTA' },
+  { field: 'Parcelas', level: 'MÉDIA' },
+];
+
+function ConfidenceBadge({ level }) {
+  const cor =
+    level === 'ALTA' ? colors.success
+    : level === 'MÉDIA' ? colors.warning
+    : colors.danger;
+  const fundo =
+    level === 'ALTA' ? colors.successLight
+    : level === 'MÉDIA' ? colors.warningLight
+    : colors.dangerLight;
+
+  return (
+    <View style={[styles.badge, { backgroundColor: fundo }]}>
+      <Text style={[styles.badgeText, { color: cor }]}>{level}</Text>
+    </View>
+  );
+}
 
 export function RevisaoContrato() {
   const navigation = useNavigation();
-  const [confirma, setConfirma] = useState(false);
-
-  const totalValor = itens.reduce((s, i) => s + i.valor, 0);
 
   return (
     <SafeAreaView style={styles.safe}>
-      <Header title="Revisar importação" leftIcon="arrow-back" onLeftPress={() => navigation.goBack()} />
+      <Header title="Revisar informações" leftIcon="arrow-back" onLeftPress={() => navigation.goBack()} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        <View style={styles.summary}>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryValue}>{itens.length}</Text>
-            <Text style={styles.summaryLabel}>Contratos</Text>
+        <View style={styles.docHeader}>
+          <View style={styles.docIcon}>
+            <Ionicons name="document-text-outline" size={22} color={colors.primary} />
           </View>
-          <View style={styles.summaryDivider} />
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryValue}>{itens.filter((i) => i.status === 'OK').length}</Text>
-            <Text style={styles.summaryLabel}>Válidos</Text>
-          </View>
-          <View style={styles.summaryDivider} />
-          <View style={styles.summaryItem}>
-            <Text style={[styles.summaryValue, { color: colors.warning }]}>
-              {itens.filter((i) => i.status !== 'OK').length}
-            </Text>
-            <Text style={styles.summaryLabel}>Atenção</Text>
-          </View>
-          <View style={styles.summaryDivider} />
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryValue}>{formatCurrency(totalValor)}</Text>
-            <Text style={styles.summaryLabel}>Valor total</Text>
+          <View style={styles.docInfo}>
+            <Text style={styles.docName}>documento_contrato_carol.pdf</Text>
+            <Text style={styles.docSize}>Confira os dados detectados pela IA</Text>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Contratos importados</Text>
-        <View style={styles.list}>
-          {itens.map((i) => (
-            <View key={i.id} style={styles.item}>
-              <View style={styles.itemLeft}>
-                <Text style={styles.itemCodigo}>{i.codigo}</Text>
-                <Text style={styles.itemCliente}>{i.cliente}</Text>
+        <Text style={styles.sectionTitle}>Dados detectados</Text>
+        <View style={styles.fieldsCard}>
+          {campos.map((c, i) => (
+            <View key={c.key} style={[styles.fieldRow, i > 0 && styles.fieldBorder]}>
+              <View style={styles.fieldInfo}>
+                <Text style={styles.fieldLabel}>{c.label}</Text>
+                <Text style={styles.fieldValue}>{c.value}</Text>
               </View>
-              <View style={styles.itemRight}>
-                <Text style={styles.itemValor}>{formatCurrency(i.valor)}</Text>
-                <Text style={[styles.itemStatus, i.status === 'OK' ? styles.statusOk : styles.statusWarn]}>
-                  {i.status}
-                </Text>
-              </View>
+              <TouchableOpacity style={styles.editBtn} activeOpacity={0.7}>
+                <Ionicons name="pencil-outline" size={16} color={colors.primary} />
+                <Text style={styles.editText}>Editar</Text>
+              </TouchableOpacity>
             </View>
           ))}
         </View>
 
-        <View style={styles.alert}>
-          <Ionicons name="warning-outline" size={20} color={colors.warning} />
-          <Text style={styles.alertText}>
-            {itens.filter((i) => i.status !== 'OK').length} contrato(s) precisam de atenção. Verifique duplicados
-            e dados incompletos antes de confirmar.
-          </Text>
+        <Text style={styles.sectionTitle}>Confiança da extração</Text>
+        <View style={styles.confCard}>
+          {confidence.map((c) => (
+            <View key={c.field} style={styles.confRow}>
+              <Text style={styles.confField}>{c.field}</Text>
+              <ConfidenceBadge level={c.level} />
+            </View>
+          ))}
         </View>
 
-        <View style={styles.confirmRow}>
-          <Ionicons
-            name={confirma ? 'checkbox' : 'square-outline'}
-            size={22}
-            color={colors.primary}
-            onPress={() => setConfirma(!confirma)}
-          />
-          <TouchableOpacity onPress={() => setConfirma(!confirma)} style={styles.confirmTouch}>
-            <Text style={styles.confirmText}>
-              Confirmo que revisei os dados e desejo importar {itens.length} contratos.
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <PrimaryButton
-          title="Confirmar importação"
-          disabled={!confirma}
-          onPress={() => navigation.navigate('Mais')}
-        />
+        <PrimaryButton title="Confirmar importação" onPress={() => navigation.navigate('Mais')} />
         <View style={styles.spacer} />
         <SecondaryButton title="Voltar" onPress={() => navigation.goBack()} />
       </ScrollView>
@@ -112,34 +102,37 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
-  summary: {
+  docHeader: {
     flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.white,
     borderRadius: 14,
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: spacing.lg,
+    gap: spacing.md,
   },
-  summaryItem: {
-    flex: 1,
+  docIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  summaryValue: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
+  docInfo: {
+    flex: 1,
+  },
+  docName: {
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
     color: colors.textPrimary,
   },
-  summaryLabel: {
-    fontSize: typography.sizes.xs,
+  docSize: {
+    fontSize: typography.sizes.sm,
     color: colors.textMuted,
     marginTop: 2,
-    textAlign: 'center',
-  },
-  summaryDivider: {
-    width: 1,
-    backgroundColor: colors.border,
-    marginHorizontal: spacing.sm,
   },
   sectionTitle: {
     fontSize: typography.sizes.lg,
@@ -147,80 +140,77 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: spacing.md,
   },
-  list: {
-    marginBottom: spacing.lg,
-  },
-  item: {
-    flexDirection: 'row',
+  fieldsCard: {
     backgroundColor: colors.white,
-    borderRadius: 10,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
   },
-  itemLeft: {
+  fieldRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+  },
+  fieldBorder: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  fieldInfo: {
     flex: 1,
     marginRight: spacing.sm,
   },
-  itemCodigo: {
+  fieldLabel: {
+    fontSize: typography.sizes.xs,
+    color: colors.textMuted,
+  },
+  fieldValue: {
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.semibold,
     color: colors.textPrimary,
-  },
-  itemCliente: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
     marginTop: 2,
   },
-  itemRight: {
-    alignItems: 'flex-end',
-  },
-  itemValor: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
-    color: colors.textPrimary,
-  },
-  itemStatus: {
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
-    marginTop: 4,
-    textTransform: 'uppercase',
-  },
-  statusOk: {
-    color: colors.success,
-  },
-  statusWarn: {
-    color: colors.warning,
-  },
-  alert: {
-    flexDirection: 'row',
-    backgroundColor: colors.warningLight,
-    borderRadius: 10,
-    padding: spacing.md,
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-    alignItems: 'flex-start',
-  },
-  alertText: {
-    flex: 1,
-    fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
-  },
-  confirmRow: {
+  editBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 8,
+    backgroundColor: colors.primaryLight,
   },
-  confirmTouch: {
-    flex: 1,
+  editText: {
+    fontSize: typography.sizes.sm,
+    color: colors.primary,
+    fontWeight: typography.weights.semibold,
   },
-  confirmText: {
-    fontSize: typography.sizes.md,
-    color: colors.textPrimary,
+  confCard: {
+    backgroundColor: colors.white,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.xl,
+  },
+  confRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  badge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  badgeText: {
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.bold,
   },
   spacer: {
-    marginVertical: spacing.sm,
+    marginVertical: spacing.xs,
   },
 });

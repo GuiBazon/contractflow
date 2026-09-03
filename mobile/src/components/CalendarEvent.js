@@ -4,9 +4,20 @@ import { colors, spacing, typography } from '../theme';
 import { formatCurrency } from '../utils/format';
 import { StatusBadge } from './StatusBadge';
 
+const statusColor = {
+  PAGO: '#16A34A',
+  'EM ABERTO': '#F59E0B',
+  FUTURO: '#2563EB',
+  ATRASADO: '#DC2626',
+  CONFIRMADO: '#16A34A',
+  PENDENTE: '#F59E0B',
+};
+
 export function CalendarEvent({ evento }) {
+  const cor = statusColor[evento.status] || colors.textMuted;
+
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { borderLeftColor: cor, borderLeftWidth: 3 }]}>
       <View style={styles.timeContainer}>
         <Text style={styles.time}>{evento.hora === '00:00' ? 'Dia todo' : evento.hora}</Text>
       </View>

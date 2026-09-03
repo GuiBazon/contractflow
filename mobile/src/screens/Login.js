@@ -41,7 +41,7 @@ export function Login({ navigation }) {
               <Text style={styles.logoIconText}>CF</Text>
             </View>
             <Text style={styles.logoText}>ContractFlow</Text>
-            <Text style={styles.subtitle}>Gestão inteligente de contratos e recebíveis</Text>
+            <Text style={styles.subtitle}>Controle que flui com seu negócio.</Text>
           </View>
 
           <View style={styles.form}>

@@ -84,6 +84,27 @@ export function Dashboard() {
           </TouchableOpacity>
         </View>
 
+        <View style={styles.actionsRow}>
+          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('ImportarContrato')}>
+            <View style={[styles.actionIcon, { backgroundColor: colors.primaryLight }]}>
+              <Ionicons name="add" size={20} color={colors.primary} />
+            </View>
+            <Text style={styles.actionText}>Novo</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('ImportarContrato')}>
+            <View style={[styles.actionIcon, { backgroundColor: colors.primaryLight }]}>
+              <Ionicons name="cloud-upload-outline" size={20} color={colors.primary} />
+            </View>
+            <Text style={styles.actionText}>Importar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('Contratos')}>
+            <View style={[styles.actionIcon, { backgroundColor: colors.primaryLight }]}>
+              <Ionicons name="list" size={20} color={colors.primary} />
+            </View>
+            <Text style={styles.actionText}>Ver todos</Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Próximos vencimentos</Text>
@@ -236,6 +257,28 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xl,
     fontWeight: typography.weights.bold,
     color: colors.primary,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.xxl,
+  },
+  actionBtn: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  actionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.sm,
+  },
+  actionText: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.medium,
+    color: colors.textPrimary,
   },
   section: {
     marginBottom: spacing.xxl,
