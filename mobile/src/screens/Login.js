@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, KeyboardAvoidingView,
-  Platform, ScrollView, ActivityIndicator,
+  Platform, ScrollView, ActivityIndicator, TouchableOpacity,
 } from 'react-native';
-import { colors, spacing, typography } from '../utils/theme';
+import { colors, spacing, typography } from '../theme';
 import { Input, PrimaryButton } from '../components';
-import { api, setToken } from '../services/api';
+import { api, normalizarErro } from '../services/api';
+import { salvarSessao } from '../services/storage';
 
 export function Login({ navigation }) {
   const [email, setEmail] = useState('');
@@ -19,10 +20,10 @@ export function Login({ navigation }) {
 
     try {
       const data = await api.login(email, senha);
-      setToken(data.token);
+      await salvarSessao(data.token, data.usuario);
       navigation.replace('MainTabs');
     } catch (e) {
-      setErro(e.message);
+      setErro(normalizarErro(e));
     } finally {
       setCarregando(false);
     }
@@ -40,7 +41,7 @@ export function Login({ navigation }) {
               <Text style={styles.logoIconText}>CF</Text>
             </View>
             <Text style={styles.logoText}>ContractFlow</Text>
-            <Text style={styles.subtitle}>Gestão de contratos e recebíveis</Text>
+            <Text style={styles.subtitle}>Gestão inteligente de contratos e recebíveis</Text>
           </View>
 
           <View style={styles.form}>
@@ -66,6 +67,17 @@ export function Login({ navigation }) {
             ) : (
               <PrimaryButton title="Entrar" onPress={handleLogin} />
             )}
+
+            <TouchableOpacity style={styles.linkBtn} onPress={() => {}}>
+              <Text style={styles.linkText}>Esqueci minha senha</Text>
+            </TouchableOpacity>
+
+            <View style={styles.createAccountRow}>
+              <Text style={styles.createAccountMuted}>Não tem uma conta?</Text>
+          <TouchableOpacity onPress={() => {}}>
+            <Text style={styles.createAccountLink}>Criar conta</Text>
+          </TouchableOpacity>
+            </View>
           </View>
 
           <Text style={styles.footer}>ContractFlow v1.0.0</Text>
@@ -90,7 +102,7 @@ const styles = StyleSheet.create({
   },
   topSection: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 40,
   },
   logoWrap: {
     width: 64,
@@ -120,6 +132,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: typography.sizes.md,
     color: colors.textSecondary,
+    textAlign: 'center',
   },
   form: {
     marginBottom: spacing.xxxl,
@@ -135,6 +148,30 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     marginBottom: spacing.md,
     textAlign: 'center',
+  },
+  linkBtn: {
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+  },
+  linkText: {
+    color: colors.primary,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.medium,
+  },
+  createAccountRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  createAccountMuted: {
+    color: colors.textSecondary,
+    fontSize: typography.sizes.sm,
+  },
+  createAccountLink: {
+    color: colors.primary,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
   },
   footer: {
     textAlign: 'center',

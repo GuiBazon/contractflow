@@ -1,6 +1,6 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, spacing, typography } from '../utils/theme';
+import { colors, spacing, typography } from '../theme';
 import { formatCurrency } from '../utils/format';
 import { StatusBadge } from './StatusBadge';
 

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { View, FlatList, StyleSheet, SafeAreaView, Text } from 'react-native';
-import { colors, spacing, typography } from '../utils/theme';
+import { colors, spacing, typography } from '../theme';
 import { clientes } from '../data';
 import { Header, SearchInput, ClientCard, EmptyState } from '../components';
 

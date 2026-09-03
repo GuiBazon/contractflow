@@ -1,13 +1,21 @@
-import React from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { colors, spacing, typography } from '../utils/theme';
+import { colors, spacing, typography } from '../theme';
 import { formatCurrency } from '../utils/format';
 import { contratos } from '../data';
+import { getUsuario } from '../services/storage';
 
 export function Dashboard() {
   const navigation = useNavigation();
+  const [usuario, setUsuario] = useState(null);
+
+  useEffect(() => {
+    getUsuario().then((u) => setUsuario(u));
+  }, []);
+
+  const primeiroNome = usuario ? usuario.nome.split(' ')[0] : 'Ana';
 
   const proximosVencimentos = contratos
     .flatMap((c) => c.parcelas.filter((p) => p.status === 'EM ABERTO').map((p) => ({ ...p, cliente: c.cliente })))
@@ -55,7 +63,7 @@ export function Dashboard() {
         </View>
 
         <View style={styles.greetingSection}>
-          <Text style={styles.greeting}>Olá, Ana</Text>
+          <Text style={styles.greeting}>Olá, {primeiroNome}</Text>
           <Text style={styles.sub}>Veja o que merece atenção hoje.</Text>
         </View>
 

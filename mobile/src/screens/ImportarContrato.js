@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../utils/theme';
+import { colors, spacing, typography } from '../theme';
 import { Header, PrimaryButton } from '../components';
 
 const passos = [
@@ -26,7 +26,7 @@ const passos = [
   },
 ];
 
-export function Importacao() {
+export function ImportarContrato() {
   const navigation = useNavigation();
   const [arquivo, setArquivo] = useState(null);
 

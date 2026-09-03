@@ -1,8 +1,8 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../utils/theme';
+import { colors, spacing, typography } from '../theme';
 import { Header } from '../components';
 
 const itensMenu = [
@@ -25,7 +25,7 @@ export function Mais() {
 
   function handlePress(key) {
     if (key === 'clientes' || key === 'contratos') {
-      navigation.navigate('Importacao');
+      navigation.navigate('ImportarContrato');
     }
   }
 

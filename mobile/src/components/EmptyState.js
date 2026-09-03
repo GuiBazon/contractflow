@@ -1,13 +1,13 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../utils/theme';
+import { colors, spacing, typography } from '../theme';
 
-export function ErrorState({ message = 'Algo deu errado. Tente novamente.' }) {
+export function EmptyState({ icon, title, message }) {
   return (
     <View style={styles.container}>
-      <Ionicons name="alert-circle-outline" size={48} color={colors.danger} />
-      <Text style={styles.title}>Erro</Text>
+      <Ionicons name={icon} size={48} color={colors.textMuted} />
+      <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
     </View>
   );
@@ -24,7 +24,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.sizes.lg,
     fontWeight: typography.weights.semibold,
-    color: colors.danger,
+    color: colors.textPrimary,
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
   },

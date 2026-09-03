@@ -1,78 +1,67 @@
-// Serviço de comunicação com a API ContractFlow
-// Endpoints existentes em api/:
-//   POST /api/auth/register  -> { message, usuario }
-//   POST /api/auth/login     -> { message, token, usuario: { id, nome, email, perfil } }
-//   GET  /api/clientes       -> lista de clientes (auth Bearer)
-//   GET  /api/clientes/:id   -> cliente (auth)
-//   POST /api/clientes       -> criar cliente (auth)
-//   PUT  /api/clientes/:id   -> atualizar (auth)
-//   DELETE /api/clientes/:id -> remover (auth)
+import axios from 'axios';
+import { getToken, limparSessao } from './storage';
 
 const API_URL = 'http://10.0.2.2:3000/api';
 
-let authToken = null;
-
-export function setToken(token) {
-  authToken = token;
-}
-
-export function getToken() {
-  return authToken;
-}
-
-async function request(path, options = {}) {
-  const headers = {
+const apiClient = axios.create({
+  baseURL: API_URL,
+  timeout: 15000,
+  headers: {
     'Content-Type': 'application/json',
-  };
+  },
+});
 
-  if (authToken) {
-    headers.Authorization = `Bearer ${authToken}`;
-  }
-
-  try {
-    const res = await fetch(`${API_URL}${path}`, {
-      ...options,
-      headers: { ...headers, ...options.headers },
-    });
-
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      throw new Error(data.message || 'Erro na requisição');
+apiClient.interceptors.request.use(
+  async (config) => {
+    const token = await getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
-    return data;
-  } catch (error) {
-    throw error;
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      limparSessao();
+    }
+    return Promise.reject(error);
   }
+);
+
+function extrairMensagem(error, fallback) {
+  if (error.response && error.response.data && error.response.data.message) {
+    return error.response.data.message;
+  }
+  if (error.message) {
+    return error.message;
+  }
+  return fallback;
 }
 
-export const api = {
-  login: (email, senha) => request('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ email, senha }),
-  }),
+const api = {
+  login: (email, senha) =>
+    apiClient.post('/auth/login', { email, senha }).then((res) => res.data),
 
-  register: (nome, email, senha, perfil) => request('/auth/register', {
-    method: 'POST',
-    body: JSON.stringify({ nome, email, senha, perfil }),
-  }),
+  register: (nome, email, senha, perfil) =>
+    apiClient.post('/auth/register', { nome, email, senha, perfil }).then((res) => res.data),
 
-  listClientes: () => request('/clientes'),
+  listClientes: () => apiClient.get('/clientes').then((res) => res.data),
 
-  getCliente: (id) => request(`/clientes/${id}`),
+  getCliente: (id) => apiClient.get(`/clientes/${id}`).then((res) => res.data),
 
-  createCliente: (dados) => request('/clientes', {
-    method: 'POST',
-    body: JSON.stringify(dados),
-  }),
+  createCliente: (dados) => apiClient.post('/clientes', dados).then((res) => res.data),
 
-  updateCliente: (id, dados) => request(`/clientes/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(dados),
-  }),
+  updateCliente: (id, dados) => apiClient.put(`/clientes/${id}`, dados).then((res) => res.data),
 
-  deleteCliente: (id) => request(`/clientes/${id}`, {
-    method: 'DELETE',
-  }),
+  deleteCliente: (id) => apiClient.delete(`/clientes/${id}`).then((res) => res.data),
 };
+
+function normalizarErro(error) {
+  return extrairMensagem(error, 'Ops, algo deu errado. Tente novamente.');
+}
+
+export { api, apiClient, normalizarErro };
