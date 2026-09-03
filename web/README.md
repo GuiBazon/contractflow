@@ -1,5 +1,5 @@
 # contractflow
 
 ## FrontEnd Web
-- Renam Vieira Mobrise
+- Renan Vieira Mobrise
 - João Victor Oliveira Silva
