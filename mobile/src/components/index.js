@@ -1,4 +1,5 @@
 export { Header } from './Header';
+export { ContractFlowLogo } from './ContractFlowLogo';
 export { BottomNavigation } from './BottomNavigation';
 export { StatusBadge } from './StatusBadge';
 export { SearchInput } from './SearchInput';

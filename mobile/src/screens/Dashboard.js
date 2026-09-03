@@ -6,6 +6,7 @@ import { colors, spacing, typography } from '../theme';
 import { formatCurrency } from '../utils/format';
 import { contratos } from '../data';
 import { getUsuario } from '../services/storage';
+import { ContractFlowLogo } from '../components';
 
 export function Dashboard() {
   const navigation = useNavigation();
@@ -43,12 +44,7 @@ export function Dashboard() {
     <SafeAreaView style={styles.safe}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <View style={styles.logoRow}>
-            <View style={styles.logoIcon}>
-              <Text style={styles.logoIconText}>CF</Text>
-            </View>
-            <Text style={styles.logoText}>ContractFlow</Text>
-          </View>
+          <ContractFlowLogo size={28} fontSize={typography.sizes.xl} />
           <View style={styles.headerRight}>
             <TouchableOpacity style={styles.iconBtn}>
               <Ionicons name="search-outline" size={22} color={colors.textPrimary} />
@@ -162,29 +158,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.xl,
-  },
-  logoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  logoIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.sm,
-  },
-  logoIconText: {
-    color: colors.white,
-    fontWeight: '700',
-    fontSize: typography.sizes.sm,
-  },
-  logoText: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    color: colors.textPrimary,
   },
   headerRight: {
     flexDirection: 'row',

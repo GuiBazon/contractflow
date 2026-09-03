@@ -4,7 +4,7 @@ import {
   Platform, ScrollView, ActivityIndicator, TouchableOpacity,
 } from 'react-native';
 import { colors, spacing, typography } from '../theme';
-import { Input, PrimaryButton } from '../components';
+import { Input, PrimaryButton, ContractFlowLogo } from '../components';
 import { api, normalizarErro } from '../services/api';
 import { salvarSessao } from '../services/storage';
 
@@ -37,10 +37,11 @@ export function Login({ navigation }) {
       >
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
           <View style={styles.topSection}>
-            <View style={styles.logoWrap}>
-              <Text style={styles.logoIconText}>CF</Text>
-            </View>
-            <Text style={styles.logoText}>ContractFlow</Text>
+            <ContractFlowLogo
+              size={64}
+              fontSize={typography.sizes.title}
+              direction="column"
+            />
             <Text style={styles.subtitle}>Controle que flui com seu negócio.</Text>
           </View>
 
@@ -104,35 +105,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
-  logoWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  logoIconText: {
-    color: colors.white,
-    fontWeight: '700',
-    fontSize: typography.sizes.title,
-  },
-  logoText: {
-    fontSize: typography.sizes.title,
-    fontWeight: typography.weights.bold,
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
   subtitle: {
     fontSize: typography.sizes.md,
     color: colors.textSecondary,
     textAlign: 'center',
+    marginTop: spacing.sm,
   },
   form: {
     marginBottom: spacing.xxxl,
