@@ -1,18 +1,23 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState, useCallback } from 'react';
 import { View, FlatList, StyleSheet, SafeAreaView, Text, RefreshControl } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, typography } from '../theme';
 import { api, normalizarErro } from '../services/api';
 import { Header, SearchInput, FilterChip, ContractCard, EmptyState, LoadingState, ErrorState } from '../components';
 
-const filtros = ['Todos', 'Ativos', 'Vencidos', 'Encerrados'];
+const filtros = ['Todos', 'Ativos', 'Vencidos', 'Encerrados', 'Cancelados'];
 
 const FILTRO_STATUS = {
   Todos: undefined,
   Ativos: 'ATIVO',
-  Vencidos: 'VENCIDO',
+  Vencidos: undefined,
   Encerrados: 'ENCERRADO',
+  Cancelados: 'CANCELADO',
 };
+
+function estaVencido(contrato, hojeISO) {
+  return contrato.data_fim && contrato.status === 'ATIVO' && contrato.data_fim < hojeISO;
+}
 
 export function Contratos() {
   const navigation = useNavigation();
@@ -28,8 +33,15 @@ export function Contratos() {
       const data = await api.listContratos({
         q: busca,
         status: FILTRO_STATUS[filtro],
+        limit: 100,
       });
-      setContratos(data.data || []);
+      let lista = data.data || [];
+      if (filtro === 'Vencidos') {
+        const hoje = new Date();
+        const h = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+        lista = lista.filter((c) => estaVencido(c, h));
+      }
+      setContratos(lista);
     } catch (e) {
       setErro(normalizarErro(e));
     } finally {
@@ -42,10 +54,21 @@ export function Contratos() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busca, filtro]);
 
+  useFocusEffect(
+    useCallback(() => {
+      carregarContratos();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [busca, filtro])
+  );
+
+  function abrirNovoContrato() {
+    navigation.navigate('ContratoForm');
+  }
+
   if (carregando) {
     return (
       <SafeAreaView style={styles.safe}>
-        <Header title="Contratos" rightIcon="add-circle-outline" />
+        <Header title="Contratos" rightIcon="add-circle-outline" onRightPress={abrirNovoContrato} />
         <LoadingState message="Carregando contratos..." />
       </SafeAreaView>
     );
@@ -54,7 +77,7 @@ export function Contratos() {
   if (erro) {
     return (
       <SafeAreaView style={styles.safe}>
-        <Header title="Contratos" rightIcon="add-circle-outline" />
+        <Header title="Contratos" rightIcon="add-circle-outline" onRightPress={abrirNovoContrato} />
         <ErrorState message={erro} onRetry={carregarContratos} />
       </SafeAreaView>
     );
@@ -62,7 +85,7 @@ export function Contratos() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <Header title="Contratos" rightIcon="add-circle-outline" />
+      <Header title="Contratos" rightIcon="add-circle-outline" onRightPress={abrirNovoContrato} />
       <View style={styles.body}>
         <SearchInput
           placeholder="Pesquisar contratos..."

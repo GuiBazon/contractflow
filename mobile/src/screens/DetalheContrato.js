@@ -1,11 +1,13 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../theme';
 import { formatCurrency, formatDate } from '../utils/format';
 import { api, normalizarErro } from '../services/api';
 import { Header, StatusBadge, InstallmentCard, TimelineItem, PrimaryButton, LoadingState, ErrorState } from '../components';
+
+const STATUS_DISPONIVEIS = ['ATIVO', 'PENDENTE', 'ENCERRADO', 'CANCELADO', 'EM_RENOVACAO'];
 
 const tabs = [
   { key: 'parcelas', label: 'Parcelas', icon: 'layers-outline' },
@@ -15,11 +17,12 @@ const tabs = [
 
 const TITULOS_HISTORICO = {
   CRIADO: 'Contrato criado',
+  ALTERADO: 'Contrato editado',
   PAGAMENTO: 'Pagamento registrado',
   PARCELA_ALTERADA: 'Parcela alterada',
-  PARCELA_CRIADA: 'Parcela criada',
-  STATUS_ALTERADO: 'Status alterado',
-  CONTRATO_EDITADO: 'Contrato editado',
+  PARCELAS: 'Parcelas geradas',
+  STATUS: 'Status alterado',
+  DOCUMENTO: 'Documento adicionado',
 };
 
 function tituloHistorico(acao) {
@@ -39,28 +42,43 @@ export function DetalheContrato() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
 
-  useEffect(() => {
-    async function carregar() {
-      try {
-        setErro('');
-        const [contratoData, parcelasData, pagamentosData, historicoData] = await Promise.all([
-          api.getContrato(contratoId),
-          api.listParcelas(contratoId),
-          api.listPagamentos(contratoId),
-          api.getHistorico(contratoId),
-        ]);
-        setContrato(contratoData);
-        setParcelas(parcelasData.data || []);
-        setPagamentos(pagamentosData.data || []);
-        setHistorico(Array.isArray(historicoData) ? historicoData : []);
-      } catch (e) {
-        setErro(normalizarErro(e));
-      } finally {
-        setCarregando(false);
-      }
+  const carregar = useCallback(async () => {
+    try {
+      setErro('');
+      const [contratoData, parcelasData, pagamentosData, historicoData] = await Promise.all([
+        api.getContrato(contratoId),
+        api.listParcelas(contratoId),
+        api.listPagamentos(contratoId),
+        api.getHistorico(contratoId),
+      ]);
+      setContrato(contratoData);
+      setParcelas(parcelasData.data || []);
+      setPagamentos(pagamentosData.data || []);
+      setHistorico(Array.isArray(historicoData) ? historicoData : []);
+    } catch (e) {
+      setErro(normalizarErro(e));
+    } finally {
+      setCarregando(false);
     }
-    carregar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contratoId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      carregar();
+    }, [carregar])
+  );
+
+  async function mudarStatus(status) {
+    if (!contrato || status === contrato.status) return;
+    try {
+      setErro('');
+      await api.updateContratoStatus(contratoId, status);
+      await carregar();
+    } catch (e) {
+      setErro(normalizarErro(e));
+    }
+  }
 
   if (carregando) {
     return (
@@ -128,6 +146,23 @@ export function DetalheContrato() {
               <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
             </View>
           </View>
+
+          <Text style={styles.statusLabel}>Alterar status</Text>
+          <View style={styles.statusChips}>
+            {STATUS_DISPONIVEIS.map((s) => (
+              <TouchableOpacity
+                key={s}
+                style={[styles.statusChip, contrato.status === s && styles.statusChipActive]}
+                onPress={() => mudarStatus(s)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.statusChipText, contrato.status === s && styles.statusChipTextActive]}>
+                  {s.replace('_', ' ')}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {erro ? <Text style={styles.erroTexto}>{erro}</Text> : null}
         </View>
 
         <View style={styles.tabBar}>
@@ -319,6 +354,43 @@ const styles = StyleSheet.create({
     height: 6,
     backgroundColor: colors.primary,
     borderRadius: 3,
+  },
+  statusLabel: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+    fontWeight: typography.weights.medium,
+  },
+  statusChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  statusChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+  },
+  statusChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  statusChipText: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+  },
+  statusChipTextActive: {
+    color: colors.white,
+    fontWeight: typography.weights.semibold,
+  },
+  erroTexto: {
+    fontSize: typography.sizes.sm,
+    color: colors.danger,
+    marginTop: spacing.md,
   },
   tabBar: {
     flexDirection: 'row',

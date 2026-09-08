@@ -103,11 +103,8 @@ export function Dashboard() {
         <View style={styles.header}>
           <ContractFlowLogo size={28} fontSize={typography.sizes.xl} />
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.iconBtn}>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('Contratos')}>
               <Ionicons name="search-outline" size={22} color={colors.textPrimary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn}>
-              <Ionicons name="notifications-outline" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.avatar} onPress={() => navigation.navigate('Mais')}>
               <Text style={styles.avatarText}>{avatarInicial}</Text>
@@ -138,7 +135,7 @@ export function Dashboard() {
         </View>
 
         <View style={styles.actionsRow}>
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('ImportarContrato')}>
+          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('ContratoForm')}>
             <View style={[styles.actionIcon, { backgroundColor: colors.primaryLight }]}>
               <Ionicons name="add" size={20} color={colors.primary} />
             </View>
