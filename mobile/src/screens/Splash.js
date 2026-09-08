@@ -2,14 +2,14 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
 import { colors, spacing, typography } from '../theme';
 import { ContractFlowLogo } from '../components';
-import { getToken } from '../services/storage';
+import { api } from '../services/api';
 
 export function Splash({ navigation }) {
   useEffect(() => {
     const timer = setTimeout(async () => {
-      const token = await getToken();
-      navigation.replace(token ? 'MainTabs' : 'Login');
-    }, 1600);
+      const logado = await api.verificarSessao();
+      navigation.replace(logado ? 'MainTabs' : 'Login');
+    }, 1200);
     return () => clearTimeout(timer);
   }, [navigation]);
 

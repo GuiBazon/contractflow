@@ -3,6 +3,8 @@ import { getToken, limparSessao } from './storage';
 
 const API_URL = 'http://10.89.240.33:8081/api';
 
+export { API_URL };
+
 const apiClient = axios.create({
   baseURL: API_URL,
   timeout: 15000,
@@ -90,6 +92,56 @@ const api = {
 
   listReceitas: (params = {}) =>
     apiClient.get('/receitas', { params }).then((res) => res.data),
+
+  listDocumentos: (contratoId) =>
+    apiClient.get(`/documentos/${contratoId}/documentos`).then((res) => res.data),
+
+  uploadDocumento: (contratoId, { uri, nome, mime, tipo = 'ANEXO', descricao }) => {
+    const formData = new FormData();
+    formData.append('arquivo', { uri, name: nome, type: mime });
+    formData.append('tipo', tipo);
+    if (descricao) formData.append('descricao', descricao);
+    return apiClient
+      .post(`/documentos/${contratoId}/documentos`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 30000,
+      })
+      .then((res) => res.data);
+  },
+
+  ocrExtract: async ({ uri, nome, mime }) => {
+    const formData = new FormData();
+    formData.append('arquivo', { uri, name: nome, type: mime });
+    return apiClient
+      .post('/ocr/extract', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 60000,
+      })
+      .then((res) => res.data);
+  },
+
+  ocrGet: (id) => apiClient.get(`/ocr/${id}`).then((res) => res.data),
+
+  ocrUpdate: (id, dados) =>
+    apiClient.patch(`/ocr/${id}`, { dados }).then((res) => res.data),
+
+  ocrConfirmar: (id, dados) =>
+    apiClient.post(`/ocr/${id}/confirmar`, { dados }).then((res) => res.data),
+
+  async verificarSessao() {
+    const token = await getToken();
+    if (!token) return false;
+    try {
+      await apiClient.get('/clientes', { params: { limit: 1 } });
+      return true;
+    } catch (error) {
+      if (error.response && error.response.status === 401) {
+        await limparSessao();
+        return false;
+      }
+      return true;
+    }
+  },
 
   async listTodasParcelas() {
     const contratosData = await this.listContratos({ limit: 100 });
