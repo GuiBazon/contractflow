@@ -27,9 +27,14 @@ async function listParcelas(req, res) {
       `SELECT
          p.id, p.numero, p.valor, p.data_vencimento, p.status, p.created_at, p.updated_at,
          ${SITUACAO_SQL} AS situacao,
-         (SELECT COALESCE(SUM(pg.valor),0) FROM pagamentos pg WHERE pg.parcela_id = p.id) AS pago,
+         COALESCE(pg_sum.valor, 0) AS pago,
          DATEDIFF(CURDATE(), p.data_vencimento) AS dias_atraso
        FROM parcelas p
+       LEFT JOIN (
+         SELECT parcela_id, COALESCE(SUM(valor),0) AS valor
+         FROM pagamentos
+         GROUP BY parcela_id
+       ) pg_sum ON pg_sum.parcela_id = p.id
        WHERE ${where.join(' AND ')}
        ORDER BY p.numero ASC`,
       params
