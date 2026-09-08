@@ -90,6 +90,27 @@ const api = {
 
   listReceitas: (params = {}) =>
     apiClient.get('/receitas', { params }).then((res) => res.data),
+
+  async listTodasParcelas() {
+    const contratosData = await this.listContratos({ limit: 100 });
+    const contratosLista = contratosData.data || [];
+    const detalhes = await Promise.all(
+      contratosLista.map((c) => this.listParcelas(c.id).catch(() => ({ data: [] })))
+    );
+    const resultado = [];
+    detalhes.forEach((p, i) => {
+      const contrato = contratosLista[i];
+      (p.data || []).forEach((parcela) => {
+        resultado.push({
+          ...parcela,
+          contrato_id: contrato.id,
+          contrato_numero: contrato.numero,
+          cliente_nome: contrato.cliente_nome,
+        });
+      });
+    });
+    return resultado;
+  },
 };
 
 function normalizarErro(error) {

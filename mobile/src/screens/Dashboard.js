@@ -4,41 +4,98 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, typography } from '../theme';
 import { formatCurrency } from '../utils/format';
-import { contratos } from '../data';
+import { api, normalizarErro } from '../services/api';
 import { getUsuario } from '../services/storage';
-import { ContractFlowLogo } from '../components';
+import { ContractFlowLogo, ErrorState, LoadingState } from '../components';
 
 export function Dashboard() {
   const navigation = useNavigation();
   const [usuario, setUsuario] = useState(null);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
+  const [contratos, setContratos] = useState([]);
+  const [parcelas, setParcelas] = useState([]);
+  const [receitas, setReceitas] = useState([]);
 
   useEffect(() => {
     getUsuario().then((u) => setUsuario(u));
   }, []);
 
-  const primeiroNome = usuario ? usuario.nome.split(' ')[0] : 'Ana';
+  useEffect(() => {
+    async function carregar() {
+      try {
+        setErro('');
+        const [contratosData, parcelasData, receitasData] = await Promise.all([
+          api.listContratos({ limit: 100 }),
+          api.listTodasParcelas(),
+          api.listReceitas({ limit: 100 }),
+        ]);
+        setContratos(contratosData.data || []);
+        setParcelas(parcelasData);
+        setReceitas(receitasData.data || []);
+      } catch (e) {
+        setErro(normalizarErro(e));
+      } finally {
+        setCarregando(false);
+      }
+    }
+    carregar();
+  }, []);
 
-  const proximosVencimentos = contratos
-    .flatMap((c) => c.parcelas.filter((p) => p.status === 'EM ABERTO').map((p) => ({ ...p, cliente: c.cliente })))
-    .slice(0, 4);
+  const primeiroNome = usuario ? String(usuario.nome).split(' ')[0] : '';
+  const avatarInicial = primeiroNome ? primeiroNome[0].toUpperCase() : 'A';
 
   const totalReceber = contratos
     .filter((c) => c.status === 'ATIVO')
-    .reduce((sum, c) => {
-      const restante = c.parcelas
-        .filter((p) => p.status !== 'PAGO')
-        .reduce((s, p) => s + p.valor, 0);
-      return sum + restante;
-    }, 0);
+    .reduce((sum, c) => sum + Number(c.pendente || 0), 0);
 
-  const totalAtraso = contratos
-    .flatMap((c) => c.parcelas)
-    .filter((p) => p.status === 'ATRASADO')
-    .reduce((sum, p) => sum + p.valor, 0);
+  const totalAtraso = parcelas
+    .filter((p) => p.situacao === 'VENCIDA')
+    .reduce((sum, p) => sum + Number(p.valor || 0), 0);
 
-  const meses = ['Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set'];
-  const recebimentos = [15000, 18000, 22000, 20000, 12000, 16000];
-  const maxReceb = Math.max(...recebimentos);
+  const proximosVencimentos = parcelas
+    .filter((p) => p.situacao === 'PENDENTE' || p.situacao === 'VENCIDA')
+    .sort((a, b) => new Date(a.data_vencimento) - new Date(b.data_vencimento))
+    .slice(0, 4)
+    .map((p) => ({
+      id: p.id,
+      valor: p.valor,
+      data_vencimento: p.data_vencimento,
+      cliente: p.cliente_nome,
+    }));
+
+  const agora = new Date();
+  const meses = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+    meses.push({ chave: `${d.getFullYear()}-${d.getMonth()}`, rotulo: d.toLocaleDateString('pt-BR', { month: 'short' }) });
+  }
+
+  const recebimentos = meses.map((mes) =>
+    receitas
+      .filter((r) => {
+        const d = new Date(r.data_pagamento);
+        return `${d.getFullYear()}-${d.getMonth()}` === mes.chave;
+      })
+      .reduce((s, r) => s + Number(r.valor || 0), 0)
+  );
+  const maxReceb = Math.max(...recebimentos, 1);
+
+  if (carregando) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <LoadingState message="Carregando dashboard..." />
+      </SafeAreaView>
+    );
+  }
+
+  if (erro) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <ErrorState message={erro} onRetry={() => setCarregando(true)} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -53,7 +110,7 @@ export function Dashboard() {
               <Ionicons name="notifications-outline" size={22} color={colors.textPrimary} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.avatar} onPress={() => navigation.navigate('Mais')}>
-              <Text style={styles.avatarText}>A</Text>
+              <Text style={styles.avatarText}>{avatarInicial}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -105,16 +162,23 @@ export function Dashboard() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Próximos vencimentos</Text>
           </View>
-          {proximosVencimentos.map((p) => (
-            <View key={p.id} style={styles.vencItem}>
-              <View style={[styles.vencDot, { backgroundColor: colors.warning }]} />
-              <View style={styles.vencInfo}>
-                <Text style={styles.vencValor}>{formatCurrency(p.valor)}</Text>
-                <Text style={styles.vencCliente}>{p.cliente}</Text>
-              </View>
-              <Text style={styles.vencData}>{p.data_vencimento.split('-').reverse().join('/')}</Text>
+          {proximosVencimentos.length === 0 ? (
+            <View style={styles.emptySection}>
+              <Ionicons name="calendar-outline" size={32} color={colors.textMuted} />
+              <Text style={styles.emptyText}>Nenhum vencimento pendente</Text>
             </View>
-          ))}
+          ) : (
+            proximosVencimentos.map((p) => (
+              <View key={p.id} style={styles.vencItem}>
+                <View style={[styles.vencDot, { backgroundColor: colors.warning }]} />
+                <View style={styles.vencInfo}>
+                  <Text style={styles.vencValor}>{formatCurrency(p.valor)}</Text>
+                  <Text style={styles.vencCliente}>{p.cliente}</Text>
+                </View>
+                <Text style={styles.vencData}>{String(p.data_vencimento).split('T')[0].split('-').reverse().join('/')}</Text>
+              </View>
+            ))
+          )}
         </View>
 
         <View style={styles.section}>
@@ -125,12 +189,12 @@ export function Dashboard() {
           <View style={styles.chartCard}>
             <View style={styles.chart}>
               {meses.map((mes, i) => (
-                <View key={mes} style={styles.barCol}>
+                <View key={mes.chave} style={styles.barCol}>
                   <Text style={styles.barValue}>{`${(recebimentos[i] / 1000).toFixed(0)}k`}</Text>
                   <View style={styles.barWrap}>
-                    <View style={[styles.bar, { height: `${(recebimentos[i] / maxReceb) * 100}%` }]} />
+                    <View style={[styles.bar, { height: `${Math.max((recebimentos[i] / maxReceb) * 100, 2)}%` }]} />
                   </View>
-                  <Text style={styles.barLabel}>{mes}</Text>
+                  <Text style={styles.barLabel}>{mes.rotulo.split('.').join('')}</Text>
                 </View>
               ))}
             </View>
@@ -269,6 +333,19 @@ const styles = StyleSheet.create({
   },
   periodo: {
     fontSize: typography.sizes.sm,
+    color: colors.textMuted,
+  },
+  emptySection: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    gap: spacing.sm,
+    backgroundColor: colors.white,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyText: {
+    fontSize: typography.sizes.md,
     color: colors.textMuted,
   },
   vencItem: {

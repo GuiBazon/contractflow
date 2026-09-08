@@ -1,37 +1,98 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { View, ScrollView, StyleSheet, SafeAreaView, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../theme';
 import { formatCurrency } from '../utils/format';
-import { transacoes, contratos } from '../data';
-import { Header, FilterChip, FinancialCard } from '../components';
+import { api, normalizarErro } from '../services/api';
+import { Header, FilterChip, FinancialCard, ErrorState, LoadingState } from '../components';
 
 const filtros = ['Todas', 'Entradas', 'Saídas'];
 
 export function Financeiro() {
   const [filtro, setFiltro] = useState('Todas');
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
+  const [contratos, setContratos] = useState([]);
+  const [receitas, setReceitas] = useState([]);
+  const [despesas, setDespesas] = useState([]);
+
+  useEffect(() => {
+    async function carregar() {
+      try {
+        setErro('');
+        const [contratosData, receitasData] = await Promise.all([
+          api.listContratos({ limit: 100 }),
+          api.listReceitas({ limit: 100 }),
+        ]);
+        setContratos(contratosData.data || []);
+        setReceitas(receitasData.data || []);
+        setDespesas([]);
+      } catch (e) {
+        setErro(normalizarErro(e));
+      } finally {
+        setCarregando(false);
+      }
+    }
+    carregar();
+  }, []);
+
+  const transacoes = [
+    ...receitas.map((r) => ({
+      id: `r${r.id}`,
+      descricao: `Pagamento - ${r.contrato_numero} Parcela ${r.parcela_numero}`,
+      valor: Number(r.valor),
+      data: r.data_pagamento,
+      tipo: 'ENTRADA',
+      contrato_codigo: r.contrato_numero,
+    })),
+    ...despesas,
+  ];
 
   const recebimentoEsperado = contratos
     .filter((c) => c.status === 'ATIVO')
-    .reduce((sum, c) => {
-      const restante = c.parcelas
-        .filter((p) => p.status !== 'PAGO')
-        .reduce((s, p) => s + p.valor, 0);
-      return sum + restante;
-    }, 0);
+    .reduce((sum, c) => sum + Number(c.pendente || 0), 0);
 
-  const totalRecebido = transacoes
-    .filter((t) => t.tipo === 'ENTRADA')
-    .reduce((s, t) => s + t.valor, 0);
+  const totalRecebido = receitas.reduce((s, r) => s + Number(r.valor || 0), 0);
 
   const filtradas = transacoes.filter((t) => {
     if (filtro === 'Todas') return true;
     return filtro === 'Entradas' ? t.tipo === 'ENTRADA' : t.tipo === 'SAIDA';
   });
 
-  const meses = ['Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set'];
-  const fluxo = [15000, 18000, 22000, 20000, 12000, 16000];
-  const maxFluxo = Math.max(...fluxo);
+  const agora = new Date();
+  const meses = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+    meses.push({ chave: `${d.getFullYear()}-${d.getMonth()}`, rotulo: d.toLocaleDateString('pt-BR', { month: 'short' }) });
+  }
+
+  const fluxo = meses.map((mes) =>
+    receitas
+      .filter((r) => {
+        const d = new Date(r.data_pagamento);
+        return `${d.getFullYear()}-${d.getMonth()}` === mes.chave;
+      })
+      .reduce((s, r) => s + Number(r.valor || 0), 0)
+  );
+  const maxFluxo = Math.max(...fluxo, 1);
+
+  if (carregando) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <Header title="Financeiro" />
+        <LoadingState message="Carregando financeiro..." />
+      </SafeAreaView>
+    );
+  }
+
+  if (erro) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <Header title="Financeiro" />
+        <ErrorState message={erro} onRetry={() => setCarregando(true)} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -54,12 +115,12 @@ export function Financeiro() {
         <View style={styles.chartCard}>
           <View style={styles.chart}>
             {meses.map((mes, i) => (
-              <View key={mes} style={styles.barCol}>
+              <View key={mes.chave} style={styles.barCol}>
                 <Text style={styles.barValue}>{`${(fluxo[i] / 1000).toFixed(0)}k`}</Text>
                 <View style={styles.barWrap}>
-                  <View style={[styles.bar, { height: `${(fluxo[i] / maxFluxo) * 100}%` }]} />
+                  <View style={[styles.bar, { height: `${Math.max((fluxo[i] / maxFluxo) * 100, 2)}%` }]} />
                 </View>
-                <Text style={styles.barLabel}>{mes}</Text>
+                <Text style={styles.barLabel}>{mes.rotulo.split('.').join('')}</Text>
               </View>
             ))}
           </View>
@@ -75,14 +136,14 @@ export function Financeiro() {
         </View>
 
         <View style={styles.transacoes}>
-          {filtradas.map((t) => (
+          {filtradas.slice(0, 20).map((t) => (
             <FinancialCard key={t.id} transacao={t} />
           ))}
           {filtradas.length === 0 && (
-            <TouchableOpacity style={styles.emptyCard}>
+            <View style={styles.emptyCard}>
               <Ionicons name="receipt-outline" size={32} color={colors.textMuted} />
               <Text style={styles.emptyText}>Nenhuma transação encontrada</Text>
-            </TouchableOpacity>
+            </View>
           )}
         </View>
       </ScrollView>
