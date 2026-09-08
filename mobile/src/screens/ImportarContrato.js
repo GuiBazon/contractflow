@@ -1,34 +1,73 @@
 ﻿import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import { colors, spacing, typography } from '../theme';
 import { Header, PrimaryButton, SecondaryButton } from '../components';
+import { api, normalizarErro } from '../services/api';
 
 const ETAPAS = ['Upload', 'Processo', 'Revisão', 'Confirmação'];
 
 const ORIGENS = [
   { key: 'pdf', icon: 'document-text-outline', title: 'Selecionar PDF', sub: 'Contrato em PDF' },
-  { key: 'foto', icon: 'camera-outline', title: 'Tirar foto', sub: 'Câmera ou scanner' },
-  { key: 'galeria', icon: 'images-outline', title: 'Galeria', sub: 'Imagem salva' },
+  { key: 'galeria', icon: 'images-outline', title: 'Galeria / Arquivos', sub: 'Imagem ou arquivo salvo' },
 ];
 
 export function ImportarContrato() {
   const navigation = useNavigation();
+  const route = useRoute();
   const [origem, setOrigem] = useState(null);
   const [processando, setProcessando] = useState(false);
-  const [concluido, setConcluido] = useState(false);
+  const [salvo, setSalvo] = useState(null);
+  const [erro, setErro] = useState('');
 
-  const etapaAtual = origem == null ? 0 : processando ? 1 : concluido ? 2 : 0;
+  const etapaAtual = origem == null ? 0 : processando ? 1 : salvo ? 2 : 0;
 
-  function escolher(o) {
+  async function escolher(o) {
+    setErro('');
     setOrigem(o);
     setProcessando(true);
-    setConcluido(false);
-    setTimeout(() => {
+    setSalvo(null);
+
+    try {
+      const tipo = o.key === 'pdf'
+        ? ['application/pdf']
+        : ['image/jpeg', 'image/png', 'image/webp'];
+
+      const picked = await DocumentPicker.getDocumentAsync({
+        type,
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+
+      if (picked.canceled || !picked.assets || picked.assets.length === 0) {
+        setOrigem(null);
+        setProcessando(false);
+        return;
+      }
+
+      const asset = picked.assets[0];
+      const resultado = await api.ocrExtract({
+        uri: asset.uri,
+        nome: asset.name || 'documento.pdf',
+        mime: asset.mimeType || 'application/pdf',
+      });
+
+      setSalvo({
+        nomeArquivo: asset.name || 'documento.pdf',
+        extracaoId: resultado.extracao_id,
+        dados: resultado.dados || {},
+        campos: resultado.campos || [],
+        confianca: resultado.confianca || 0,
+        aviso: resultado.aviso || null,
+      });
+    } catch (e) {
+      setErro(normalizarErro(e));
+      setSalvo(null);
+    } finally {
       setProcessando(false);
-      setConcluido(true);
-    }, 1800);
+    }
   }
 
   return (
@@ -40,9 +79,9 @@ export function ImportarContrato() {
             <React.Fragment key={e}>
               <View style={styles.stepWrap}>
                 <View
-                  style={[styles.stepCircle, (i <= etapaAtual || concluido) && styles.stepCircleActive]}
+                  style={[styles.stepCircle, (i <= etapaAtual || salvo) && styles.stepCircleActive]}
                 >
-                  {i < etapaAtual || (concluido && i < 3)
+                  {i < etapaAtual || (salvo && i < 3)
                     ? <Ionicons name="checkmark" size={14} color={colors.white} />
                     : <Text style={[styles.stepNum, (i <= etapaAtual) && styles.stepNumActive]}>{i + 1}</Text>}
                 </View>
@@ -74,25 +113,45 @@ export function ImportarContrato() {
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.processingTitle}>Processando documento</Text>
             <Text style={styles.processingSub}>
-              Lendo dados com a inteligência artificial... isso pode levar alguns segundos.
+              Enviando ao servidor e lendo os dados com OCR... isso pode levar alguns segundos.
             </Text>
           </View>
-        ) : (
+        ) : salvo ? (
           <View style={styles.doneCard}>
             <View style={styles.doneIcon}>
               <Ionicons name="checkmark" size={40} color={colors.success} />
             </View>
             <Text style={styles.doneTitle}>Documento processado!</Text>
             <Text style={styles.doneSub}>
-              Estruturação do documento concluída. Revise os dados detectados antes de confirmar.
+              {salvo.confianca > 0
+                ? `Confiança da leitura: ${salvo.confianca}%. Revise os dados detectados antes de confirmar.`
+                : 'Nenhum dado foi detectado automaticamente. Preencha manualmente na revisão.'}
             </Text>
+            {salvo.aviso ? <Text style={styles.aviso}>{salvo.aviso}</Text> : null}
             <View style={styles.fileRow}>
               <Ionicons name="document-attach-outline" size={18} color={colors.primary} />
-              <Text style={styles.fileName}>documento_contrato_carol.pdf</Text>
+              <Text style={styles.fileName}>{salvo.nomeArquivo}</Text>
             </View>
-            <PrimaryButton title="Revisar dados" onPress={() => navigation.navigate('RevisaoContrato')} />
+            <PrimaryButton
+              title="Revisar dados"
+              onPress={() =>
+                navigation.navigate('RevisaoContrato', {
+                  extracaoId: salvo.extracaoId,
+                })
+              }
+            />
             <View style={styles.spacer} />
             <SecondaryButton title="Refazer" onPress={() => setOrigem(null)} />
+          </View>
+        ) : (
+          <View style={styles.doneCard}>
+            <View style={[styles.doneIcon, { backgroundColor: colors.dangerLight }]}>
+              <Ionicons name="alert" size={40} color={colors.danger} />
+            </View>
+            <Text style={styles.doneTitle}>Não foi possível processar</Text>
+            <Text style={styles.doneSub}>{erro}</Text>
+            <View style={styles.spacer} />
+            <SecondaryButton title="Tentar novamente" onPress={() => setOrigem(null)} />
           </View>
         )}
       </ScrollView>
@@ -247,6 +306,12 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.lg,
+  },
+  aviso: {
+    fontSize: typography.sizes.sm,
+    color: colors.warning || '#B45309',
+    textAlign: 'center',
+    marginBottom: spacing.md,
   },
   fileRow: {
     flexDirection: 'row',

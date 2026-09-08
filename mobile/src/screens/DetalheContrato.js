@@ -1,7 +1,8 @@
 ﻿import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import { colors, spacing, typography } from '../theme';
 import { formatCurrency, formatDate } from '../utils/format';
 import { api, normalizarErro } from '../services/api';
@@ -12,6 +13,7 @@ const STATUS_DISPONIVEIS = ['ATIVO', 'PENDENTE', 'ENCERRADO', 'CANCELADO', 'EM_R
 const tabs = [
   { key: 'parcelas', label: 'Parcelas', icon: 'layers-outline' },
   { key: 'pagamentos', label: 'Pagamentos', icon: 'cash-outline' },
+  { key: 'documentos', label: 'Documentos', icon: 'attach-outline' },
   { key: 'timeline', label: 'Timeline', icon: 'time-outline' },
 ];
 
@@ -39,22 +41,26 @@ export function DetalheContrato() {
   const [parcelas, setParcelas] = useState([]);
   const [pagamentos, setPagamentos] = useState([]);
   const [historico, setHistorico] = useState([]);
+  const [documentos, setDocumentos] = useState([]);
+  const [enviandoDoc, setEnviandoDoc] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
 
   const carregar = useCallback(async () => {
     try {
       setErro('');
-      const [contratoData, parcelasData, pagamentosData, historicoData] = await Promise.all([
+      const [contratoData, parcelasData, pagamentosData, historicoData, documentosData] = await Promise.all([
         api.getContrato(contratoId),
         api.listParcelas(contratoId),
         api.listPagamentos(contratoId),
         api.getHistorico(contratoId),
+        api.listDocumentos(contratoId).catch(() => ({ data: [] })),
       ]);
       setContrato(contratoData);
       setParcelas(parcelasData.data || []);
       setPagamentos(pagamentosData.data || []);
       setHistorico(Array.isArray(historicoData) ? historicoData : []);
+      setDocumentos(documentosData.data || []);
     } catch (e) {
       setErro(normalizarErro(e));
     } finally {
@@ -78,6 +84,55 @@ export function DetalheContrato() {
     } catch (e) {
       setErro(normalizarErro(e));
     }
+  }
+
+  async function adicionarDocumento() {
+    setErro('');
+    try {
+      const picked = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/jpeg', 'image/png'],
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+      if (picked.canceled || !picked.assets || picked.assets.length === 0) return;
+
+      const asset = picked.assets[0];
+      setEnviandoDoc(true);
+      await api.uploadDocumento(contratoId, {
+        uri: asset.uri,
+        nome: asset.name || 'anexo.pdf',
+        mime: asset.mimeType || 'application/pdf',
+        tipo: 'ANEXO',
+        descricao: 'Anexo adicionado pelo app',
+      });
+      await carregar();
+    } catch (e) {
+      setErro(normalizarErro(e));
+    } finally {
+      setEnviandoDoc(false);
+    }
+  }
+
+  function confirmarExclusaoDoc(doc) {
+    Alert.alert(
+      'Remover anexo',
+      `Excluir "${doc.nome_original}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.deleteDocumento(contratoId, doc.id);
+              await carregar();
+            } catch (e) {
+              setErro(normalizarErro(e));
+            }
+          },
+        },
+      ]
+    );
   }
 
   if (carregando) {
@@ -213,6 +268,45 @@ export function DetalheContrato() {
                 </View>
               ))
             )
+          )}
+
+          {tab === 'documentos' && (
+            <View>
+              <TouchableOpacity style={styles.uploadBtn} onPress={adicionarDocumento} disabled={enviandoDoc} activeOpacity={0.7}>
+                {enviandoDoc ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Ionicons name="cloud-upload-outline" size={18} color={colors.white} />
+                )}
+                <Text style={styles.uploadBtnText}>{enviandoDoc ? 'Enviando...' : 'Adicionar anexo'}</Text>
+              </TouchableOpacity>
+
+              {documentos.length === 0 ? (
+                <View style={styles.emptyTab}>
+                  <Ionicons name="attach-outline" size={32} color={colors.textMuted} />
+                  <Text style={styles.emptyTabText}>Nenhum documento vinculado</Text>
+                </View>
+              ) : (
+                documentos.map((doc) => (
+                  <View key={doc.id} style={styles.documentoCard}>
+                    <View style={styles.documentoIcon}>
+                      <Ionicons name="document-text-outline" size={20} color={colors.primary} />
+                    </View>
+                    <View style={styles.documentoInfo}>
+                      <Text style={styles.documentoNome} numberOfLines={1}>{doc.nome_original}</Text>
+                      <Text style={styles.documentoMeta}>
+                        {doc.tipo} • {(doc.tamanho / 1024).toFixed(0)} KB
+                      </Text>
+                    </View>
+                    {doc.tipo === 'ANEXO' ? (
+                      <TouchableOpacity onPress={() => confirmarExclusaoDoc(doc)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Ionicons name="trash-outline" size={18} color={colors.danger} />
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                ))
+              )}
+            </View>
           )}
 
           {tab === 'timeline' && (
@@ -355,6 +449,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: 3,
   },
+  uploadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  uploadBtnText: {
+    color: colors.white,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+  },
   statusLabel: {
     fontSize: typography.sizes.sm,
     color: colors.textSecondary,
@@ -432,6 +541,38 @@ const styles = StyleSheet.create({
   emptyTabText: {
     fontSize: typography.sizes.md,
     color: colors.textMuted,
+  },
+  documentoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 10,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.md,
+  },
+  documentoIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  documentoInfo: {
+    flex: 1,
+  },
+  documentoNome: {
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+  documentoMeta: {
+    fontSize: typography.sizes.xs,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   pagamentoCard: {
     flexDirection: 'row',

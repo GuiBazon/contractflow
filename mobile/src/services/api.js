@@ -96,6 +96,9 @@ const api = {
   listDocumentos: (contratoId) =>
     apiClient.get(`/documentos/${contratoId}/documentos`).then((res) => res.data),
 
+  deleteDocumento: (contratoId, documentoId) =>
+    apiClient.delete(`/documentos/${contratoId}/documentos/${documentoId}`).then((res) => res.data),
+
   uploadDocumento: (contratoId, { uri, nome, mime, tipo = 'ANEXO', descricao }) => {
     const formData = new FormData();
     formData.append('arquivo', { uri, name: nome, type: mime });
