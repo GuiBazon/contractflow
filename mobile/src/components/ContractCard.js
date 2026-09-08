@@ -9,17 +9,32 @@ export function ContractCard({ contrato, onPress }) {
     ? contrato.parcelas_pagas / contrato.total_parcelas
     : 0;
 
+  const nome =
+    contrato.descricao ||
+    contrato.tipo ||
+    contrato.nome ||
+    contrato.numero ||
+    'Contrato';
+  const cliente = contrato.cliente_nome || contrato.cliente || '—';
+  const codigo = contrato.numero || contrato.codigo || '';
+  const parcelasPagas =
+    contrato.parcelas_pagas !== undefined
+      ? contrato.parcelas_pagas
+      : contrato.parcelas_pagas;
+  const totalParcelas =
+    contrato.total_parcelas || contrato.quantidade_parcelas || 0;
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.header}>
-        <Text style={styles.nome} numberOfLines={1}>{contrato.nome}</Text>
+        <Text style={styles.nome} numberOfLines={1}>{nome}</Text>
         <StatusBadge status={contrato.status} />
       </View>
-      <Text style={styles.cliente}>{contrato.cliente}</Text>
-      <Text style={styles.codigo}>{contrato.codigo}</Text>
+      <Text style={styles.cliente}>{cliente}</Text>
+      <Text style={styles.codigo}>{codigo}</Text>
       <View style={styles.footer}>
         <Text style={styles.valor}>{formatCurrency(contrato.valor_total)}</Text>
-        <Text style={styles.parcelas}>{contrato.parcelas_pagas}/{contrato.total_parcelas} parcelas</Text>
+        <Text style={styles.parcelas}>{parcelasPagas}/{totalParcelas} parcelas</Text>
       </View>
       <View style={styles.progressBg}>
         <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />

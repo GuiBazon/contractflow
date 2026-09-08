@@ -59,6 +59,37 @@ const api = {
   updateCliente: (id, dados) => apiClient.put(`/clientes/${id}`, dados).then((res) => res.data),
 
   deleteCliente: (id) => apiClient.delete(`/clientes/${id}`).then((res) => res.data),
+
+  listContratos: (params = {}) =>
+    apiClient.get('/contratos', { params }).then((res) => res.data),
+
+  getContrato: (id) => apiClient.get(`/contratos/${id}`).then((res) => res.data),
+
+  createContrato: (dados) => apiClient.post('/contratos', dados).then((res) => res.data),
+
+  updateContrato: (id, dados) => apiClient.put(`/contratos/${id}`, dados).then((res) => res.data),
+
+  deleteContrato: (id) => apiClient.delete(`/contratos/${id}`).then((res) => res.data),
+
+  updateContratoStatus: (id, status) =>
+    apiClient.patch(`/contratos/${id}/status`, { status }).then((res) => res.data),
+
+  getHistorico: (id) => apiClient.get(`/contratos/${id}/historico`).then((res) => res.data),
+
+  listParcelas: (contratoId, filtro) =>
+    apiClient.get(`/parcelas/${contratoId}/parcelas`, { params: { filtro } }).then((res) => res.data),
+
+  updateParcela: (contratoId, parcelaId, dados) =>
+    apiClient.patch(`/parcelas/${contratoId}/parcelas/${parcelaId}`, dados).then((res) => res.data),
+
+  listPagamentos: (contratoId, params = {}) =>
+    apiClient.get(`/pagamentos/${contratoId}/pagamentos`, { params }).then((res) => res.data),
+
+  createPagamento: (contratoId, dados) =>
+    apiClient.post(`/pagamentos/${contratoId}/pagamentos`, dados).then((res) => res.data),
+
+  listReceitas: (params = {}) =>
+    apiClient.get('/receitas', { params }).then((res) => res.data),
 };
 
 function normalizarErro(error) {

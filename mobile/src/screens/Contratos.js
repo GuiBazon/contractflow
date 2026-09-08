@@ -1,29 +1,64 @@
-﻿import React, { useState } from 'react';
-import { View, FlatList, StyleSheet, SafeAreaView, Text } from 'react-native';
+﻿import React, { useEffect, useState } from 'react';
+import { View, FlatList, StyleSheet, SafeAreaView, Text, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, typography } from '../theme';
-import { contratos } from '../data';
-import { Header, SearchInput, FilterChip, ContractCard, EmptyState } from '../components';
+import { api, normalizarErro } from '../services/api';
+import { Header, SearchInput, FilterChip, ContractCard, EmptyState, LoadingState, ErrorState } from '../components';
 
 const filtros = ['Todos', 'Ativos', 'Vencidos', 'Encerrados'];
+
+const FILTRO_STATUS = {
+  Todos: undefined,
+  Ativos: 'ATIVO',
+  Vencidos: 'VENCIDO',
+  Encerrados: 'ENCERRADO',
+};
 
 export function Contratos() {
   const navigation = useNavigation();
   const [filtro, setFiltro] = useState('Todos');
   const [busca, setBusca] = useState('');
+  const [contratos, setContratos] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
 
-  const filtrados = contratos.filter((c) => {
-    const matchFiltro =
-      filtro === 'Todos' ||
-      (filtro === 'Ativos' && c.status === 'ATIVO') ||
-      (filtro === 'Vencidos' && c.status === 'VENCIDO') ||
-      (filtro === 'Encerrados' && c.status === 'ENCERRADO');
-    const matchBusca =
-      c.nome.toLowerCase().includes(busca.toLowerCase()) ||
-      c.cliente.toLowerCase().includes(busca.toLowerCase()) ||
-      c.codigo.toLowerCase().includes(busca.toLowerCase());
-    return matchFiltro && matchBusca;
-  });
+  async function carregarContratos() {
+    try {
+      setErro('');
+      const data = await api.listContratos({
+        q: busca,
+        status: FILTRO_STATUS[filtro],
+      });
+      setContratos(data.data || []);
+    } catch (e) {
+      setErro(normalizarErro(e));
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  useEffect(() => {
+    carregarContratos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busca, filtro]);
+
+  if (carregando) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <Header title="Contratos" rightIcon="add-circle-outline" />
+        <LoadingState message="Carregando contratos..." />
+      </SafeAreaView>
+    );
+  }
+
+  if (erro) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <Header title="Contratos" rightIcon="add-circle-outline" />
+        <ErrorState message={erro} onRetry={carregarContratos} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -52,11 +87,11 @@ export function Contratos() {
         </View>
         <View style={styles.countRow}>
           <Text style={styles.countText}>
-            {filtrados.length} contrato{filtrados.length !== 1 ? 's' : ''}
+            {contratos.length} contrato{contratos.length !== 1 ? 's' : ''}
           </Text>
         </View>
         <FlatList
-          data={filtrados}
+          data={contratos}
           keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => (
             <ContractCard
@@ -70,6 +105,9 @@ export function Contratos() {
               title="Nenhum contrato encontrado"
               message="Tente ajustar os filtros ou a busca."
             />
+          }
+          refreshControl={
+            <RefreshControl refreshing={false} onRefresh={carregarContratos} tintColor={colors.primary} />
           }
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}

@@ -14,6 +14,8 @@ export function StatusBadge({ status, size = 'small' }) {
     ATRASADO: { bg: colors.dangerLight, text: colors.danger },
     CONFIRMADO: { bg: colors.successLight, text: colors.success },
     PENDENTE: { bg: colors.warningLight, text: colors.warning },
+    CANCELADO: { bg: colors.dangerLight, text: colors.danger },
+    EM_RENOVACAO: { bg: colors.primaryLight, text: colors.primary },
     ALTA: { bg: colors.successLight, text: colors.success },
     MEDIA: { bg: colors.warningLight, text: colors.warning },
     BAIXA: { bg: colors.dangerLight, text: colors.danger },
