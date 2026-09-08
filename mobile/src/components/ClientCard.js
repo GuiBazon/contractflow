@@ -13,7 +13,11 @@ export function ClientCard({ cliente }) {
   const doc = cliente.cpf_cnpj;
   const isCnpj = doc.replace(/\D/g, '').length > 11;
   const docLabel = isCnpj ? 'CNPJ' : 'CPF';
-  const contratosLabel = `${cliente.contratos_ativos} ${cliente.contratos_ativos === 1 ? 'Ativo' : 'Ativos'}`;
+  const totalContratos =
+    cliente.total_contratos !== undefined
+      ? cliente.total_contratos
+      : cliente.contratos_ativos;
+  const contratosLabel = `${totalContratos} ${totalContratos === 1 ? 'Ativo' : 'Ativos'}`;
 
   return (
     <View style={styles.card}>

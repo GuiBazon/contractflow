@@ -1,16 +1,49 @@
-﻿import React, { useState } from 'react';
-import { View, FlatList, StyleSheet, SafeAreaView, Text } from 'react-native';
+﻿import React, { useEffect, useState, useCallback } from 'react';
+import { View, FlatList, StyleSheet, SafeAreaView, Text, RefreshControl } from 'react-native';
 import { colors, spacing, typography } from '../theme';
-import { clientes } from '../data';
-import { Header, SearchInput, ClientCard, EmptyState } from '../components';
+import { api, normalizarErro } from '../services/api';
+import { Header, SearchInput, ClientCard, EmptyState, LoadingState, ErrorState } from '../components';
 
 export function Clientes() {
   const [busca, setBusca] = useState('');
+  const [clientes, setClientes] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
 
-  const filtrados = clientes.filter((c) =>
-    c.nome_razao_social.toLowerCase().includes(busca.toLowerCase()) ||
-    c.cpf_cnpj.includes(busca)
-  );
+  async function carregarClientes() {
+    try {
+      setErro('');
+      const data = await api.listClientes(busca);
+      setClientes(data.data || []);
+    } catch (e) {
+      setErro(normalizarErro(e));
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  useEffect(() => {
+    carregarClientes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busca]);
+
+  if (carregando) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <Header title="Clientes" />
+        <LoadingState message="Carregando clientes..." />
+      </SafeAreaView>
+    );
+  }
+
+  if (erro) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <Header title="Clientes" />
+        <ErrorState message={erro} onRetry={carregarClientes} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -23,11 +56,11 @@ export function Clientes() {
         />
         <View style={styles.countRow}>
           <Text style={styles.countText}>
-            {filtrados.length} cliente{filtrados.length !== 1 ? 's' : ''}
+            {clientes.length} cliente{clientes.length !== 1 ? 's' : ''}
           </Text>
         </View>
         <FlatList
-          data={filtrados}
+          data={clientes}
           keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => <ClientCard cliente={item} />}
           ListEmptyComponent={
@@ -36,6 +69,9 @@ export function Clientes() {
               title="Nenhum cliente encontrado"
               message="Tente ajustar a busca."
             />
+          }
+          refreshControl={
+            <RefreshControl refreshing={false} onRefresh={carregarClientes} tintColor={colors.primary} />
           }
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}

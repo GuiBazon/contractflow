@@ -49,7 +49,8 @@ const api = {
   register: (nome, email, senha) =>
     apiClient.post('/auth/register', { nome, email, senha }).then((res) => res.data),
 
-  listClientes: () => apiClient.get('/clientes').then((res) => res.data),
+  listClientes: (busca = '', page = 1) =>
+    apiClient.get('/clientes', { params: { q: busca || undefined, page, limit: 50 } }).then((res) => res.data),
 
   getCliente: (id) => apiClient.get(`/clientes/${id}`).then((res) => res.data),
 
