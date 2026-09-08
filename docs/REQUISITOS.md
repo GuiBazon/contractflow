@@ -146,5 +146,5 @@ apresentação (a rubrica avalia isso explicitamente).
 
 - Núcleo validado ponta a ponta contra MySQL 8.0 real em 08/09 (ver `api/instrucoes.md`).
 - Suíte Jest + Supertest: 69 testes (unit + integração com `db` simulado).
-- Endpoints em `ENDPOINTS.md`; modelo em `docs/DER.md`; schema em `api/database/schema.sql`;
+- Endpoints em `docs/ENDPOINTS.md`; modelo em `docs/DER.md`; schema em `api/database/schema.sql`;
   seed demo em `api/database/seed.sql`.

@@ -103,7 +103,7 @@ Git: commits reais e separados logicamente, sem inflar quantidade.
    - `docker compose up` **falhou ao expor porta 3306** — "bind: normalmente é permitida apenas uma
      utilização de cada endereço de soquete". **Causa provável: um MySQL local já está na 3306
      (no Windows existe MySQL Server 8.0 instalado).**
-8. **Documentação**: `ENDPOINTS.md` atualizado (rotas agora registradas, sem avisos ⚠️ antigos);
+8. **Documentação**: `docs/ENDPOINTS.md` atualizado (rotas agora registradas, sem avisos ⚠️ antigos);
    `api/README.md` criado (setup local + Docker + testes).
 
 ## O que ainda NÃO está implementado (registrar como pendência — não fingir)
@@ -148,7 +148,7 @@ npm run dev
 ```
 
 ### 3. Antes da apresentação
-- Registrar em `ENDPOINTS.md` qualquer rota nova.
+- Registrar em `docs/ENDPOINTS.md` qualquer rota nova.
 - Preencher/explicar o fluxo "entrada → processamento → saída" dos endpoints do núcleo
   (cada controller: o que é, onde está, o que recebe, o que faz, o que retorna, como toca o banco).
 - Deixar claras as pendências (OCR, dashboard, despesas, relatórios, user management).
