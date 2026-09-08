@@ -1,10 +1,12 @@
 ﻿import React, { useEffect, useState, useCallback } from 'react';
 import { View, FlatList, StyleSheet, SafeAreaView, Text, RefreshControl } from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, typography } from '../theme';
 import { api, normalizarErro } from '../services/api';
 import { Header, SearchInput, ClientCard, EmptyState, LoadingState, ErrorState } from '../components';
 
 export function Clientes() {
+  const navigation = useNavigation();
   const [busca, setBusca] = useState('');
   const [clientes, setClientes] = useState([]);
   const [carregando, setCarregando] = useState(true);
@@ -27,10 +29,25 @@ export function Clientes() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busca]);
 
+  useFocusEffect(
+    useCallback(() => {
+      carregarClientes();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [busca])
+  );
+
+  function abrirNovoCliente() {
+    navigation.navigate('ClienteForm');
+  }
+
+  function abrirCliente(cliente) {
+    navigation.navigate('ClienteForm', { clienteId: cliente.id });
+  }
+
   if (carregando) {
     return (
       <SafeAreaView style={styles.safe}>
-        <Header title="Clientes" />
+        <Header title="Clientes" rightIcon="add-circle-outline" onRightPress={abrirNovoCliente} />
         <LoadingState message="Carregando clientes..." />
       </SafeAreaView>
     );
@@ -39,7 +56,7 @@ export function Clientes() {
   if (erro) {
     return (
       <SafeAreaView style={styles.safe}>
-        <Header title="Clientes" />
+        <Header title="Clientes" rightIcon="add-circle-outline" onRightPress={abrirNovoCliente} />
         <ErrorState message={erro} onRetry={carregarClientes} />
       </SafeAreaView>
     );
@@ -47,7 +64,7 @@ export function Clientes() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <Header title="Clientes" />
+      <Header title="Clientes" rightIcon="add-circle-outline" onRightPress={abrirNovoCliente} />
       <View style={styles.body}>
         <SearchInput
           placeholder="Buscar clientes por nome ou CPF/CNPJ..."
@@ -62,12 +79,12 @@ export function Clientes() {
         <FlatList
           data={clientes}
           keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => <ClientCard cliente={item} />}
+          renderItem={({ item }) => <ClientCard cliente={item} onPress={() => abrirCliente(item)} />}
           ListEmptyComponent={
             <EmptyState
               icon="people-outline"
               title="Nenhum cliente encontrado"
-              message="Tente ajustar a busca."
+              message="Toque em + para cadastrar seu primeiro cliente."
             />
           }
           refreshControl={

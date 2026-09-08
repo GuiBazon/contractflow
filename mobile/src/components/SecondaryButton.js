@@ -2,10 +2,10 @@
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { colors, spacing, typography } from '../theme';
 
-export function SecondaryButton({ title, onPress, style }) {
+export function SecondaryButton({ title, onPress, style, danger }) {
   return (
     <TouchableOpacity style={[styles.btn, style]} onPress={onPress} activeOpacity={0.8}>
-      <Text style={styles.text}>{title}</Text>
+      <Text style={[styles.text, danger && styles.textDanger]}>{title}</Text>
     </TouchableOpacity>
   );
 }
@@ -23,5 +23,8 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.semibold,
+  },
+  textDanger: {
+    color: colors.danger,
   },
 });

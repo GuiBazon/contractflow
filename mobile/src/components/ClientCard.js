@@ -1,8 +1,9 @@
 ﻿import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../theme';
 
-export function ClientCard({ cliente }) {
+export function ClientCard({ cliente, onPress }) {
   const initials = cliente.nome_razao_social
     .split(' ')
     .slice(0, 2)
@@ -20,7 +21,7 @@ export function ClientCard({ cliente }) {
   const contratosLabel = `${totalContratos} ${totalContratos === 1 ? 'Ativo' : 'Ativos'}`;
 
   return (
-    <View style={styles.card}>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.avatar}>
         <Text style={styles.initials}>{initials}</Text>
       </View>
@@ -29,8 +30,8 @@ export function ClientCard({ cliente }) {
         <Text style={styles.doc}>{docLabel} {doc}</Text>
         <Text style={styles.contratos}>{contratosLabel}</Text>
       </View>
-      <View style={styles.statusDot} />
-    </View>
+      <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+    </TouchableOpacity>
   );
 }
 
@@ -77,12 +78,5 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     color: colors.primary,
     fontWeight: typography.weights.medium,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.success,
-    marginLeft: spacing.sm,
   },
 });

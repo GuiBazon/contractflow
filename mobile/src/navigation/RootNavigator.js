@@ -9,6 +9,7 @@ import { ImportarContrato } from '../screens/ImportarContrato';
 import { RevisaoContrato } from '../screens/RevisaoContrato';
 import { RegistrarPagamento } from '../screens/RegistrarPagamento';
 import { Mais } from '../screens/Mais';
+import { ClienteForm } from '../screens/ClienteForm';
 
 const Stack = createNativeStackNavigator();
 
@@ -24,6 +25,7 @@ export function RootNavigator() {
       <Stack.Screen name="RevisaoContrato" component={RevisaoContrato} />
       <Stack.Screen name="RegistrarPagamento" component={RegistrarPagamento} />
       <Stack.Screen name="Mais" component={Mais} />
+      <Stack.Screen name="ClienteForm" component={ClienteForm} />
     </Stack.Navigator>
   );
 }
