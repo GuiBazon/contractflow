@@ -11,7 +11,8 @@ if (missing.length > 0) {
 
 if (process.env.JWT_SECRET === 'secret'
     || process.env.JWT_SECRET === 'troque-por-um-segredo-longo-e-aleatorio'
-    || process.env.JWT_SECRET === 'troque-este-segredo-em-producao') {
+    || process.env.JWT_SECRET === 'troque-este-segredo-em-producao'
+    || process.env.JWT_SECRET === 'coloque-um-segredo-longo-e-seguro') {
   console.error('JWT_SECRET deve ser alterado para um valor seguro');
   process.exit(1);
 }

@@ -29,7 +29,18 @@ Campos obrigatórios: `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `JWT_SECRE
 mysql -u <user> -p < database/schema.sql
 ```
 
-4. Suba a API:
+4. (Opcional, para demonstração) Carregue o seed com dados demo:
+
+```bash
+mysql -u <user> -p contractflow < database/seed.sql
+```
+
+Isso cria os logins `demo@contractflow.com` e `usuario@contractflow.com` (senha dos dois:
+`demo123`), 1 cliente, 1 contrato `DEMO-001` com 4 parcelas (1 PAGA, 1 VENCIDA,
+2 PENDENTES), 1 pagamento e histórico. No Docker, o seed é aplicado
+automaticamente no primeiro boot (junto com o schema).
+
+5. Suba a API:
 
 ```bash
 npm run dev        # desenvolvimento (watch)
@@ -48,13 +59,19 @@ boot e persiste os dados em volumes.
 1. Defina as variáveis (criando um `.env` na pasta `api/` ou exportando no shell):
 
 ```bash
-# api/.env (exemplo)
+# api/.env (exemplo — gere um segredo real, não copie o abaixo)
 DB_USER=contractflow_user
 DB_PASSWORD=contractflow_pass
 DB_ROOT_PASSWORD=root_local_only
-JWT_SECRET=coloque-um-segredo-longo-e-seguro
+JWT_SECRET=<saida-do-comando-abaixo>
 API_PORT=8080
 CORS_ORIGINS=
+```
+
+Gere o segredo com:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
 > `JWT_SECRET` é **obrigatório** e não pode ser um dos placeholders. O container
