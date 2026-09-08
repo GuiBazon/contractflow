@@ -1,12 +1,13 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿import React, { useState, useCallback } from 'react';
 import { View, ScrollView, StyleSheet, SafeAreaView, Text, TouchableOpacity } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../theme';
 import { formatCurrency } from '../utils/format';
 import { api, normalizarErro } from '../services/api';
 import { Header, FilterChip, FinancialCard, ErrorState, LoadingState } from '../components';
 
-const filtros = ['Todas', 'Entradas', 'Saídas'];
+const filtros = ['Todas', 'Entradas'];
 
 export function Financeiro() {
   const [filtro, setFiltro] = useState('Todas');
@@ -14,39 +15,37 @@ export function Financeiro() {
   const [erro, setErro] = useState('');
   const [contratos, setContratos] = useState([]);
   const [receitas, setReceitas] = useState([]);
-  const [despesas, setDespesas] = useState([]);
 
-  useEffect(() => {
-    async function carregar() {
-      try {
-        setErro('');
-        const [contratosData, receitasData] = await Promise.all([
-          api.listContratos({ limit: 100 }),
-          api.listReceitas({ limit: 100 }),
-        ]);
-        setContratos(contratosData.data || []);
-        setReceitas(receitasData.data || []);
-        setDespesas([]);
-      } catch (e) {
-        setErro(normalizarErro(e));
-      } finally {
-        setCarregando(false);
-      }
+  const carregar = useCallback(async () => {
+    try {
+      setErro('');
+      const [contratosData, receitasData] = await Promise.all([
+        api.listContratos({ limit: 100 }),
+        api.listReceitas({ limit: 100 }),
+      ]);
+      setContratos(contratosData.data || []);
+      setReceitas(receitasData.data || []);
+    } catch (e) {
+      setErro(normalizarErro(e));
+    } finally {
+      setCarregando(false);
     }
-    carregar();
   }, []);
 
-  const transacoes = [
-    ...receitas.map((r) => ({
-      id: `r${r.id}`,
-      descricao: `Pagamento - ${r.contrato_numero} Parcela ${r.parcela_numero}`,
-      valor: Number(r.valor),
-      data: r.data_pagamento,
-      tipo: 'ENTRADA',
-      contrato_codigo: r.contrato_numero,
-    })),
-    ...despesas,
-  ];
+  useFocusEffect(
+    useCallback(() => {
+      carregar();
+    }, [carregar])
+  );
+
+  const transacoes = receitas.map((r) => ({
+    id: `r${r.id}`,
+    descricao: `Pagamento - ${r.contrato_numero} Parcela ${r.parcela_numero}`,
+    valor: Number(r.valor),
+    data: r.data_pagamento,
+    tipo: 'ENTRADA',
+    contrato_codigo: r.contrato_numero,
+  }));
 
   const recebimentoEsperado = contratos
     .filter((c) => c.status === 'ATIVO')
@@ -56,7 +55,7 @@ export function Financeiro() {
 
   const filtradas = transacoes.filter((t) => {
     if (filtro === 'Todas') return true;
-    return filtro === 'Entradas' ? t.tipo === 'ENTRADA' : t.tipo === 'SAIDA';
+    return t.tipo === 'ENTRADA';
   });
 
   const agora = new Date();
@@ -89,7 +88,7 @@ export function Financeiro() {
     return (
       <SafeAreaView style={styles.safe}>
         <Header title="Financeiro" />
-        <ErrorState message={erro} onRetry={() => setCarregando(true)} />
+        <ErrorState message={erro} onRetry={carregar} />
       </SafeAreaView>
     );
   }

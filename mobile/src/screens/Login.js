@@ -1,7 +1,7 @@
 ﻿import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, KeyboardAvoidingView,
-  Platform, ScrollView, ActivityIndicator, TouchableOpacity,
+  Platform, ScrollView, ActivityIndicator, TouchableOpacity, Alert,
 } from 'react-native';
 import { colors, spacing, typography } from '../theme';
 import { Input, PrimaryButton, ContractFlowLogo } from '../components';
@@ -69,7 +69,15 @@ export function Login({ navigation }) {
               <PrimaryButton title="Entrar" onPress={handleLogin} />
             )}
 
-            <TouchableOpacity style={styles.linkBtn} onPress={() => {}}>
+            <TouchableOpacity
+              style={styles.linkBtn}
+              onPress={() =>
+                Alert.alert(
+                  'Recuperar senha',
+                  'A recuperação de senha ainda não está disponível no app. Fale com o suporte para redefinir o acesso ou crie uma nova conta.'
+                )
+              }
+            >
               <Text style={styles.linkText}>Esqueci minha senha</Text>
             </TouchableOpacity>
 

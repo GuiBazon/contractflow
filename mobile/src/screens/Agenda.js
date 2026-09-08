@@ -1,5 +1,6 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useCallback } from 'react';
 import { View, ScrollView, StyleSheet, SafeAreaView, Text, TouchableOpacity } from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../theme';
 import { api, normalizarErro } from '../services/api';
@@ -14,6 +15,7 @@ function situacaoParaStatus(situacao) {
 }
 
 export function Agenda() {
+  const navigation = useNavigation();
   const hoje = new Date();
   const [ano, setAno] = useState(hoje.getFullYear());
   const [mes, setMes] = useState(hoje.getMonth());
@@ -22,19 +24,22 @@ export function Agenda() {
   const [erro, setErro] = useState('');
   const [parcelas, setParcelas] = useState([]);
 
-  useEffect(() => {
-    async function carregar() {
-      try {
-        setErro('');
-        setParcelas(await api.listTodasParcelas());
-      } catch (e) {
-        setErro(normalizarErro(e));
-      } finally {
-        setCarregando(false);
-      }
+  const carregar = useCallback(async () => {
+    try {
+      setErro('');
+      setParcelas(await api.listTodasParcelas());
+    } catch (e) {
+      setErro(normalizarErro(e));
+    } finally {
+      setCarregando(false);
     }
-    carregar();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      carregar();
+    }, [carregar])
+  );
 
   const primeiroDia = new Date(ano, mes, 1);
   const diasNoMes = new Date(ano, mes + 1, 0).getDate();
@@ -139,7 +144,15 @@ export function Agenda() {
             <Text style={styles.emptyText}>Nenhum evento neste dia</Text>
           </View>
         ) : (
-          eventosDoDia.map((e) => <CalendarEvent key={e.id} evento={e} />)
+          eventosDoDia.map((e) => (
+            <CalendarEvent
+              key={e.id}
+              evento={e}
+              onPress={() =>
+                navigation.navigate('DetalheContrato', { contratoId: e.parcela.contrato_id })
+              }
+            />
+          ))
         )}
       </ScrollView>
     </SafeAreaView>

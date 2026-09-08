@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors, spacing, typography } from '../theme';
 import { formatCurrency } from '../utils/format';
 import { StatusBadge } from './StatusBadge';
@@ -13,11 +13,15 @@ const statusColor = {
   PENDENTE: '#F59E0B',
 };
 
-export function CalendarEvent({ evento }) {
+export function CalendarEvent({ evento, onPress }) {
   const cor = statusColor[evento.status] || colors.textMuted;
 
   return (
-    <View style={[styles.card, { borderLeftColor: cor, borderLeftWidth: 3 }]}>
+    <TouchableOpacity
+      style={[styles.card, { borderLeftColor: cor, borderLeftWidth: 3 }]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
       <View style={styles.timeContainer}>
         <Text style={styles.time}>{evento.hora === '00:00' ? 'Dia todo' : evento.hora}</Text>
       </View>
@@ -30,7 +34,7 @@ export function CalendarEvent({ evento }) {
           <StatusBadge status={evento.status} />
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 

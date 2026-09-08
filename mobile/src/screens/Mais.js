@@ -1,35 +1,47 @@
-﻿import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+﻿import React, { useState, useCallback } from 'react';
+import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity, Alert } from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../theme';
 import { Header } from '../components';
 import { getUsuario, limparSessao } from '../services/storage';
 
-const itensMenu = [
-  { key: 'relatorios', icon: 'bar-chart-outline', title: 'Relatórios' },
-  { key: 'configuracoes', icon: 'settings-outline', title: 'Configurações' },
-  { key: 'notificacoes', icon: 'notifications-outline', title: 'Notificações' },
-  { key: 'ajuda', icon: 'help-circle-outline', title: 'Ajuda & Suporte' },
-  { key: 'sobre', icon: 'information-circle-outline', title: 'Sobre o App' },
-];
-
 export function Mais() {
   const navigation = useNavigation();
   const [usuario, setUsuario] = useState(null);
 
-  useEffect(() => {
-    getUsuario().then((u) => setUsuario(u));
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      getUsuario().then((u) => setUsuario(u));
+    }, [])
+  );
 
-  const nome = usuario ? usuario.nome : 'Ana Souza';
-  const email = usuario ? usuario.email : 'ana@contractflow.com';
-  const inicial = nome.split(' ')[0][0].toUpperCase();
+  const nome = usuario ? usuario.nome : '';
+  const email = usuario ? usuario.email : '';
+  const inicial = nome ? nome.trim().charAt(0).toUpperCase() : '?';
 
   async function handleSair() {
     await limparSessao();
     navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   }
+
+  function abrirTab(tab) {
+    navigation.navigate('MainTabs', { screen: tab });
+  }
+
+  function sobreApp() {
+    Alert.alert(
+      'ContractFlow',
+      `Gerencie contratos, clientes, parcelas e pagamentos de forma simples e offline-first.\n\nVersão: 1.0.0`
+    );
+  }
+
+  const itensMenu = [
+    { key: 'calculadora', icon: 'calculator-outline', title: 'Calculadora financeira', onPress: () => navigation.navigate('Calculadora') },
+    { key: 'calendario', icon: 'calendar-outline', title: 'Calendário', onPress: () => abrirTab('Agenda') },
+    { key: 'relatorios', icon: 'bar-chart-outline', title: 'Relatórios (Financeiro)', onPress: () => abrirTab('Financeiro') },
+    { key: 'sobre', icon: 'information-circle-outline', title: 'Sobre o App', onPress: sobreApp },
+  ];
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -40,10 +52,9 @@ export function Mais() {
             <Text style={styles.avatarText}>{inicial}</Text>
           </View>
           <View style={styles.perfilInfo}>
-            <Text style={styles.perfilNome}>{nome}</Text>
-            <Text style={styles.perfilEmail}>{email}</Text>
+            <Text style={styles.perfilNome}>{nome || 'Não identificado'}</Text>
+            <Text style={styles.perfilEmail}>{email || '—'}</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.white} />
         </View>
 
         <View style={styles.menu}>
@@ -51,7 +62,7 @@ export function Mais() {
             <TouchableOpacity
               key={item.key}
               style={[styles.menuItem, idx > 0 && styles.menuItemBorder]}
-              onPress={() => {}}
+              onPress={item.onPress}
               activeOpacity={0.7}
             >
               <Ionicons name={item.icon} size={20} color={colors.primary} />
@@ -113,7 +124,6 @@ const styles = StyleSheet.create({
   },
   perfilInfo: {
     flex: 1,
-    marginRight: spacing.sm,
   },
   perfilNome: {
     fontSize: typography.sizes.md,

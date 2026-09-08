@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity,
-  Switch, ActivityIndicator,
+  ActivityIndicator,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +18,11 @@ function formatVencimento(data) {
   return `${dia} ${MESES[mes - 1]}`;
 }
 
+function hojeISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function RegistrarPagamento() {
   const route = useRoute();
   const navigation = useNavigation();
@@ -30,9 +35,8 @@ export function RegistrarPagamento() {
   const [erro, setErro] = useState('');
 
   const [valorPago, setValorPago] = useState('');
-  const [dataPagamento, setDataPagamento] = useState(new Date().toISOString().split('T')[0]);
+  const [dataPagamento, setDataPagamento] = useState(hojeISO());
   const [metodo, setMetodo] = useState('PIX');
-  const [aplicarDesconto, setAplicarDesconto] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [sucesso, setSucesso] = useState(false);
 
@@ -92,13 +96,23 @@ export function RegistrarPagamento() {
   }
 
   async function handleConfirmar() {
+    const valor = Number(String(valorPago).replace(',', '.'));
+    if (!valor || Number.isNaN(valor) || valor <= 0) {
+      setErro('Informe um valor de pagamento maior que zero.');
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dataPagamento)) {
+      setErro('Data do pagamento inválida (use AAAA-MM-DD).');
+      return;
+    }
     setSalvando(true);
+    setErro('');
     try {
       await api.createPagamento(contratoId, {
         parcela_id: parcela.id,
-        valor: Number(String(valorPago).replace(',', '.')),
+        valor,
         data_pagamento: dataPagamento,
-        forma_pagamento: metodo,
+        forma_pagamento: metodo.toUpperCase(),
       });
       setSucesso(true);
     } catch (e) {
@@ -141,7 +155,6 @@ export function RegistrarPagamento() {
   }
 
   const nome = contrato.descricao || contrato.tipo || contrato.numero || 'Contrato';
-  const restante = Number(parcela.valor) - Number(parcela.pago || 0);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -201,17 +214,11 @@ export function RegistrarPagamento() {
           ))}
         </View>
 
-        <View style={styles.descontoRow}>
-          <View style={styles.descontoTextWrap}>
-            <Text style={styles.descontoTitle}>Aplicar desconto</Text>
-            <Text style={styles.descontoSub}>Desconto por pagamento antecipado{restante > 0 && restante < Number(parcela.valor) ? ` (restam R$ ${restante.toFixed(2)})` : ''}</Text>
-          </View>
-          <Switch
-            value={aplicarDesconto}
-            onValueChange={setAplicarDesconto}
-            trackColor={{ true: colors.primary, false: colors.border }}
-            thumbColor={colors.white}
-          />
+        <View style={styles.infoRow}>
+          <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
+          <Text style={styles.infoText}>
+            Valor do pagamento não pode exceder o que falta da parcela. Juros/multa são calculados pelas taxas do contrato.
+          </Text>
         </View>
 
         {salvando ? (
@@ -342,6 +349,20 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     color: colors.textMuted,
     marginTop: 2,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    backgroundColor: colors.primaryLight,
+    borderRadius: 12,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
   },
   successContent: {
     flexGrow: 1,

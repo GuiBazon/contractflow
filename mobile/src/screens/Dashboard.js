@@ -1,7 +1,7 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, typography } from '../theme';
 import { formatCurrency } from '../utils/format';
 import { api, normalizarErro } from '../services/api';
@@ -21,26 +21,29 @@ export function Dashboard() {
     getUsuario().then((u) => setUsuario(u));
   }, []);
 
-  useEffect(() => {
-    async function carregar() {
-      try {
-        setErro('');
-        const [contratosData, parcelasData, receitasData] = await Promise.all([
-          api.listContratos({ limit: 100 }),
-          api.listTodasParcelas(),
-          api.listReceitas({ limit: 100 }),
-        ]);
-        setContratos(contratosData.data || []);
-        setParcelas(parcelasData);
-        setReceitas(receitasData.data || []);
-      } catch (e) {
-        setErro(normalizarErro(e));
-      } finally {
-        setCarregando(false);
-      }
+  const carregar = useCallback(async () => {
+    try {
+      setErro('');
+      const [contratosData, parcelasData, receitasData] = await Promise.all([
+        api.listContratos({ limit: 100 }),
+        api.listTodasParcelas(),
+        api.listReceitas({ limit: 100 }),
+      ]);
+      setContratos(contratosData.data || []);
+      setParcelas(parcelasData);
+      setReceitas(receitasData.data || []);
+    } catch (e) {
+      setErro(normalizarErro(e));
+    } finally {
+      setCarregando(false);
     }
-    carregar();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      carregar();
+    }, [carregar])
+  );
 
   const primeiroNome = usuario ? String(usuario.nome).split(' ')[0] : '';
   const avatarInicial = primeiroNome ? primeiroNome[0].toUpperCase() : 'A';
@@ -92,7 +95,7 @@ export function Dashboard() {
   if (erro) {
     return (
       <SafeAreaView style={styles.safe}>
-        <ErrorState message={erro} onRetry={() => setCarregando(true)} />
+        <ErrorState message={erro} onRetry={carregar} />
       </SafeAreaView>
     );
   }
