@@ -6,7 +6,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { colors, spacing, typography } from '../theme';
 import { formatCurrency, formatDate } from '../utils/format';
 import { api, normalizarErro } from '../services/api';
-import { Header, StatusBadge, InstallmentCard, TimelineItem, PrimaryButton, LoadingState, ErrorState } from '../components';
+import { Header, StatusBadge, InstallmentCard, TimelineItem, PrimaryButton, LoadingState, ErrorState, Input } from '../components';
 
 const STATUS_DISPONIVEIS = ['ATIVO', 'PENDENTE', 'ENCERRADO', 'CANCELADO', 'EM_RENOVACAO'];
 
@@ -43,6 +43,8 @@ export function DetalheContrato() {
   const [historico, setHistorico] = useState([]);
   const [documentos, setDocumentos] = useState([]);
   const [enviandoDoc, setEnviandoDoc] = useState(false);
+  const [qtdParcelasForm, setQtdParcelasForm] = useState('');
+  const [gerandoParcelas, setGerandoParcelas] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
 
@@ -110,6 +112,24 @@ export function DetalheContrato() {
       setErro(normalizarErro(e));
     } finally {
       setEnviandoDoc(false);
+    }
+  }
+
+  async function gerarParcelas() {
+    const qtd = Number(qtdParcelasForm);
+    if (!qtd || !Number.isInteger(qtd) || qtd < 1) {
+      setErro('Informe a quantidade de parcelas para gerar.');
+      return;
+    }
+    setErro('');
+    setGerandoParcelas(true);
+    try {
+      await api.generateParcelas(contratoId, { quantidade_parcelas: qtd });
+      await carregar();
+    } catch (e) {
+      setErro(normalizarErro(e));
+    } finally {
+      setGerandoParcelas(false);
     }
   }
 
@@ -242,6 +262,18 @@ export function DetalheContrato() {
               <View style={styles.emptyTab}>
                 <Ionicons name="layers-outline" size={32} color={colors.textMuted} />
                 <Text style={styles.emptyTabText}>Nenhuma parcela gerada</Text>
+                <Input
+                  label="Quantidade de parcelas"
+                  placeholder={contrato.quantidade_parcelas ? String(contrato.quantidade_parcelas) : '12'}
+                  value={qtdParcelasForm}
+                  onChangeText={setQtdParcelasForm}
+                  keyboardType="number-pad"
+                />
+                <PrimaryButton
+                  title={gerandoParcelas ? 'Gerando...' : 'Gerar parcelas'}
+                  disabled={gerandoParcelas}
+                  onPress={gerarParcelas}
+                />
               </View>
             ) : (
               parcelas.map((p) => <InstallmentCard key={p.id} parcela={p} />)

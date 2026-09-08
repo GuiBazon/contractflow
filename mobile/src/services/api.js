@@ -81,6 +81,9 @@ const api = {
   listParcelas: (contratoId, filtro) =>
     apiClient.get(`/parcelas/${contratoId}/parcelas`, { params: { filtro } }).then((res) => res.data),
 
+  generateParcelas: (contratoId, dados) =>
+    apiClient.post(`/contratos/${contratoId}/parcelas`, dados).then((res) => res.data),
+
   updateParcela: (contratoId, parcelaId, dados) =>
     apiClient.patch(`/parcelas/${contratoId}/parcelas/${parcelaId}`, dados).then((res) => res.data),
 
