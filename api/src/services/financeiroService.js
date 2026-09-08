@@ -4,7 +4,7 @@
 const SITUACAO_SQL = `
   CASE
     WHEN p.status = 'CANCELADA' THEN 'CANCELADA'
-    WHEN COALESCE(pg_sum.valor, 0) >= p.valor THEN 'PAGA'
+    WHEN (SELECT COALESCE(SUM(pg.valor), 0) FROM pagamentos pg WHERE pg.parcela_id = p.id) >= p.valor THEN 'PAGA'
     WHEN p.data_vencimento < CURDATE() THEN 'VENCIDA'
     ELSE 'PENDENTE'
   END

@@ -120,14 +120,25 @@ Git: commits reais e separados logicamente, sem inflar quantidade.
 
 ## Como retomar em casa (próximos passos sugeridos)
 
-### 1. Validar o stack Docker de verdade (o bloqueio é a porta 3306)
-- Opção A: encerrar/parar o MySQL local do Windows, ou
-- Opção B: mudar a porta do MySQL do compose para `3307:3306` e apontar `DB_PORT=3307`.
-- Subir com segredo real: `docker compose up --build` (definir `JWT_SECRET` via `.env` na pasta `api/`).
-- Aplicar o fluxo real ponta a ponta com curl/httpie:
-  register → login → criar cliente → criar contrato (gera parcelas) → listar parcelas →
-  registrar pagamento → conferir situação da parcela → conferir financeiro do contrato (recebido/pendente).
-- Testar isolamento: 2º usuário não acessa dados do 1º (esperar 401/403/404).
+### 1. Validação real contra MySQL (08/09 — FEITA ✅, containers removidos após o teste)
+
+- Subiu MySQL 8.0 + API em rede Docker isolada **sem portas no host** (o MySQL local ocupa a
+  3306; containers `cf-db`/`cf-api` removidos depois, nada ficou no repo).
+- Schema aplicado do zero via `database/schema.sql`: 9 tabelas OK.
+- **Bug real encontrado e corrigido**: `SITUACAO_SQL` referenciava `pg_sum.valor` sem o JOIN
+  existir no `listParcelas` → `Unknown column 'pg_sum.valor'` no banco real (o teste mockado
+  não pegava). Corrigido com subquery correlata autocontida em `financeiroService.js`.
+- Fluxo E2E real **13/14 PASS** (o 1 "FAIL" era expectativa errada do script: parcelas com
+  vencimento passado ficam VENCIDA por regra — correto):
+  register (1º=ADMIN) → login → 401 sem token → cliente → contrato (gera 2 parcelas) →
+  pagamento integral → parcela PAGA → financeiro recebido=500/pendente=500 → histórico (2 eventos) →
+  pagamento excedente 400 → usuário B (USUARIO) não vê contrato de A (404) e lista 0 clientes.
+- Extras reais: gerar parcela futura → PENDENTE; filtros `?filtro=VENCIDA/PENDENTE` OK;
+  `GET /api/pagamentos` OK; upload ANEXO 201 → listar → excluir anexo 200; hash SHA-256 gravado.
+- Suíte Jest após a correção: **69/69 passando**.
+- Nota de infra (não é código): o `docker compose up` padrão conflita com o MySQL local na
+  porta 3306 → para validar, mapear o host para outra porta (ex.: `3307:3306`) ou parar o
+  MySQL local. A API dentro do compose continua usando `db:3306` (não precisa mudar `DB_PORT`).
 
 ### 2. Rodar a suíte
 ```bash
