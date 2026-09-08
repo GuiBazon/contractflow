@@ -8,13 +8,24 @@
     "ios": {
       "supportsTablet": true
     },
-    "android": {},
+    "android": {
+      "navigationBar": {
+        "visible": "leanback"
+      }
+    },
     "web": {
       "bundler": "metro"
     },
     "plugins": [
       "expo-status-bar",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-navigation-bar",
+        {
+          "visible": "leanback",
+          "behavior": "overlay-swipe"
+        }
+      ]
     ]
   }
 }

@@ -1,9 +1,11 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../theme';
 
 export function BottomNavigation({ state, navigation }) {
+  const insets = useSafeAreaInsets();
   const tabs = [
     { name: 'Inicio', label: 'Inicio', icon: 'home-outline', activeIcon: 'home' },
     { name: 'Contratos', label: 'Contratos', icon: 'document-text-outline', activeIcon: 'document-text' },
@@ -13,7 +15,7 @@ export function BottomNavigation({ state, navigation }) {
   ];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
       <View style={styles.tabs}>
         {tabs.map((tab) => {
           const isActive = state.routes[state.index].name === tab.name;
@@ -45,7 +47,6 @@ export function BottomNavigation({ state, navigation }) {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.white,
-    paddingBottom: spacing.sm,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.05,
