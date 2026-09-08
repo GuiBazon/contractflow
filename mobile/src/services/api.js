@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { getToken, limparSessao } from './storage';
 
-const API_URL = 'http://172.19.16.1:3000/api';
+const API_URL = 'http://10.89.240.33:8080/api';
 
 const apiClient = axios.create({
   baseURL: API_URL,
@@ -46,8 +46,8 @@ const api = {
   login: (email, senha) =>
     apiClient.post('/auth/login', { email, senha }).then((res) => res.data),
 
-  register: (nome, email, senha, perfil) =>
-    apiClient.post('/auth/register', { nome, email, senha, perfil }).then((res) => res.data),
+  register: (nome, email, senha) =>
+    apiClient.post('/auth/register', { nome, email, senha }).then((res) => res.data),
 
   listClientes: () => apiClient.get('/clientes').then((res) => res.data),
 
