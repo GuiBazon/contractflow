@@ -1,11 +1,11 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../theme';
 import { formatCurrency, formatDate } from '../utils/format';
-import { contratos } from '../data';
-import { Header, StatusBadge, InstallmentCard, TimelineItem, PrimaryButton } from '../components';
+import { api, normalizarErro } from '../services/api';
+import { Header, StatusBadge, InstallmentCard, TimelineItem, PrimaryButton, LoadingState, ErrorState } from '../components';
 
 const tabs = [
   { key: 'parcelas', label: 'Parcelas', icon: 'layers-outline' },
@@ -13,17 +13,78 @@ const tabs = [
   { key: 'timeline', label: 'Timeline', icon: 'time-outline' },
 ];
 
+const TITULOS_HISTORICO = {
+  CRIADO: 'Contrato criado',
+  PAGAMENTO: 'Pagamento registrado',
+  PARCELA_ALTERADA: 'Parcela alterada',
+  PARCELA_CRIADA: 'Parcela criada',
+  STATUS_ALTERADO: 'Status alterado',
+  CONTRATO_EDITADO: 'Contrato editado',
+};
+
+function tituloHistorico(acao) {
+  return TITULOS_HISTORICO[acao] || acao;
+}
+
 export function DetalheContrato() {
   const route = useRoute();
   const navigation = useNavigation();
   const [tab, setTab] = useState('parcelas');
+  const contratoId = route.params?.contratoId;
 
-  const contrato = contratos.find((c) => c.id === route.params?.contratoId);
-  if (!contrato) return null;
+  const [contrato, setContrato] = useState(null);
+  const [parcelas, setParcelas] = useState([]);
+  const [pagamentos, setPagamentos] = useState([]);
+  const [historico, setHistorico] = useState([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
 
-  const progress = contrato.total_parcelas > 0
-    ? contrato.parcelas_pagas / contrato.total_parcelas
-    : 0;
+  useEffect(() => {
+    async function carregar() {
+      try {
+        setErro('');
+        const [contratoData, parcelasData, pagamentosData, historicoData] = await Promise.all([
+          api.getContrato(contratoId),
+          api.listParcelas(contratoId),
+          api.listPagamentos(contratoId),
+          api.getHistorico(contratoId),
+        ]);
+        setContrato(contratoData);
+        setParcelas(parcelasData.data || []);
+        setPagamentos(pagamentosData.data || []);
+        setHistorico(Array.isArray(historicoData) ? historicoData : []);
+      } catch (e) {
+        setErro(normalizarErro(e));
+      } finally {
+        setCarregando(false);
+      }
+    }
+    carregar();
+  }, [contratoId]);
+
+  if (carregando) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <Header title="Detalhes" leftIcon="arrow-back" onLeftPress={() => navigation.goBack()} />
+        <LoadingState message="Carregando contrato..." />
+      </SafeAreaView>
+    );
+  }
+
+  if (erro || !contrato) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <Header title="Detalhes" leftIcon="arrow-back" onLeftPress={() => navigation.goBack()} />
+        <ErrorState message={erro || 'Contrato não encontrado'} onRetry={() => setCarregando(true)} />
+      </SafeAreaView>
+    );
+  }
+
+  const totalParcelas = parcelas.length;
+  const parcelasPagas = parcelas.filter((p) => p.situacao === 'PAGA').length;
+  const progress = totalParcelas > 0 ? parcelasPagas / totalParcelas : 0;
+  const valorParcela = parcelas[0]?.valor || 0;
+  const nome = contrato.descricao || contrato.tipo || contrato.numero || 'Contrato';
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -32,9 +93,9 @@ export function DetalheContrato() {
         <View style={styles.card}>
           <View style={styles.cardTop}>
             <View style={styles.cardTopLeft}>
-              <Text style={styles.nome}>{contrato.nome}</Text>
-              <Text style={styles.cliente}>{contrato.cliente}</Text>
-              <Text style={styles.codigo}>{contrato.codigo}</Text>
+              <Text style={styles.nome}>{nome}</Text>
+              <Text style={styles.cliente}>{contrato.cliente_nome}</Text>
+              <Text style={styles.codigo}>{contrato.numero}</Text>
             </View>
             <StatusBadge status={contrato.status} size="medium" />
           </View>
@@ -53,7 +114,7 @@ export function DetalheContrato() {
               <Ionicons name="calendar-outline" size={16} color={colors.primary} />
               <View style={styles.infoTextWrap}>
                 <Text style={styles.infoLabel}>Parcelas</Text>
-                <Text style={styles.infoValue}>{contrato.parcelas_pagas}/{contrato.total_parcelas}</Text>
+                <Text style={styles.infoValue}>{parcelasPagas}/{totalParcelas}</Text>
               </View>
             </View>
           </View>
@@ -86,38 +147,59 @@ export function DetalheContrato() {
         </View>
 
         <View style={styles.tabContent}>
-          {tab === 'parcelas' && contrato.parcelas.map((p) => (
-            <InstallmentCard key={p.id} parcela={p} />
-          ))}
+          {tab === 'parcelas' && (
+            parcelas.length === 0 ? (
+              <View style={styles.emptyTab}>
+                <Ionicons name="layers-outline" size={32} color={colors.textMuted} />
+                <Text style={styles.emptyTabText}>Nenhuma parcela gerada</Text>
+              </View>
+            ) : (
+              parcelas.map((p) => <InstallmentCard key={p.id} parcela={p} />)
+            )
+          )}
 
-          {tab === 'pagamentos' &&
-            (contrato.parcelas.filter((p) => p.status === 'PAGO').length === 0 ? (
+          {tab === 'pagamentos' && (
+            pagamentos.length === 0 ? (
               <View style={styles.emptyTab}>
                 <Ionicons name="cash-outline" size={32} color={colors.textMuted} />
                 <Text style={styles.emptyTabText}>Nenhum pagamento registrado</Text>
               </View>
             ) : (
-              contrato.parcelas.filter((p) => p.status === 'PAGO').map((p) => (
-                <InstallmentCard key={p.id} parcela={p} />
+              pagamentos.map((pg) => (
+                <View key={pg.id} style={styles.pagamentoCard}>
+                  <View style={styles.pagamentoLeft}>
+                    <Text style={styles.pagamentoNumero}>#{String(pg.parcela_numero).padStart(2, '0')}</Text>
+                  </View>
+                  <View style={styles.pagamentoCenter}>
+                    <Text style={styles.pagamentoValor}>{formatCurrency(pg.valor)}</Text>
+                    <Text style={styles.pagamentoData}>{formatDate(pg.data_pagamento)}</Text>
+                  </View>
+                  <Text style={styles.pagamentoForma}>{pg.forma_pagamento}</Text>
+                </View>
               ))
-            ))}
+            )
+          )}
 
           {tab === 'timeline' && (
-            <View style={styles.timeline}>
-              <TimelineItem
-                title="Contrato criado"
-                date={formatDate(contrato.data_inicio)}
-                description={`Contrato ${contrato.codigo} registrado no sistema`}
-                icon="document-text-outline"
-              />
-              <TimelineItem
-                title={`${contrato.parcelas_pagas} parcelas pagas`}
-                date={`Último: ${formatDate(contrato.parcelas.find((p) => p.status === 'PAGO')?.data_pagamento || contrato.data_inicio)}`}
-                description={`${formatCurrency(contrato.parcelas_pagas * contrato.valor_parcela)} recebidos`}
-                icon="checkmark-circle-outline"
-                isLast
-              />
-            </View>
+            historico.length === 0 ? (
+              <View style={styles.emptyTab}>
+                <Ionicons name="time-outline" size={32} color={colors.textMuted} />
+                <Text style={styles.emptyTabText}>Sem histórico</Text>
+              </View>
+            ) : (
+              <View style={styles.timeline}>
+                {historico.map((h, index) => (
+                  <TimelineItem
+                    key={h.id}
+                    title={tituloHistorico(h.acao)}
+                    date={formatDate(h.created_at)}
+                    description={h.descricao}
+                    icon="document-text-outline"
+                    isLast={index === historico.length - 1}
+                  />
+                ))}
+              </View>
+            )
           )}
         </View>
       </ScrollView>
@@ -125,9 +207,10 @@ export function DetalheContrato() {
       <View style={styles.bottomBar}>
         <PrimaryButton
           title="Registrar pagamento"
+          disabled={totalParcelas === 0}
           onPress={() => {
-            const proxima = contrato.parcelas.find(
-              (p) => p.status === 'EM ABERTO' || p.status === 'ATRASADO'
+            const proxima = parcelas.find(
+              (p) => p.situacao === 'PENDENTE' || p.situacao === 'VENCIDA'
             );
             if (proxima) {
               navigation.navigate('RegistrarPagamento', {
@@ -201,6 +284,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
+  infoTextWrap: {},
   infoLabel: {
     fontSize: typography.sizes.xs,
     color: colors.textSecondary,
@@ -276,6 +360,48 @@ const styles = StyleSheet.create({
   emptyTabText: {
     fontSize: typography.sizes.md,
     color: colors.textMuted,
+  },
+  pagamentoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 10,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pagamentoLeft: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  pagamentoNumero: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
+    color: colors.textSecondary,
+  },
+  pagamentoCenter: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  pagamentoValor: {
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+  },
+  pagamentoData: {
+    fontSize: typography.sizes.xs,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  pagamentoForma: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
   },
   timeline: {
     paddingLeft: spacing.sm,

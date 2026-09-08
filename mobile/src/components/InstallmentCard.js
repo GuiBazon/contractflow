@@ -14,7 +14,7 @@ export function InstallmentCard({ parcela }) {
         <Text style={styles.valor}>{formatCurrency(parcela.valor)}</Text>
         <Text style={styles.data}>{formatDate(parcela.data_vencimento)}</Text>
       </View>
-      <StatusBadge status={parcela.status} />
+      <StatusBadge status={parcela.situacao || parcela.status} />
     </View>
   );
 }
