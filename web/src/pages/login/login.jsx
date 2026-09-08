@@ -455,7 +455,7 @@ const styles = {
   ========================== */
 
   leftSide: {
-    width: "55%",
+    width: "53%",
     minHeight: "100vh",
     display: "flex",
     justifyContent: "center",
