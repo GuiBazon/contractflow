@@ -1,16 +1,3 @@
-# ContractFlow — Backup do Notion da equipe
-
-> Backup do documento oficial do Notion (fonte canônica dos requisitos).
-> Gerado em 08/09/2026 a partir do conteúdo vigente. Serve como cópia de
-> segurança e base para copiar/colar de volta no Notion.
->
-> Divergências conhecidas entre este backup e o repositório (para sincronizar):
-> - Aqui: pastas `backend/front/mobile` → no repo real: `api/web/mobile`.
-> - Tabela "Descritivo dos endpoints" estava `[A definir]` — ver `ENDPOINTS.md` no repo.
-> - Requisitos espelhados com status em `docs/REQUISITOS.md`; DER em `docs/DER.md`.
-
----
-
 ## 📋 Visão geral
 
 Esta documentação apresenta as informações e definições do sistema ContractFlow, incluindo seu propósito, funcionalidades, requisitos, regras de negócio, modelagens, fluxogramas e demais artefatos relacionados ao desenvolvimento do projeto.
