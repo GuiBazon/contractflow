@@ -12,7 +12,7 @@ async function listPagamentos(req, res) {
   const de = str(req.query.de);
   const ate = str(req.query.ate);
 
-  const where = ['p.contrato_id = ?', 'cl.usuario_id = ?'];
+  const where = ['par.contrato_id = ?', 'cl.usuario_id = ?'];
   const params = [contratoId, req.user.id];
 
   if (de && isDate(de)) {
