@@ -36,7 +36,7 @@ export function ImportarContrato() {
         : ['image/jpeg', 'image/png', 'image/webp'];
 
       const picked = await DocumentPicker.getDocumentAsync({
-        type,
+        type: tipo,
         copyToCacheDirectory: true,
         multiple: false,
       });
