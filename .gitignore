@@ -8,3 +8,4 @@ mobile/node_modules/
 npm-debug.log*
 .DS_Store
 api/uploads/
+api/*.traineddata
