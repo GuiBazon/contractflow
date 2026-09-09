@@ -1,5 +1,5 @@
 import { useState } from "react";
-import api from "../../axios/axios";
+import sheets from "../../axios/axios";
 import { useNavigate } from "react-router-dom";
 
 import SnackBar from "../../components/snack_bar/snack_bar";
@@ -32,7 +32,7 @@ function Login() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(
-    Boolean(localStorage.getItem("rememberedEmail"))
+    Boolean(localStorage.getItem("rememberedEmail")),
   );
 
   const [loading, setLoading] = useState(false);
@@ -71,35 +71,25 @@ function Login() {
     event.preventDefault();
 
     if (!usuario.email || !usuario.senha) {
-      showAlert(
-        "warning",
-        "Preencha seu e-mail e sua senha."
-      );
+      showAlert("warning", "Preencha seu e-mail e sua senha.");
       return;
     }
 
     setLoading(true);
 
     try {
-      const response = await api.postLogin({
+      const response = await sheets.postLogin({
         email: usuario.email.trim().toLowerCase(),
         senha: usuario.senha,
       });
 
       const {
         token,
-        usuario: {
-          id,
-          nome,
-          email,
-          perfil,
-        },
+        usuario: { id, nome, email, perfil },
       } = response.data;
 
-      // Token JWT
       localStorage.setItem("token", token);
 
-      // Dados do usuário autenticado
       localStorage.setItem(
         "usuario",
         JSON.stringify({
@@ -107,26 +97,21 @@ function Login() {
           nome,
           email,
           perfil,
-        })
+        }),
       );
 
-      // Estado da autenticação
       localStorage.setItem("auth", "true");
 
-      // Lembrar somente o e-mail
       if (rememberMe) {
         localStorage.setItem(
           "rememberedEmail",
-          usuario.email.trim().toLowerCase()
+          usuario.email.trim().toLowerCase(),
         );
       } else {
         localStorage.removeItem("rememberedEmail");
       }
 
-      showAlert(
-        "success",
-        "Login realizado com sucesso!"
-      );
+      showAlert("success", "Login realizado com sucesso!");
 
       setTimeout(() => {
         navigate("/home");
@@ -147,7 +132,6 @@ function Login() {
 
   return (
     <Box sx={styles.page}>
-
       <SnackBar
         open={alert.open}
         severity={alert.severity}
@@ -159,9 +143,7 @@ function Login() {
           LADO ESQUERDO
       ========================== */}
       <Box sx={styles.leftSide}>
-
         <Box sx={styles.formWrapper}>
-
           {/* Logo */}
           <Box sx={styles.brand}>
             <Box sx={styles.brandIcon}>
@@ -169,9 +151,7 @@ function Login() {
             </Box>
 
             <Box>
-              <Typography sx={styles.brandName}>
-                ContractFlow
-              </Typography>
+              <Typography sx={styles.brandName}>ContractFlow</Typography>
 
               <Typography sx={styles.brandSubtitle}>
                 Organização, automação e controle.
@@ -181,28 +161,18 @@ function Login() {
 
           {/* Título */}
           <Box sx={styles.heading}>
-            <Typography sx={styles.title}>
-              Bem-vindo de volta
-            </Typography>
+            <Typography sx={styles.title}>Bem-vindo de volta</Typography>
 
             <Typography sx={styles.description}>
-              Acesse sua conta para continuar
-              gerenciando seus contratos.
+              Acesse sua conta para continuar gerenciando seus contratos.
             </Typography>
           </Box>
 
           {/* Formulário */}
-          <Box
-            component="form"
-            onSubmit={handleSubmit}
-            sx={styles.form}
-          >
-
+          <Box component="form" onSubmit={handleSubmit} sx={styles.form}>
             {/* E-mail */}
             <Box>
-              <Typography sx={styles.label}>
-                E-mail profissional
-              </Typography>
+              <Typography sx={styles.label}>E-mail profissional</Typography>
 
               <TextField
                 fullWidth
@@ -217,9 +187,7 @@ function Login() {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <Typography sx={styles.inputIcon}>
-                        @
-                      </Typography>
+                      <Typography sx={styles.inputIcon}>@</Typography>
                     </InputAdornment>
                   ),
                 }}
@@ -228,17 +196,11 @@ function Login() {
 
             {/* Senha */}
             <Box>
-              <Typography sx={styles.label}>
-                Senha
-              </Typography>
+              <Typography sx={styles.label}>Senha</Typography>
 
               <TextField
                 fullWidth
-                type={
-                  showPassword
-                    ? "text"
-                    : "password"
-                }
+                type={showPassword ? "text" : "password"}
                 name="senha"
                 placeholder="Digite sua senha"
                 value={usuario.senha}
@@ -251,23 +213,13 @@ function Login() {
                     <InputAdornment position="end">
                       <IconButton
                         type="button"
-                        onClick={() =>
-                          setShowPassword(
-                            (prev) => !prev
-                          )
-                        }
+                        onClick={() => setShowPassword((prev) => !prev)}
                         edge="end"
                         aria-label={
-                          showPassword
-                            ? "Ocultar senha"
-                            : "Mostrar senha"
+                          showPassword ? "Ocultar senha" : "Mostrar senha"
                         }
                       >
-                        {showPassword ? (
-                          <VisibilityOff />
-                        ) : (
-                          <Visibility />
-                        )}
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
                     </InputAdornment>
                   ),
@@ -277,16 +229,11 @@ function Login() {
 
             {/* Opções */}
             <Box sx={styles.options}>
-
               <FormControlLabel
                 control={
                   <Checkbox
                     checked={rememberMe}
-                    onChange={(event) =>
-                      setRememberMe(
-                        event.target.checked
-                      )
-                    }
+                    onChange={(event) => setRememberMe(event.target.checked)}
                     disabled={loading}
                     size="small"
                     sx={styles.checkbox}
@@ -303,13 +250,12 @@ function Login() {
                 onClick={() =>
                   showAlert(
                     "info",
-                    "A recuperação de senha estará disponível em breve."
+                    "A recuperação de senha estará disponível em breve.",
                   )
                 }
               >
                 Esqueci minha senha
               </Typography>
-
             </Box>
 
             {/* Botão */}
@@ -317,23 +263,15 @@ function Login() {
               type="submit"
               fullWidth
               disabled={loading}
-              endIcon={
-                !loading && (
-                  <ArrowForwardRounded />
-                )
-              }
+              endIcon={!loading && <ArrowForwardRounded />}
               sx={styles.button}
             >
               {loading ? (
-                <CircularProgress
-                  size={22}
-                  sx={{ color: "#fff" }}
-                />
+                <CircularProgress size={22} sx={{ color: "#fff" }} />
               ) : (
                 "Entrar"
               )}
             </Button>
-
           </Box>
 
           {/* Criar conta */}
@@ -341,26 +279,20 @@ function Login() {
             Ainda não possui uma conta?{" "}
             <Box
               component="span"
-              onClick={() =>
-                navigate("/register")
-              }
+              onClick={() => navigate("/register")}
               sx={styles.registerLink}
             >
               Criar conta
             </Box>
           </Typography>
-
         </Box>
-
       </Box>
 
       {/* =========================
           LADO DIREITO
       ========================== */}
       <Box sx={styles.rightSide}>
-
         <Box sx={styles.rightContent}>
-
           <Box sx={styles.rightIcon}>
             <AutoAwesomeOutlined />
           </Box>
@@ -372,72 +304,45 @@ function Login() {
           </Typography>
 
           <Typography sx={styles.rightDescription}>
-            Centralize documentos, clientes,
-            parcelas e pagamentos em um
-            único lugar.
+            Centralize documentos, clientes, parcelas e pagamentos em um único
+            lugar.
           </Typography>
 
           {/* Card */}
           <Box sx={styles.featureCard}>
+            <Typography sx={styles.featureLabel}>GESTÃO INTELIGENTE</Typography>
 
-            <Typography sx={styles.featureLabel}>
-              GESTÃO INTELIGENTE
-            </Typography>
-
-            <Typography sx={styles.featureTitle}>
-              Tudo sob controle.
-            </Typography>
+            <Typography sx={styles.featureTitle}>Tudo sob controle.</Typography>
 
             <Box sx={styles.flow}>
-
               <Box sx={styles.flowItem}>
                 <DescriptionOutlined />
-                <Typography>
-                  Contratos
-                </Typography>
+                <Typography>Contratos</Typography>
               </Box>
 
-              <Typography sx={styles.arrow}>
-                →
-              </Typography>
+              <Typography sx={styles.arrow}>→</Typography>
 
               <Box sx={styles.flowItem}>
-                <Typography sx={styles.flowSymbol}>
-                  $
-                </Typography>
+                <Typography sx={styles.flowSymbol}>$</Typography>
 
-                <Typography>
-                  Parcelas
-                </Typography>
+                <Typography>Parcelas</Typography>
               </Box>
 
-              <Typography sx={styles.arrow}>
-                →
-              </Typography>
+              <Typography sx={styles.arrow}>→</Typography>
 
               <Box sx={styles.flowItem}>
-                <Typography sx={styles.check}>
-                  ✓
-                </Typography>
+                <Typography sx={styles.check}>✓</Typography>
 
-                <Typography>
-                  Pagamentos
-                </Typography>
+                <Typography>Pagamentos</Typography>
               </Box>
-
             </Box>
-
           </Box>
 
           <Typography sx={styles.securityText}>
-            🔒 Seus dados são protegidos e
-            acessados somente por você.
+            🔒 Seus dados são protegidos e acessados somente por você.
           </Typography>
-
         </Box>
-
       </Box>
-
     </Box>
   );
 }
@@ -654,8 +559,7 @@ const styles = {
   rightSide: {
     width: "45%",
     minHeight: "100vh",
-    background:
-      "linear-gradient(145deg, #203f82 0%, #294e9d 100%)",
+    background: "linear-gradient(145deg, #203f82 0%, #294e9d 100%)",
     display: {
       xs: "none",
       md: "flex",
@@ -671,8 +575,7 @@ const styles = {
       width: "400px",
       height: "400px",
       borderRadius: "50%",
-      background:
-        "rgba(255,255,255,0.035)",
+      background: "rgba(255,255,255,0.035)",
       top: "-160px",
       right: "-120px",
     },
@@ -683,8 +586,7 @@ const styles = {
       width: "300px",
       height: "300px",
       borderRadius: "50%",
-      background:
-        "rgba(255,255,255,0.025)",
+      background: "rgba(255,255,255,0.025)",
       bottom: "-130px",
       left: "-100px",
     },
@@ -701,8 +603,7 @@ const styles = {
     width: 48,
     height: 48,
     borderRadius: "12px",
-    backgroundColor:
-      "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(255,255,255,0.1)",
     color: "#fff",
     display: "flex",
     alignItems: "center",
@@ -734,8 +635,7 @@ const styles = {
   },
 
   featureCard: {
-    backgroundColor:
-      "rgba(255,255,255,0.09)",
+    backgroundColor: "rgba(255,255,255,0.09)",
     border: "1px solid rgba(255,255,255,0.08)",
     borderRadius: "16px",
     padding: 3,
@@ -783,8 +683,7 @@ const styles = {
     width: 18,
     height: 18,
     borderRadius: "5px",
-    backgroundColor:
-      "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(255,255,255,0.12)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
