@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { getToken, limparSessao } from './storage';
 
-const API_URL = 'http://10.89.240.33:8081/api';
+const API_URL = 'http://192.168.0.198:3000/api';
 
 export { API_URL };
 
@@ -35,8 +35,19 @@ apiClient.interceptors.response.use(
 );
 
 function extrairMensagem(error, fallback) {
-  if (error.response && error.response.data && error.response.data.message) {
-    return error.response.data.message;
+  if (error.response) {
+    if (error.response.data && error.response.data.message) {
+      return error.response.data.message;
+    }
+    if (error.response.status === 404) {
+      return 'Recurso não encontrado no servidor.';
+    }
+    if (error.response.status >= 500) {
+      return 'Erro interno do servidor. Tente novamente mais tarde.';
+    }
+  }
+  if (error.isAxiosError || (error.code && /^(ERR_|ECONN)/.test(error.code))) {
+    return 'Não foi possível conectar ao servidor. Verifique se a API está ligada e se o celular está conectado à mesma rede.';
   }
   if (error.message) {
     return error.message;
