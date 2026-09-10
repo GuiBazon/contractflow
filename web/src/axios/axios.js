@@ -25,12 +25,12 @@ api.interceptors.response.use(
 
   (error) => {
     if (error.response) {
-      const { status, data } = error.response;
+      const { status, data, config } = error.response;
 
-      if (
-        (status === 401 || status === 403) &&
-        data?.auth === false
-      ) {
+      const url = config?.url || "";
+      const isAuthEndpoint =
+        url.includes("/auth/login") || url.includes("/auth/register");
+      if (!isAuthEndpoint && status === 401) {
         localStorage.removeItem("token");
         localStorage.removeItem("usuario");
         localStorage.removeItem("auth");
@@ -48,11 +48,8 @@ api.interceptors.response.use(
   }
 );
 
-// ==========================
-// SERVICES (API)
-// ==========================
 const sheets = {
-  // 🔹 AUTENTICAÇÃO
+  // AUTENTICAÇÃO
 
   postLogin: (usuario) =>
     api.post("/auth/login", usuario),
@@ -60,7 +57,7 @@ const sheets = {
   postRegister: (usuario) =>
     api.post("/auth/register", usuario),
 
-  // 🔹 CLIENTES
+  // CLIENTES
 
   getClientes: () =>
     api.get("/clientes"),
@@ -74,7 +71,7 @@ const sheets = {
   deleteCliente: (id) =>
     api.delete("/clientes/" + id),
 
-  // 🔹 CONTRATOS
+  //  CONTRATOS
 
   getContratos: () =>
     api.get("/contratos"),
@@ -88,22 +85,13 @@ const sheets = {
   deleteContrato: (id) =>
     api.delete("/contratos/" + id),
 
-  // 🔹 PAGAMENTOS
+  // PAGAMENTOS
 
   getPagamentos: () =>
     api.get("/pagamentos"),
 
-  createPagamento: (data) =>
-    api.post("/pagamentos", data),
-
-  updatePagamento: (id, data) =>
-    api.put("/pagamentos/" + id, data),
-
-  deletePagamento: (id) =>
-    api.delete("/pagamentos/" + id),
-
-  // 🔹 HEALTH CHECK
-
+  createPagamento: (contratoId, data) =>
+    api.post(`/contratos/${contratoId}/pagamentos`, data),
   getHealth: () =>
     api.get("/health"),
 };
