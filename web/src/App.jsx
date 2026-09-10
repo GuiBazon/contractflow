@@ -1,6 +1,7 @@
 // Imports de Páginas
-import Login from "./pages/login/Login";
+import Login from "./pages/login/login";
 import Register from "./pages/register/register";
+import Home from "./pages/home/home";
 
 import { CssBaseline } from "@mui/material";
 
@@ -21,6 +22,16 @@ function App() {
           
           
           <Route path="/register" element={<Register />} />
+
+          {/* 🔒 PROTEGIDA */}
+          <Route
+            path="/home"
+            element={
+              <ProtectedRoute>
+                <Home />
+              </ProtectedRoute>
+            }
+          />
 
           </Routes>
       </BrowserRouter>

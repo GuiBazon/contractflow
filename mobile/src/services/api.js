@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { getToken, limparSessao } from './storage';
 
-const API_URL = 'http://10.89.240.33:3000/api';
+const API_URL = 'http://10.89.240.66:8080/api';
 
 export { API_URL };
 
