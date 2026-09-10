@@ -1,0 +1,49 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: contractflow-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_local_only}
+      MYSQL_DATABASE: contractflow
+      MYSQL_USER: ${DB_USER:-contractflow_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-contractflow_pass}
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      # schema.sql roda automaticamente no primeiro boot
+      - ./database:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: contractflow-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 8080
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-contractflow_user}
+      DB_PASSWORD: ${DB_PASSWORD:-contractflow_pass}
+      DB_NAME: contractflow
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    volumes:
+      - uploads_data:/app/uploads
+
+volumes:
+  db_data:
+  uploads_data:
