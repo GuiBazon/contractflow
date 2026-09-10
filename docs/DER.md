@@ -15,7 +15,6 @@ erDiagram
     usuarios ||--o{ clientes : possui
     usuarios ||--o{ contratos : possui
     usuarios ||--o{ documentos : possui
-    usuarios ||--o{ extracao_ocr : possui
     usuarios ||--o{ historico_contratos : registra
     usuarios ||--o{ despesas : possui
     clientes ||--o{ contratos : contrata
@@ -94,19 +93,6 @@ erDiagram
         varchar hash "SHA-256 (RNF16)"
         varchar descricao
     }
-    extracao_ocr {
-        int id PK
-        int usuario_id FK
-        varchar nome_original
-        varchar nome_arquivo
-        varchar caminho
-        varchar tipo_arquivo
-        bigint tamanho
-        longtext texto_extraido
-        json dados_json
-        decimal confianca "RNF17"
-        enum status "PENDENTE,CONFIRMADA,CANCELADA (RNF18)"
-    }
     historico_contratos {
         int id PK
         int contrato_id FK
@@ -137,7 +123,6 @@ erDiagram
 | parcelas → pagamentos | 1:N | Pagamento pertence a 1 parcela válida (RN06) |
 | contratos → documentos | 1:N | ORIGINAL + ANEXOs (RN10, RF09/RF41) |
 | contratos → historico_contratos | 1:N | Eventos de criação/alteração/pagamento/status (RF36) |
-| usuarios → extracao_ocr | 1:N | Extrações pendentes de confirmação (RN09/RNF18) |
 | usuarios → despesas | 1:N | Tabela pronta; controller da Sprint futura (RF25) |
 
 ## Índices (desempenho — RNF09)

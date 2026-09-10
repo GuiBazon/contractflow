@@ -86,8 +86,8 @@ Git: commits reais e separados logicamente, sem inflar quantidade.
      `obterContratoDono`) → trocado por `hasPayments()` no guard "não alterar numero após pagamentos".
    - `contractController.generateParcelas`: `valor_parcela` agora é obrigatório (>0), em vez de zerado.
    - removido import não usado `validarDados`.
-6. **Testes (Jest + Supertest)** — **69/69 passando** (5 suites):
-   - unit: `validators`, `contratoService`, `financeiroService`, `ocrService` (51 testes)
+6. **Testes (Jest + Supertest)** — **58/58 passando** (4 suites):
+   - unit: `validators`, `contratoService`, `financeiroService` (40 testes; OCR isolado na branch `function/back-ocr`)
    - integração: `tests/integration/api.test.js` (18 testes) — rotas reais + DB simulado via
      `jest.mock('../../src/config/db')`. Cobre: health, 401 sem token, token sem Bearer 401 / com
      Bearer passa, 404, register validation, isolamento por usuário em clientes e contratos (404),
@@ -108,8 +108,8 @@ Git: commits reais e separados logicamente, sem inflar quantidade.
 
 ## O que ainda NÃO está implementado (registrar como pendência — não fingir)
 
-- OCR (upload → extração → revisão → confirmação): `ocrController.js` não existe.
-  `ocrService.js` tem só extração. Requisitos RF08–RF13, RN09, RN17, RN18.
+- OCR (upload → extração → revisão → confirmação): fora da main.
+  Código experimental isolado na branch `function/back-ocr`. Requisitos RF08–RF13, RN09, RN17, RN18.
 - Dashboard: `dashboardController.js` não existe (RF32, RN14).
 - Despesas: `expenseController.js` não existe (RF25).
 - Relatórios/exportação CSV: `reportController.js` não existe (RF37, RF38).
@@ -135,15 +135,15 @@ Git: commits reais e separados logicamente, sem inflar quantidade.
   pagamento excedente 400 → usuário B (USUARIO) não vê contrato de A (404) e lista 0 clientes.
 - Extras reais: gerar parcela futura → PENDENTE; filtros `?filtro=VENCIDA/PENDENTE` OK;
   `GET /api/pagamentos` OK; upload ANEXO 201 → listar → excluir anexo 200; hash SHA-256 gravado.
-- Suíte Jest após a correção: **69/69 passando**.
+- Suíte Jest após a correção: **58/58 passando** (OCR isolado na branch `function/back-ocr`).
 - Nota de infra (não é código): o `docker compose up` padrão conflita com o MySQL local na
-  porta 3306 → para validar, mapear o host para outra porta (ex.: `3307:3306`) ou parar o
-  MySQL local. A API dentro do compose continua usando `db:3306` (não precisa mudar `DB_PORT`).
+  porta 3306 → subir com `DB_PORT=3307` (parametrizado no `compose.yaml`) ou parar o
+  MySQL local. A API dentro do compose continua usando `db:3306`.
 
 ### 2. Rodar a suíte
 ```bash
 cd api
-npm test            # tudo (69 testes hoje)
+npm test            # tudo (58 testes hoje)
 npm run dev
 ```
 
