@@ -22,20 +22,28 @@ export function Login({ navigation }) {
   const [senha, setSenha] = useState('');
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
+  const [mostrarSenha, setMostrarSenha] = useState(false);
 
   function validarFormulario() {
-    if (!email.trim()) {
+    const emailLimpo = email.trim();
+
+    if (!emailLimpo) {
       setErro('Digite seu e-mail.');
       return false;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLimpo)) {
       setErro('E-mail invalido.');
       return false;
     }
 
-    if (!senha || senha.length < 6) {
-      setErro('Senha deve ter pelo menos 6 caracteres.');
+    if (!senha) {
+      setErro('Digite sua senha.');
+      return false;
+    }
+
+    if (senha.length < 6) {
+      setErro('A senha deve ter pelo menos 6 caracteres.');
       return false;
     }
 
@@ -52,6 +60,11 @@ export function Login({ navigation }) {
 
     try {
       const data = await api.login(email.trim(), senha);
+
+      if (!data || !data.token) {
+        throw new Error('Resposta invalida do servidor.');
+      }
+
       await salvarSessao(data.token, data.usuario);
       navigation.replace('MainTabs');
     } catch (e) {
@@ -59,6 +72,20 @@ export function Login({ navigation }) {
     } finally {
       setCarregando(false);
     }
+  }
+
+  function handleEsqueciSenha() {
+    Alert.alert(
+      'Recuperacao de senha',
+      'A funcionalidade de recuperacao de senha sera implementada em breve.',
+    );
+  }
+
+  function handleCriarConta() {
+    Alert.alert(
+      'Criar conta',
+      'A tela de criacao de conta sera implementada em breve.',
+    );
   }
 
   return (
@@ -72,56 +99,112 @@ export function Login({ navigation }) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.header}>
+          <View style={styles.topSection}>
             <ContractFlowLogo
-              size={56}
+              size={60}
               fontSize={typography.sizes.title}
               direction="column"
             />
-            <Text style={styles.subtitle}>Controle que flui com seu negocio.</Text>
+
+            <Text style={styles.subtitle}>
+              Controle que flui com seu negocio.
+            </Text>
           </View>
 
           <View style={styles.form}>
+            <Text style={styles.formTitle}>
+              Entrar na sua conta
+            </Text>
+
             <Input
               label="E-mail"
               placeholder="seu@email.com"
               value={email}
-              onChangeText={(t) => { setEmail(t); setErro(''); }}
+              onChangeText={(texto) => {
+                setEmail(texto);
+                setErro('');
+              }}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
               editable={!carregando}
+              accessibilityLabel="Campo de e-mail"
+              returnKeyType="next"
             />
 
-            <Input
-              label="Senha"
-              placeholder="Sua senha"
-              value={senha}
-              onChangeText={(t) => { setSenha(t); setErro(''); }}
-              secureTextEntry
-              editable={!carregando}
-              maxLength={50}
-            />
+            <View style={styles.passwordContainer}>
+              <Input
+                label="Senha"
+                placeholder="Sua senha"
+                value={senha}
+                onChangeText={(texto) => {
+                  setSenha(texto);
+                  setErro('');
+                }}
+                secureTextEntry={!mostrarSenha}
+                editable={!carregando}
+                accessibilityLabel="Campo de senha"
+                returnKeyType="done"
+                onSubmitEditing={handleLogin}
+                maxLength={50}
+              />
 
-            {erro ? <Text style={styles.erro}>{erro}</Text> : null}
+              <TouchableOpacity
+                style={styles.showPasswordButton}
+                onPress={() => setMostrarSenha(!mostrarSenha)}
+                disabled={carregando}
+                accessibilityLabel={
+                  mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'
+                }
+                accessibilityRole="button"
+              >
+                <Text style={styles.showPasswordText}>
+                  {mostrarSenha ? 'Ocultar' : 'Mostrar'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {erro ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.erro}>{erro}</Text>
+              </View>
+            ) : null}
 
             {carregando ? (
-              <View style={styles.loading}>
+              <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={colors.primary} />
                 <Text style={styles.loadingText}>Entrando...</Text>
               </View>
             ) : (
-              <PrimaryButton title="Entrar" onPress={handleLogin} />
+              <PrimaryButton
+                title="Entrar"
+                onPress={handleLogin}
+                accessibilityLabel="Entrar na conta"
+              />
             )}
 
-            <TouchableOpacity onPress={() => Alert.alert('Recuperacao', 'Em breve.')} disabled={carregando}>
-              <Text style={styles.link}>Esqueci minha senha</Text>
+            <TouchableOpacity
+              style={styles.linkBtn}
+              onPress={handleEsqueciSenha}
+              disabled={carregando}
+              accessibilityLabel="Esqueci minha senha"
+              accessibilityRole="button"
+            >
+              <Text style={styles.linkText}>Esqueci minha senha</Text>
             </TouchableOpacity>
 
-            <View style={styles.row}>
-              <Text style={styles.muted}>Nao tem conta?</Text>
-              <TouchableOpacity onPress={() => Alert.alert('Criar conta', 'Em breve.')} disabled={carregando}>
-                <Text style={styles.linkBold}>Criar conta</Text>
+            <View style={styles.createAccountRow}>
+              <Text style={styles.createAccountMuted}>
+                Nao tem uma conta?
+              </Text>
+
+              <TouchableOpacity
+                onPress={handleCriarConta}
+                disabled={carregando}
+                accessibilityLabel="Criar conta"
+                accessibilityRole="button"
+              >
+                <Text style={styles.createAccountLink}>Criar conta</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -138,62 +221,111 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.white,
   },
+
   flex: {
     flex: 1,
   },
+
   container: {
     flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: spacing.xxxl,
+    paddingVertical: spacing.xl,
   },
-  header: {
+
+  topSection: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: spacing.xxxl + 8,
   },
+
   subtitle: {
     fontSize: typography.sizes.md,
     color: colors.textSecondary,
+    textAlign: 'center',
     marginTop: spacing.sm,
   },
+
   form: {
     marginBottom: spacing.xxxl,
   },
+
+  formTitle: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xl,
+  },
+
+  passwordContainer: {
+    position: 'relative',
+  },
+
+  showPasswordButton: {
+    position: 'absolute',
+    right: spacing.sm,
+    bottom: spacing.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+
+  showPasswordText: {
+    color: colors.primary,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.medium,
+  },
+
+  errorContainer: {
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.sm,
+  },
+
   erro: {
     color: colors.danger,
     fontSize: typography.sizes.sm,
     textAlign: 'center',
-    marginBottom: spacing.md,
   },
-  loading: {
+
+  loadingContainer: {
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: spacing.md,
   },
+
   loadingText: {
     marginTop: spacing.sm,
     color: colors.textSecondary,
     fontSize: typography.sizes.sm,
   },
-  link: {
-    color: colors.primary,
-    textAlign: 'center',
-    fontSize: typography.sizes.md,
-    marginTop: spacing.lg,
+
+  linkBtn: {
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
   },
-  row: {
+
+  linkText: {
+    color: colors.primary,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.medium,
+  },
+
+  createAccountRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: spacing.md,
+    alignItems: 'center',
     gap: spacing.xs,
   },
-  muted: {
+
+  createAccountMuted: {
     color: colors.textSecondary,
     fontSize: typography.sizes.sm,
   },
-  linkBold: {
+
+  createAccountLink: {
     color: colors.primary,
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.semibold,
   },
+
   footer: {
     textAlign: 'center',
     fontSize: typography.sizes.xs,
