@@ -1,35 +1,12 @@
 import axios from "axios";
 
-<<<<<<< HEAD
 const api = axios.create({
-<<<<<<< HEAD
-=======
-const instance = axios.create({
->>>>>>> feature/tela_cadastro
-  baseURL: "http://localhost:5000/contractflow",
-=======
   baseURL: "http://localhost:8080/api",
->>>>>>> c6b027b91e6ec214c5bab72d3a95d1ca951a70ff
   headers: {
     accept: "application/json",
   },
 });
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-const api = {
-  postLogin: (data) => instance.post("/login", data),
-  postRegister: (data) => instance.post("/register", data),
-};
-
-export default api;
-
->>>>>>> feature/tela_cadastro
-=======
-// ==========================
-// INTERCEPTOR DE REQUEST
-// ==========================
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -43,9 +20,6 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ==========================
-// INTERCEPTOR DE RESPONSE
-// ==========================
 api.interceptors.response.use(
   (response) => response,
 
@@ -135,4 +109,3 @@ const sheets = {
 };
 
 export default sheets;
->>>>>>> c6b027b91e6ec214c5bab72d3a95d1ca951a70ff

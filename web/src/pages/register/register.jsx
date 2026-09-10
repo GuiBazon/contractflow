@@ -407,11 +407,7 @@ function Register() {
           {/* Já possui conta */}
           <Typography sx={styles.loginText}>
             Já possui uma conta?{" "}
-            <Box
-              component="span"
-              onClick={() => navigate("/")}
-              sx={styles.loginLink}
-            >
+            <Box component="span" onClick={() => navigate("/")} sx={styles.loginLink}>
               Fazer login
             </Box>
           </Typography>

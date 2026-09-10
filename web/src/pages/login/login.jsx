@@ -277,11 +277,7 @@ function Login() {
           {/* Criar conta */}
           <Typography sx={styles.registerText}>
             Ainda não possui uma conta?{" "}
-            <Box
-              component="span"
-              onClick={() => navigate("/register")}
-              sx={styles.registerLink}
-            >
+            <Box component="span" onClick={() => navigate("/register")} sx={styles.registerLink}>
               Criar conta
             </Box>
           </Typography>
