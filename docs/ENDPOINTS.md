@@ -92,7 +92,7 @@ Todas as rotas de clientes exigem autenticação via `Bearer` token. Dados sempr
 | `reportController.js` | Exportação CSV de contratos/recebíveis/pagamentos | RF37, RF38 |
 | `userController.js` | Gerenciamento de usuários (listar, promover, desativar) | RF03, RNF04 |
 
-> O núcleo já implementado: `authController`, `clienteController`, `contractController`, `parcelaController`, `paymentController`, `documentController`. Serviços auxiliares: `contratoService`, `financeiroService`, `ocrService` (somente extração, sem endpoints), `historicoService`.
+> O núcleo já implementado: `authController`, `clienteController`, `contractController`, `parcelaController`, `paymentController`, `documentController`. Serviços auxiliares: `contratoService`, `financeiroService`, `historicoService`. OCR vive isolado na branch `function/back-ocr` (fora da main).
 
 ---
 

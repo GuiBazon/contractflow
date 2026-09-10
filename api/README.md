@@ -104,7 +104,7 @@ npm run test:unit   # apenas unitários
 npm run test:api    # apenas integração/API
 ```
 
-- Os testes unitários cobrem validadores, cálculo de parcelas/vencimentos, juros/multas,
-  situação de parcela e extração de dados OCR.
+- Os testes unitários cobrem validadores, cálculo de parcelas/vencimentos, juros/multas
+  e situação de parcela.
 - Os testes de integração exercitam as rotas e controllers reais (via supertest) com um
   `db` simulado — cobrem autenticação, isolamento por usuário e regras de negócio.

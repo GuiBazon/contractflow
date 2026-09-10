@@ -140,26 +140,6 @@ CREATE TABLE IF NOT EXISTS documentos (
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE RESTRICT
 );
 
--- RNF18 / RF12 / RF13 / RN09: extracoes de OCR aguardando confirmacao
-CREATE TABLE IF NOT EXISTS extracao_ocr (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  usuario_id INT NOT NULL,
-  nome_original VARCHAR(255) NOT NULL,
-  nome_arquivo VARCHAR(255) NOT NULL,
-  caminho VARCHAR(500) NOT NULL,
-  tipo_arquivo VARCHAR(80),
-  tamanho BIGINT,
-  texto_extraido LONGTEXT,
-  dados_json JSON,
-  confianca DECIMAL(5,2),
-  status ENUM('PENDENTE', 'CONFIRMADA', 'CANCELADA') DEFAULT 'PENDENTE',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  KEY idx_extracao_ocr_usuario_id (usuario_id),
-  CONSTRAINT fk_extracao_ocr_usuario
-    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE RESTRICT
-);
-
 -- RF36 / RN11: historico de eventos do contrato
 CREATE TABLE IF NOT EXISTS historico_contratos (
   id INT PRIMARY KEY AUTO_INCREMENT,

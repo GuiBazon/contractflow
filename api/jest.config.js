@@ -6,7 +6,6 @@ module.exports = {
     'src/services/**/*.js',
     'src/controllers/**/*.js',
     'src/middlewares/**/*.js',
-    '!src/services/ocrService.js',
   ],
   setupFiles: ['<rootDir>/tests/setup.js'],
   verbose: true,

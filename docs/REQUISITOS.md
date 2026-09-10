@@ -46,8 +46,8 @@ usuários, calendário e alertas ficam como pendências explícitas (seção 5).
 | RF07 | Cadastro de contratos (cliente, número, tipo, valor, datas, pagamento, parcelas, vencimentos, obs.) | ALTA | ✅ | `contractController.createContrato` (RN02) |
 | RF08 | Upload de contratos (PDF e imagens) | ALTA | 🕓 | multer pronto (`config/uploads`); falta rota+fluxo OCR |
 | RF09 | Armazenamento do documento original associado ao contrato | ALTA | ✅ | `documentController.uploadDocumento` (tipo ORIGINAL) |
-| RF10 | Leitura automática de documentos (OCR de texto) | ALTA | 🕓 | `ocrService` pronto; falta controller/rota |
-| RF11 | Extração automática de informações (cliente, valor, datas, parcelas, vencimentos, pagamento) | ALTA | 🕓 | `ocrService` pronto; falta controller/rota |
+| RF10 | Leitura automática de documentos (OCR de texto) | ALTA | ⏳ | Código experimental isolado na branch `function/back-ocr` |
+| RF11 | Extração automática de informações (cliente, valor, datas, parcelas, vencimentos, pagamento) | ALTA | ⏳ | Código experimental isolado na branch `function/back-ocr` |
 | RF12 | Revisão dos dados extraídos (visualizar e corrigir) | ALTA | ⏳ | Falta rota de revisão do OCR |
 | RF13 | Confirmação da importação antes da criação definitiva | ALTA | ⏳ | Nada é criado antes da confirmação (RN09/RN17) |
 | RF14 | Geração automática de parcelas | ALTA | ✅ | `contratoService.criarContratoComParcelas` (transação) |
@@ -102,8 +102,8 @@ usuários, calendário e alertas ficam como pendências explícitas (seção 5).
 | RNF14 | Tratamento de erros (mensagens claras) | ALTA | ✅ | `{ message }` + status; 500 sem vazar detalhes |
 | RNF15 | Validação (e-mail, CPF/CNPJ, valores, datas) | ALTA | ✅ | `utils/validators` |
 | RNF16 | Controle de arquivos (formatos e tamanhos) | ALTA | ✅ | multer (MIME/ext/10MB/UUID) + SHA-256 |
-| RNF17 | OCR (informar quando não identificar / baixa confiança) | ALTA | 🕓 | `ocrService` retorna confiança; falta expor em endpoint |
-| RNF18 | Transparência da automação (revisão antes da confirmação) | ALTA | 🕓 | Tabela `extracao_ocr`; fluxo de confirmação pendente |
+| RNF17 | OCR (informar quando não identificar / baixa confiança) | ALTA | ⏳ | Código experimental isolado na branch `function/back-ocr` |
+| RNF18 | Transparência da automação (revisão antes da confirmação) | ALTA | ⏳ | Código experimental isolado na branch `function/back-ocr` |
 | RNF19 | Consistência visual | MÉDIA | ⏳ | Frontend |
 | RNF20 | Acessibilidade | MÉDIA | ⏳ | Frontend |
 
@@ -121,7 +121,7 @@ usuários, calendário e alertas ficam como pendências explícitas (seção 5).
 | RN06 | Saldo considera os pagamentos registrados (derivado, nunca armazenado) | ALTA | ✅ | `financeiroService` |
 | RN07 | Vencida e não paga = atraso | ALTA | ✅ | `data_vencimento < hoje AND pago < valor` |
 | RN08 | Juros e multas seguem as regras do contrato | MÉDIA | ✅ | `multa = valor×% (única)`; `juros = valor×%/30×dias` |
-| RN09 | Dados do OCR só viram contrato após conferência e confirmação | ALTA | 🕓 | Garantido no `ocrService`; fluxo pendente |
+| RN09 | Dados do OCR só viram contrato após conferência e confirmação | ALTA | ⏳ | Regra a aplicar no fluxo da branch `function/back-ocr` |
 | RN10 | Documento original permanece associado ao contrato | ALTA | ✅ | Exclusão de ORIGINAL bloqueada (400) |
 | RN11 | Financeiro importante não é excluído sem controle | ALTA | ✅ | Contrato com parcelas → 409; cliente com contrato → 409 |
 | RN12 | Contrato encerrado não gera novas parcelas | ALTA | ✅ | `generateParcelas` bloqueia ENCERRADO/CANCELADO (400) |
@@ -129,7 +129,7 @@ usuários, calendário e alertas ficam como pendências explícitas (seção 5).
 | RN14 | Dashboard usa dados registrados no sistema | ALTA | ⏳ | A aplicar no `dashboardController` |
 | RN15 | Vencimentos alimentam o calendário | ALTA | ✅ | Derivado de `parcelas.data_vencimento` |
 | RN16 | Contratos próximos do término podem gerar alertas | MÉDIA | ⏳ | Falta query/endpoint |
-| RN17 | OCR não substitui a conferência (sugestões até confirmar) | ALTA | 🕓 | Idem RN09 |
+| RN17 | OCR não substitui a conferência (sugestões até confirmar) | ALTA | ⏳ | Idem RN09 |
 | RN18 | Campos não identificados ficam disponíveis p/ preenchimento manual | ALTA | 🕓 | Idem RN09 |
 
 ---
