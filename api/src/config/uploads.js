@@ -6,6 +6,7 @@ const multer = require('multer');
 const UPLOAD_ROOT = path.resolve(__dirname, '..', '..', process.env.UPLOAD_DIR || 'uploads');
 
 const SUBDIRS = {
+  OCR: 'ocr',
   DOCS: 'docs',
 };
 

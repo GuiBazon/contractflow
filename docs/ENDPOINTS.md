@@ -50,6 +50,8 @@ Todas as rotas de clientes exigem autenticação via `Bearer` token. Dados sempr
 |--------|------|-----------|--------------|
 | `GET` | `/api/contratos/:contratoId/parcelas` | Lista parcelas com situação calculada (PENDENTE/PAGA/VENCIDA/CANCELADA), valor pago, dias de atraso. | `?filtro=VENCIDA` |
 | `PATCH` | `/api/contratos/:contratoId/parcelas/:parcelaId` | Altera data, valor ou status. Valida: valor só se não houver pagamentos; cancelar só se sem pagamentos. | `{ data_vencimento, valor, status }` |
+| `GET` | `/api/parcelas/:contratoId/parcelas` | Mesmo que acima (formato plano p/ o mobile). | `?filtro=VENCIDA` |
+| `PATCH` | `/api/parcelas/:contratoId/parcelas/:parcelaId` | Mesmo que acima (formato plano p/ o mobile). | `{ data_vencimento, valor, status }` |
 
 ---
 
@@ -59,7 +61,9 @@ Todas as rotas de clientes exigem autenticação via `Bearer` token. Dados sempr
 |--------|------|-----------|--------------|
 | `GET` | `/api/contratos/:contratoId/pagamentos` | Lista pagamentos de um contrato. Filtros por período. | `?page=1&limit=50&de=…&ate=…` |
 | `POST` | `/api/contratos/:contratoId/pagamentos` | Registra pagamento. Valida que não excede valor da parcela e a parcela não está cancelada. Em transação insere → recalcula situação → registra histórico. | `{ parcela_id, valor, data_pagamento, forma_pagamento, observacoes }` |
-| `GET` | `/api/pagamentos` | Todos os pagamentos do usuário (cross-contratos). Para RF26 (receitas) e RF24 (recebíveis). | `?page=1&limit=50&de=…&ate=…&cliente=1` |
+| `GET` | `/api/pagamentos/:contratoId/pagamentos` | Mesmo que acima (formato plano p/ o mobile). | `?page=1&limit=50&de=…&ate=…` |
+| `POST` | `/api/pagamentos/:contratoId/pagamentos` | Mesmo que acima (formato plano p/ o mobile). | `{ parcela_id, valor, data_pagamento, forma_pagamento, observacoes }` |
+| `GET` | `/api/receitas` | Todos os pagamentos do usuário (cross-contratos). Para RF26 (receitas) e RF24 (recebíveis). | `?page=1&limit=50&de=…&ate=…&cliente=1` |
 
 ---
 
@@ -71,6 +75,22 @@ Todas as rotas de clientes exigem autenticação via `Bearer` token. Dados sempr
 | `GET` | `/api/contratos/:contratoId/documentos` | Lista documentos do contrato. | — |
 | `GET` | `/api/contratos/:contratoId/documentos/:documentoId/arquivo` | Serve o arquivo binário (Content-Type correto, disposition `inline`). Valida ownership. | — |
 | `DELETE` | `/api/contratos/:contratoId/documentos/:documentoId` | Remove anexo do disco e banco. **Bloqueia** deletar documentos tipo ORIGINAL (RN10). | — |
+| `GET` | `/api/documentos/:contratoId/documentos` | Mesmo que acima (formato plano p/ o mobile). | — |
+| `POST` | `/api/documentos/:contratoId/documentos` | Mesmo que acima (formato plano p/ o mobile). | multipart: `arquivo` + `{ tipo, descricao }` |
+| `GET` | `/api/documentos/:contratoId/documentos/:documentoId/arquivo` | Mesmo que acima (formato plano p/ o mobile). | — |
+| `DELETE` | `/api/documentos/:contratoId/documentos/:documentoId` | Mesmo que acima (formato plano p/ o mobile). | — |
+
+---
+
+## OCR
+
+| Método | Rota | Descrição | Body / Query |
+|--------|------|-----------|--------------|
+| `POST` | `/api/ocr/extract` | Extrai texto/sugestões de PDF ou imagem (RN09: só sugestão). | multipart: `arquivo` |
+| `GET` | `/api/ocr/:id` | Detalha uma extração. | — |
+| `PATCH` | `/api/ocr/:id` | Revisa/corrige os dados extraídos (RF12). | `{ dados_json }` |
+| `POST` | `/api/ocr/:id/confirmar` | Confirma e cria o contrato (RF13/RN17). | — |
+| `DELETE` | `/api/ocr/:id` | Cancela a extração. | — |
 
 ---
 
@@ -86,13 +106,12 @@ Todas as rotas de clientes exigem autenticação via `Bearer` token. Dados sempr
 
 | Módulo | Módulo final | Requisito |
 |--------|-------------|-----------|
-| `ocrController.js` | Fluxo OCR: upload → extração → revisão → confirmação → criação do contrato | RF08–RF13, RN09, RN17, RN18 |
 | `dashboardController.js` | Indicadores gerais do sistema | RF32, RN14 |
 | `expenseController.js` | CRUD de despesas (aluguel, fornecedores, etc.) | RF25 |
 | `reportController.js` | Exportação CSV de contratos/recebíveis/pagamentos | RF37, RF38 |
 | `userController.js` | Gerenciamento de usuários (listar, promover, desativar) | RF03, RNF04 |
 
-> O núcleo já implementado: `authController`, `clienteController`, `contractController`, `parcelaController`, `paymentController`, `documentController`. Serviços auxiliares: `contratoService`, `financeiroService`, `historicoService`. OCR vive isolado na branch `function/back-ocr` (fora da main).
+> O núcleo já implementado inclui `ocrController` (`/api/ocr`: extract → revisão → confirmar/cancelar). Serviços auxiliares: `contratoService`, `financeiroService`, `ocrService`, `historicoService`.
 
 ---
 
