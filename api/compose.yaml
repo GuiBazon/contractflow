@@ -9,7 +9,9 @@ services:
       MYSQL_USER: ${DB_USER:-contractflow_user}
       MYSQL_PASSWORD: ${DB_PASSWORD:-contractflow_pass}
     ports:
-      - "3306:3306"
+      # Host usa ${DB_PORT} (default 3306). Se o MySQL local ocupar a 3306,
+      # suba com DB_PORT=3307. Dentro do compose a API usa db:3306.
+      - "${DB_PORT:-3306}:3306"
     volumes:
       - db_data:/var/lib/mysql
       # schema.sql roda automaticamente no primeiro boot
