@@ -423,7 +423,7 @@ function Register() {
 
 const styles = {
   page: {
-    minHeight: "100vh",
+    height: "100dvh",
     display: "flex",
     backgroundColor: "#f7f9fc",
     fontFamily: "Roboto, sans-serif",
@@ -435,7 +435,7 @@ const styles = {
 
   leftSide: {
     width: "45%",
-    minHeight: "100vh",
+    height: "100%",
     background: "linear-gradient(145deg, #203f82 0%, #294e9d 100%)",
     display: {
       xs: "none",
@@ -577,10 +577,11 @@ const styles = {
       xs: "100%",
       md: "55%",
     },
-    minHeight: "100vh",
+    height: "100%",
     display: "flex",
-    justifyContent: "center",
+    flexDirection: "column",
     alignItems: "center",
+    overflowY: "auto",
     backgroundColor: "#f7f9fc",
     px: {
       xs: 3,
@@ -592,6 +593,7 @@ const styles = {
   card: {
     width: "100%",
     maxWidth: "460px",
+    my: "auto",
     backgroundColor: "#fff",
     borderRadius: "16px",
     boxShadow: "0 10px 40px rgba(24, 35, 56, 0.08)",
@@ -626,6 +628,10 @@ const styles = {
 
   row: {
     display: "flex",
+    flexDirection: {
+      xs: "column",
+      sm: "row",
+    },
     gap: 2,
 
     "& > *": {
