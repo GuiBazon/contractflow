@@ -4,7 +4,11 @@ import { colors, spacing, typography } from '../theme';
 
 export function SecondaryButton({ title, onPress, style, danger }) {
   return (
-    <TouchableOpacity style={[styles.btn, style]} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity
+      style={[styles.btn, danger && styles.btnDanger, style]}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
       <Text style={[styles.text, danger && styles.textDanger]}>{title}</Text>
     </TouchableOpacity>
   );
@@ -23,6 +27,10 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.semibold,
+  },
+  btnDanger: {
+    borderColor: colors.danger,
+    backgroundColor: colors.dangerLight,
   },
   textDanger: {
     color: colors.danger,

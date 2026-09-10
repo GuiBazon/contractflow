@@ -21,7 +21,12 @@ export function ClientCard({ cliente, onPress }) {
   const contratosLabel = `${totalContratos} ${totalContratos === 1 ? 'Ativo' : 'Ativos'}`;
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+<TouchableOpacity
+      style={styles.card}
+      onPress={onPress}
+      activeOpacity={0.7}
+      disabled={!onPress}
+    >
       <View style={styles.avatar}>
         <Text style={styles.initials}>{initials}</Text>
       </View>
@@ -30,7 +35,7 @@ export function ClientCard({ cliente, onPress }) {
         <Text style={styles.doc}>{docLabel} {doc}</Text>
         <Text style={styles.contratos}>{contratosLabel}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+<Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
     </TouchableOpacity>
   );
 }

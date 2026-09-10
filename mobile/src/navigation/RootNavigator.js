@@ -5,6 +5,9 @@ import { Cadastro } from '../screens/Cadastro';
 import { Splash } from '../screens/Splash';
 import { MainTabs } from './MainTabs';
 import { DetalheContrato } from '../screens/DetalheContrato';
+import { DetalheCliente } from '../screens/DetalheCliente';
+import { FormCliente } from '../screens/FormCliente';
+import { FormContrato } from '../screens/FormContrato';
 import { ImportarContrato } from '../screens/ImportarContrato';
 import { RevisaoContrato } from '../screens/RevisaoContrato';
 import { RegistrarPagamento } from '../screens/RegistrarPagamento';
@@ -23,6 +26,9 @@ export function RootNavigator() {
       <Stack.Screen name="Cadastro" component={Cadastro} />
       <Stack.Screen name="MainTabs" component={MainTabs} />
       <Stack.Screen name="DetalheContrato" component={DetalheContrato} />
+      <Stack.Screen name="DetalheCliente" component={DetalheCliente} />
+      <Stack.Screen name="FormCliente" component={FormCliente} />
+      <Stack.Screen name="FormContrato" component={FormContrato} />
       <Stack.Screen name="ImportarContrato" component={ImportarContrato} />
       <Stack.Screen name="RevisaoContrato" component={RevisaoContrato} />
       <Stack.Screen name="RegistrarPagamento" component={RegistrarPagamento} />

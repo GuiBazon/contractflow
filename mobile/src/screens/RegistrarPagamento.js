@@ -14,7 +14,7 @@ const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'o
 
 function formatVencimento(data) {
   if (!data) return '';
-  const [ano, mes, dia] = data.split('-').map(Number);
+  const [ano, mes, dia] = String(data).split('T')[0].split('-').map(Number);
   return `${dia} ${MESES[mes - 1]}`;
 }
 
