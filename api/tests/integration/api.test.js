@@ -191,7 +191,7 @@ describe('API — regras de negócio (pagamentos, status, documentos)', () => {
       .when('SELECT * FROM parcelas', async () => [[{ id: 1, valor: 100, status: 'CANCELADA', numero: 1 }]]);
 
     const res = await request(app)
-      .post('/api/contratos/1/pagamentos')
+      .post('/api/pagamentos/1/pagamentos')
       .set('Authorization', `Bearer ${token}`)
       .send({ parcela_id: 1, valor: 100, data_pagamento: '2026-01-01' });
 
@@ -207,7 +207,7 @@ describe('API — regras de negócio (pagamentos, status, documentos)', () => {
       .when('SELECT COALESCE(SUM(valor),0)', async () => [[{ totalPago: 0 }]]);
 
     const res = await request(app)
-      .post('/api/contratos/1/pagamentos')
+      .post('/api/pagamentos/1/pagamentos')
       .set('Authorization', `Bearer ${token}`)
       .send({ parcela_id: 1, valor: 150, data_pagamento: '2026-01-01' });
 
@@ -230,7 +230,7 @@ describe('API — regras de negócio (pagamentos, status, documentos)', () => {
       .when('INSERT INTO historico_contratos', async () => [[{ insertId: 1 }]]);
 
     const res = await request(app)
-      .post('/api/contratos/1/pagamentos')
+      .post('/api/pagamentos/1/pagamentos')
       .set('Authorization', `Bearer ${token}`)
       .send({ parcela_id: 1, valor: 100, data_pagamento: '2026-01-01', forma_pagamento: 'PIX' });
 
@@ -252,17 +252,17 @@ describe('API — regras de negócio (pagamentos, status, documentos)', () => {
     expect(res.body.message).toContain('encerrado');
   });
 
-  test('gerar parcelas sem informar valor retorna 400', async () => {
+  test('gerar parcelas sem informar quantidade retorna 400', async () => {
     fake.reset();
     fake.when('cl.nome_razao_social', async () => [[{ id: 1, status: 'ATIVO', data_inicio: '2026-01-01' }]]);
 
     const res = await request(app)
       .post('/api/contratos/1/parcelas')
       .set('Authorization', `Bearer ${token}`)
-      .send({ quantidade_parcelas: 2 });
+      .send({ valor_parcela: 500 });
 
     expect(res.status).toBe(400);
-    expect(res.body.message).toContain('valor');
+    expect(res.body.message).toContain('quantidade');
   });
 
   test('alterar número do contrato após pagamentos retorna 400', async () => {
@@ -285,7 +285,7 @@ describe('API — regras de negócio (pagamentos, status, documentos)', () => {
     fake.when('SELECT d.*', async () => [[{ id: 1, nome_arquivo: 'x.pdf', tipo: 'ORIGINAL' }]]);
 
     const res = await request(app)
-      .delete('/api/contratos/1/documentos/1')
+      .delete('/api/documentos/1/documentos/1')
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(400);
