@@ -7,3 +7,6 @@ mobile/node_modules/
 !.env.example
 npm-debug.log*
 .DS_Store
+
+# uploads de documentos gerados em runtime
+api/uploads/
