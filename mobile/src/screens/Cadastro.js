@@ -4,6 +4,7 @@ import {
   Platform, ScrollView, ActivityIndicator, TouchableOpacity,
 } from 'react-native';
 import { colors, spacing, typography } from '../theme';
+import { Ionicons } from '@expo/vector-icons';
 import { Input, PrimaryButton, ContractFlowLogo } from '../components';
 import { api, normalizarErro } from '../services/api';
 import { salvarSessao } from '../services/storage';
@@ -13,6 +14,8 @@ export function Cadastro({ navigation }) {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
+  const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
 
@@ -82,20 +85,50 @@ export function Cadastro({ navigation }) {
               keyboardType="email-address"
               autoCapitalize="none"
             />
-            <Input
-              label="Senha"
-              placeholder="Mínimo 6 caracteres"
-              value={senha}
-              onChangeText={setSenha}
-              secureTextEntry
-            />
-            <Input
-              label="Confirmar senha"
-              placeholder="Repita sua senha"
-              value={confirmarSenha}
-              onChangeText={setConfirmarSenha}
-              secureTextEntry
-            />
+            <View style={styles.passwordContainer}>
+              <Input
+                label="Senha"
+                placeholder="Mínimo 6 caracteres"
+                value={senha}
+                onChangeText={setSenha}
+                secureTextEntry={!mostrarSenha}
+              />
+              <TouchableOpacity
+                style={styles.showPasswordButton}
+                onPress={() => setMostrarSenha(!mostrarSenha)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name={mostrarSenha ? 'eye-off' : 'eye'}
+                  size={22}
+                  color={colors.primary}
+                />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.passwordContainer}>
+              <Input
+                label="Confirmar senha"
+                placeholder="Repita sua senha"
+                value={confirmarSenha}
+                onChangeText={setConfirmarSenha}
+                secureTextEntry={!mostrarConfirmarSenha}
+              />
+              <TouchableOpacity
+                style={styles.showPasswordButton}
+                onPress={() => setMostrarConfirmarSenha(!mostrarConfirmarSenha)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel={mostrarConfirmarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name={mostrarConfirmarSenha ? 'eye-off' : 'eye'}
+                  size={22}
+                  color={colors.primary}
+                />
+              </TouchableOpacity>
+            </View>
             {erro ? <Text style={styles.erro}>{erro}</Text> : null}
             {carregando ? (
               <ActivityIndicator size="large" color={colors.primary} />
@@ -149,6 +182,18 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.semibold,
     color: colors.textPrimary,
     marginBottom: spacing.xl,
+  },
+  passwordContainer: {
+    position: 'relative',
+  },
+  showPasswordButton: {
+    position: 'absolute',
+    right: spacing.sm,
+    top: 'auto',
+    bottom: spacing.xxl,
+    padding: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   erro: {
     color: colors.danger,

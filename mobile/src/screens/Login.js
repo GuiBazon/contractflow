@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 
 import { colors, spacing, typography } from '../theme';
+import { Ionicons } from '@expo/vector-icons';
 import { Input, PrimaryButton, ContractFlowLogo } from '../components';
 import { api, normalizarErro } from '../services/api';
 import { salvarSessao } from '../services/storage';
@@ -153,14 +154,17 @@ export function Login({ navigation }) {
                 style={styles.showPasswordButton}
                 onPress={() => setMostrarSenha(!mostrarSenha)}
                 disabled={carregando}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityLabel={
                   mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'
                 }
                 accessibilityRole="button"
               >
-                <Text style={styles.showPasswordText}>
-                  {mostrarSenha ? 'Ocultar' : 'Mostrar'}
-                </Text>
+                <Ionicons
+                  name={mostrarSenha ? 'eye-off' : 'eye'}
+                  size={22}
+                  color={colors.primary}
+                />
               </TouchableOpacity>
             </View>
 
@@ -263,15 +267,11 @@ const styles = StyleSheet.create({
   showPasswordButton: {
     position: 'absolute',
     right: spacing.sm,
-    bottom: spacing.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-
-  showPasswordText: {
-    color: colors.primary,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
+    top: 'auto',
+    bottom: spacing.xxl,
+    padding: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   errorContainer: {
