@@ -201,9 +201,9 @@ function Register() {
         <Box sx={styles.card}>
           {/* Título */}
           <Box sx={styles.heading}>
-            <Typography sx={styles.title}>Começar teste gratuito</Typography>
+            <Typography sx={styles.title}>Entre para a ContractFlow</Typography>
             <Typography sx={styles.description}>
-              Experimente sem compromisso por 14 dias.
+              Leve sua gestão contratual para o próximo nível
             </Typography>
           </Box>
 
