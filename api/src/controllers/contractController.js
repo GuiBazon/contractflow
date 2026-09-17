@@ -9,6 +9,7 @@ const {
 } = require('../services/contratoService');
 const { getResumoContrato } = require('../services/financeiroService');
 const { registrarHistorico } = require('../services/historicoService');
+const { registrarLog } = require('../services/logService');
 const { isDate, str } = require('../utils/validators');
 
 async function listContratos(req, res) {
@@ -224,6 +225,18 @@ async function updateContrato(req, res) {
       descricao: `Dados do contrato atualizados (${updates.join(', ')})`,
     });
 
+    try {
+      await registrarLog(db, {
+        usuarioId: req.user.id,
+        acao: 'EDITAR_CONTRATO',
+        entidade: 'contratos',
+        entidadeId: id,
+        descricao: `Contrato nº ${contrato.numero} atualizado (${Object.keys(campos).join(', ')})`,
+      });
+    } catch (logError) {
+      console.error('erro ao registrar log de edicao de contrato:', logError);
+    }
+
     const atualizado = await obterContratoDono(id, req.user.id);
     return res.json({ message: 'Contrato atualizado com sucesso', contrato: atualizado });
   } catch (error) {
@@ -279,6 +292,18 @@ async function updateContratoStatus(req, res) {
       acao: 'STATUS',
       descricao: `Status alterado de ${contrato.status} para ${status}`,
     });
+
+    try {
+      await registrarLog(db, {
+        usuarioId: req.user.id,
+        acao: 'ALTERAR_STATUS_CONTRATO',
+        entidade: 'contratos',
+        entidadeId: id,
+        descricao: `Contrato nº ${contrato.numero}: status alterado de ${contrato.status} para ${status}`,
+      });
+    } catch (logError) {
+      console.error('erro ao registrar log de status de contrato:', logError);
+    }
 
     const atualizado = await obterContratoDono(id, req.user.id);
     return res.json({ message: 'Status atualizado', contrato: atualizado });
@@ -337,6 +362,13 @@ const valores = Array(quantidade).fill(Number(req.body.valor_parcela) || 0);
         acao: 'PARCELAS',
         descricao: `${quantidade} parcela(s) adicionada(s) manualmente`,
       });
+      await registrarLog(conn, {
+        usuarioId: req.user.id,
+        acao: 'CRIAR_PARCELAS',
+        entidade: 'contratos',
+        entidadeId: id,
+        descricao: `${quantidade} parcela(s) criada(s) no contrato nº ${contrato.numero}`,
+      });
       await conn.commit();
     } catch (error) {
       await conn.rollback();
@@ -385,6 +417,18 @@ async function deleteContrato(req, res) {
        WHERE c.id = ? AND cl.usuario_id = ?`,
       [id, req.user.id]
     );
+
+    try {
+      await registrarLog(db, {
+        usuarioId: req.user.id,
+        acao: 'EXCLUIR_CONTRATO',
+        entidade: 'contratos',
+        entidadeId: id,
+        descricao: `Contrato nº ${contrato.numero} removido`,
+      });
+    } catch (logError) {
+      console.error('erro ao registrar log de exclusao de contrato:', logError);
+    }
 
     return res.json({ message: 'Contrato removido com sucesso' });
   } catch (error) {

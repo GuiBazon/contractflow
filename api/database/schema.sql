@@ -193,3 +193,22 @@ CREATE TABLE IF NOT EXISTS despesas (
   CONSTRAINT fk_despesas_usuario
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE RESTRICT
 );
+
+-- LOG GERAL DO SISTEMA: historico de acoes de varias entidades.
+-- Nao substitui historico_contratos (especifico de contratos).
+-- USUARIOS 1:N LOGS.
+CREATE TABLE IF NOT EXISTS logs (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  usuario_id INT NOT NULL,
+  acao VARCHAR(100) NOT NULL,
+  entidade VARCHAR(100),
+  entidade_id INT,
+  descricao TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_logs_usuario_id (usuario_id),
+  KEY idx_logs_created_at (created_at),
+  KEY idx_logs_entidade (entidade),
+  KEY idx_logs_entidade_id (entidade_id),
+  CONSTRAINT fk_logs_usuario
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE RESTRICT
+);

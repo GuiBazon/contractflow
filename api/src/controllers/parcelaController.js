@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const { SITUACAO_SQL, recalcSituacaoParcela } = require('../services/financeiroService');
 const { registrarHistorico } = require('../services/historicoService');
+const { registrarLog } = require('../services/logService');
 const { obterContratoDono } = require('../services/contratoService');
 const { isDate, isDecimal, str } = require('../utils/validators');
 
@@ -125,6 +126,18 @@ async function updateParcela(req, res) {
       acao: 'PARCELA_ALTERADA',
       descricao: `Parcela ${parcela.numero} atualizada (${updates.join(', ')})`,
     });
+
+    try {
+      await registrarLog(db, {
+        usuarioId: req.user.id,
+        acao: 'EDITAR_PARCELA',
+        entidade: 'parcelas',
+        entidadeId: parcelaId,
+        descricao: `Parcela ${parcela.numero} do contrato nº ${contrato.numero} atualizada (${updates.join(', ')})`,
+      });
+    } catch (logError) {
+      console.error('erro ao registrar log de edicao de parcela:', logError);
+    }
 
     const [atualizada] = await db.execute(
       `SELECT id, numero, valor, data_vencimento, status FROM parcelas WHERE id = ?`,

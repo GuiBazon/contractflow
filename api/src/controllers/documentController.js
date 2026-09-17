@@ -5,6 +5,7 @@ const db = require('../config/db');
 const { UPLOAD_ROOT, SUBDIRS } = require('../config/uploads');
 const { obterContratoDono } = require('../services/contratoService');
 const { registrarHistorico } = require('../services/historicoService');
+const { registrarLog } = require('../services/logService');
 const { ensureUploadDirs } = require('../config/uploads');
 
 function caminhoSeguro(subdir, nomeArquivo) {
@@ -90,6 +91,18 @@ const uploadDocumento = [
         acao: 'DOCUMENTO',
         descricao: `${tipo === 'ORIGINAL' ? 'Documento original' : 'Anexo'} "${req.file.originalname}" adicionado`,
       });
+
+      try {
+        await registrarLog(db, {
+          usuarioId: req.user.id,
+          acao: 'UPLOAD_DOCUMENTO',
+          entidade: 'documentos',
+          entidadeId: result.insertId,
+          descricao: `${tipo === 'ORIGINAL' ? 'Documento original' : 'Anexo'} "${req.file.originalname}" adicionado ao contrato nº ${contrato.numero}`,
+        });
+      } catch (logError) {
+        console.error('erro ao registrar log de upload de documento:', logError);
+      }
 
       return res.status(201).json({
         message: 'Documento armazenado com sucesso',
@@ -178,6 +191,18 @@ async function deleteDocumento(req, res) {
     await db.execute('DELETE FROM documentos WHERE id = ?', [documentoId]);
 
     fs.unlink(caminhoSeguro(SUBDIRS.DOCS, documento.nome_arquivo), () => {});
+
+    try {
+      await registrarLog(db, {
+        usuarioId: req.user.id,
+        acao: 'EXCLUIR_DOCUMENTO',
+        entidade: 'documentos',
+        entidadeId: documentoId,
+        descricao: `Anexo "${documento.nome_original}" (id ${documentoId}) removido do contrato id ${documento.contrato_id}`,
+      });
+    } catch (logError) {
+      console.error('erro ao registrar log de exclusao de documento:', logError);
+    }
 
     return res.json({ message: 'Anexo removido com sucesso' });
   } catch (error) {

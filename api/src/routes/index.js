@@ -6,6 +6,7 @@ const parcelaRoutes = require('./parcelaRoutes');
 const { router: paymentRoutes, allRouter: paymentAllRoutes } = require('./paymentRoutes');
 const documentRoutes = require('./documentRoutes');
 const ocrRoutes = require('./ocrRoutes');
+const logRoutes = require('./logRoutes');
 
 const router = express.Router();
 
@@ -17,5 +18,6 @@ router.use('/pagamentos', paymentRoutes);
 router.use('/receitas', paymentAllRoutes);
 router.use('/documentos', documentRoutes);
 router.use('/ocr', ocrRoutes);
+router.use('/logs', logRoutes);
 
 module.exports = router;

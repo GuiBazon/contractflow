@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const { recalcSituacaoParcela } = require('../services/financeiroService');
 const { registrarHistorico } = require('../services/historicoService');
+const { registrarLog } = require('../services/logService');
 const { obterContratoDono } = require('../services/contratoService');
 const { isDate, isDecimal, str } = require('../utils/validators');
 
@@ -133,6 +134,14 @@ async function createPagamento(req, res) {
         usuarioId: req.user.id,
         acao: 'PAGAMENTO',
         descricao: `Pagamento de R$ ${Number(valor).toFixed(2)} registrado na parcela ${parcela.numero} em ${data_pagamento}`,
+      });
+
+      await registrarLog(conn, {
+        usuarioId: req.user.id,
+        acao: 'REGISTRAR_PAGAMENTO',
+        entidade: 'pagamentos',
+        entidadeId: pagamentoId,
+        descricao: `Pagamento de R$ ${Number(valor).toFixed(2)} registrado na parcela ${parcela.numero} do contrato nº ${contrato.numero} em ${data_pagamento}`,
       });
 
       await conn.commit();

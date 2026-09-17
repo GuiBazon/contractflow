@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const { onlyDigits, isValidCpfCnpj, isEmail, isState, str } = require('../utils/validators');
+const { registrarLog } = require('../services/logService');
 
 const VALID_FIELDS = [
   'nome_razao_social',
@@ -139,6 +140,18 @@ async function createCliente(req, res) {
       ]
     );
 
+    try {
+      await registrarLog(db, {
+        usuarioId: req.user.id,
+        acao: 'CRIAR_CLIENTE',
+        entidade: 'clientes',
+        entidadeId: result.insertId,
+        descricao: `Cliente "${nome}" criado`,
+      });
+    } catch (logError) {
+      console.error('erro ao registrar log de criacao de cliente:', logError);
+    }
+
     return res.status(201).json({
       message: 'Cliente cadastrado com sucesso',
       cliente: { id: result.insertId, nome_razao_social: nome, cpf_cnpj: cpfCnpj },
@@ -218,6 +231,18 @@ async function updateCliente(req, res) {
       return res.status(404).json({ message: 'Cliente não encontrado' });
     }
 
+    try {
+      await registrarLog(db, {
+        usuarioId: req.user.id,
+        acao: 'EDITAR_CLIENTE',
+        entidade: 'clientes',
+        entidadeId: id,
+        descricao: `Cliente id ${id} atualizado (${updates.join(', ')})`,
+      });
+    } catch (logError) {
+      console.error('erro ao registrar log de edicao de cliente:', logError);
+    }
+
     return res.json({ message: 'Cliente atualizado com sucesso' });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
@@ -232,6 +257,15 @@ async function deleteCliente(req, res) {
   const { id } = req.params;
 
   try {
+    const [existente] = await db.execute(
+      'SELECT nome_razao_social FROM clientes WHERE id = ? AND usuario_id = ?',
+      [id, req.user.id]
+    );
+    if (existente.length === 0) {
+      return res.status(404).json({ message: 'Cliente não encontrado' });
+    }
+    const nomeCliente = existente[0].nome_razao_social;
+
     const [result] = await db.execute(
       'DELETE FROM clientes WHERE id = ? AND usuario_id = ?',
       [id, req.user.id]
@@ -239,6 +273,18 @@ async function deleteCliente(req, res) {
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: 'Cliente não encontrado' });
+    }
+
+    try {
+      await registrarLog(db, {
+        usuarioId: req.user.id,
+        acao: 'EXCLUIR_CLIENTE',
+        entidade: 'clientes',
+        entidadeId: id,
+        descricao: `Cliente "${nomeCliente}" (id ${id}) removido`,
+      });
+    } catch (logError) {
+      console.error('erro ao registrar log de exclusao de cliente:', logError);
     }
 
     return res.json({ message: 'Cliente removido com sucesso' });

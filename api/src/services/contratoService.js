@@ -4,6 +4,7 @@
 const db = require('../config/db');
 const { isDate, isDecimal, isInteger, str } = require('../utils/validators');
 const { registrarHistorico } = require('./historicoService');
+const { registrarLog } = require('./logService');
 
 const VALID_STATUS = ['ATIVO', 'PENDENTE', 'ENCERRADO', 'CANCELADO', 'EM_RENOVACAO'];
 
@@ -165,6 +166,14 @@ async function criarContratoComParcelas({ usuarioId, dados }) {
       usuarioId,
       acao: 'CRIADO',
       descricao: `Contrato criado com ${quantidade_parcelas} parcela(s) e ${vencimentos.length} vencimento(s)`,
+    });
+
+    await registrarLog(conn, {
+      usuarioId,
+      acao: 'CRIAR_CONTRATO',
+      entidade: 'contratos',
+      entidadeId: contratoId,
+      descricao: `Contrato nº ${str(dados.numero).toUpperCase()} criado com ${quantidade_parcelas} parcela(s)`,
     });
 
     await conn.commit();

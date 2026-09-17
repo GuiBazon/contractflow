@@ -227,7 +227,8 @@ describe('API — regras de negócio (pagamentos, status, documentos)', () => {
       .when('INSERT INTO pagamentos', async () => [[{ insertId: 9 }]])
       .when('SELECT p.valor', async () => [[{ valor: 100, pago: 100, status: 'PENDENTE' }]])
       .when('UPDATE parcelas SET status', async () => [[{ affectedRows: 1 }]])
-      .when('INSERT INTO historico_contratos', async () => [[{ insertId: 1 }]]);
+      .when('INSERT INTO historico_contratos', async () => [[{ insertId: 1 }]])
+      .when('INSERT INTO logs', async () => [[{ insertId: 1 }]]);
 
     const res = await request(app)
       .post('/api/pagamentos/1/pagamentos')

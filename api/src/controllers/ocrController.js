@@ -12,6 +12,7 @@ const {
 const { extrairTextoDeArquivo, extrairDados } = require('../services/ocrService');
 const { criarContratoComParcelas } = require('../services/contratoService');
 const { registrarHistorico } = require('../services/historicoService');
+const { registrarLog } = require('../services/logService');
 const { onlyDigits, isValidCpfCnpj, str } = require('../utils/validators');
 
 function hashArquivo(caminho) {
@@ -84,6 +85,18 @@ const extract = [
         dados: sugestao,
       });
 
+      try {
+        await registrarLog(db, {
+          usuarioId: req.user.id,
+          acao: 'PROCESSAR_OCR',
+          entidade: 'extracao_ocr',
+          entidadeId: result.insertId,
+          descricao: `OCR processado para "${req.file.originalname}" (${sugestao.campos.length} campo(s) sugerido(s))`,
+        });
+      } catch (logError) {
+        console.error('erro ao registrar log de OCR:', logError);
+      }
+
       return res.status(201).json({
         extracao_id: result.insertId,
         dados: sugestao.dados,
@@ -141,6 +154,19 @@ async function updateExtracao(req, res) {
       JSON.stringify(dados),
       id,
     ]);
+
+    try {
+      await registrarLog(db, {
+        usuarioId: req.user.id,
+        acao: 'REVISAR_OCR',
+        entidade: 'extracao_ocr',
+        entidadeId: id,
+        descricao: `Dados da extração id ${id} revisados antes da confirmação`,
+      });
+    } catch (logError) {
+      console.error('erro ao registrar log de revisao de OCR:', logError);
+    }
+
     return res.json({ message: 'Dados revisados com sucesso', extracao_id: Number(id), dados });
   } catch (error) {
     console.error('erro ao revisar extração:', error);
@@ -264,6 +290,13 @@ async function confirmar(req, res) {
         acao: 'DOCUMENTO',
         descricao: 'Documento original importado por OCR confirmado',
       });
+      await registrarLog(conn, {
+        usuarioId: req.user.id,
+        acao: 'CONFIRMAR_OCR',
+        entidade: 'extracao_ocr',
+        entidadeId: id,
+        descricao: `Extração id ${id} confirmada: contrato nº ${contrato.numero} (id ${contrato.id}) criado`,
+      });
       await conn.commit();
       conn.release();
     } catch (error) {
@@ -304,6 +337,19 @@ async function cancelarExtracao(req, res) {
     }
     await db.execute("UPDATE extracao_ocr SET status = 'CANCELADA' WHERE id = ?", [id]);
     fs.unlink(caminhoSeguro(SUBDIRS.OCR, extracao.nome_arquivo), () => {});
+
+    try {
+      await registrarLog(db, {
+        usuarioId: req.user.id,
+        acao: 'CANCELAR_OCR',
+        entidade: 'extracao_ocr',
+        entidadeId: id,
+        descricao: `Extração id ${id} ("${extracao.nome_original}") cancelada`,
+      });
+    } catch (logError) {
+      console.error('erro ao registrar log de cancelamento de OCR:', logError);
+    }
+
     return res.json({ message: 'Extração cancelada' });
   } catch (error) {
     console.error('erro ao cancelar extração:', error);
