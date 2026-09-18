@@ -27,7 +27,7 @@ A ideia principal é permitir que a empresa acompanhe sua situação financeira 
 ## Stack do projeto
 - Backend: Node.js + Express
 - Banco de dados: MySQL
-- Autenticação: JWT + bcrypt
+- Autenticação: JWT + bcryptjs
 - Frontend Web: React
 - Mobile: React Native + Expo
 - Repositório: Git/GitHub
