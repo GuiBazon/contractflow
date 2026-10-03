@@ -20,6 +20,17 @@ async function obterContratoDono(contratoId, usuarioId, connection = db) {
   return rows[0] || null;
 }
 
+// As escritas financeiras bloqueiam primeiro o contrato e depois suas parcelas.
+// A ordem comum evita o ciclo pagamento -> histórico -> edição do contrato.
+async function bloquearContratoDono(connection, contratoId, usuarioId) {
+  const [[contrato]] = await connection.query(
+    'SELECT * FROM contratos WHERE id=? AND usuario_id=? FOR UPDATE',
+    [contratoId, usuarioId]
+  );
+  if (!contrato) throw new HttpError(404, 'Contrato não encontrado');
+  return contrato;
+}
+
 // monta o objeto de dados validado; lanca Error com campo message quando invalido
 function validarDados({ cliente_id, numero, valor_total, data_inicio, data_fim, status }) {
   integer(cliente_id, 'Cliente');
@@ -45,7 +56,7 @@ function validarDados({ cliente_id, numero, valor_total, data_inicio, data_fim, 
 }
 
 // gera lista de vencimentos; aceita lista fornecida ou gera mensalmente a partir da data base
-function calcularVencimentos({ quantidade_parcelas, vencimentos, data_inicio }) {
+function calcularVencimentos({ quantidade_parcelas, vencimentos, data_inicio, dia_base }) {
   if (vencimentos && Array.isArray(vencimentos)) {
     const vals = vencimentos.map((v) => (v && isDate(v) ? v : null));
     if (vals.some((v) => v === null)) {
@@ -69,6 +80,7 @@ function calcularVencimentos({ quantidade_parcelas, vencimentos, data_inicio }) 
 
   const resultados = [];
   let [year, month, day] = data_inicio.split('-').map(Number);
+  if (dia_base !== undefined) day = dia_base;
   for (let i = 0; i < quantidade_parcelas; i++) {
     const ultimoDia = new Date(Date.UTC(year, month, 0)).getUTCDate();
     const dia = Math.min(day, ultimoDia);
@@ -198,6 +210,7 @@ function podeGerarParcelas(status) {
 module.exports = {
   VALID_STATUS,
   obterContratoDono,
+  bloquearContratoDono,
   validarDados,
   calcularVencimentos,
   calcularValoresParcelas,

@@ -1,8 +1,8 @@
 const db = require('../config/db');
 const { SITUACAO_SQL, recalcSituacaoParcela } = require('../services/financeiroService');
 const { registrarHistorico } = require('../services/historicoService');
-const { obterContratoDono } = require('../services/contratoService');
-const { isDate, isDecimal, str } = require('../utils/validators');
+const { obterContratoDono, bloquearContratoDono } = require('../services/contratoService');
+const { isDate, str } = require('../utils/validators');
 
 // listagem sempre restrita ao dono do contrato (RNF04)
 async function listParcelas(req, res) {
@@ -58,6 +58,7 @@ async function updateParcela(req, res) {
     if (!contrato) throw new HttpError(404, 'Contrato não encontrado');
     conn = await db.getConnection();
     await conn.beginTransaction();
+    const lockedContract = await bloquearContratoDono(conn, contratoId, req.user.id);
     const [parcelas] = await conn.execute('SELECT * FROM parcelas WHERE id = ? AND contrato_id = ? FOR UPDATE', [parcelaId, contratoId]);
     if (!parcelas.length) throw new HttpError(404, 'Parcela não encontrada');
     const parcela = parcelas[0];
@@ -79,6 +80,10 @@ async function updateParcela(req, res) {
       updates.push('status = ?'); values.push(status);
     }
     if (!updates.length) throw new HttpError(400, 'Nenhum campo válido enviado');
+    if (Object.hasOwn(req.body, 'valor')) {
+      const total = money((Math.round(Number(lockedContract.valor_total) * 100) - Math.round(Number(parcela.valor) * 100) + Math.round(Number(req.body.valor) * 100)) / 100, 'Novo valor total', { zero: true });
+      await conn.execute('UPDATE contratos SET valor_total=? WHERE id=?', [total, contratoId]);
+    }
     await conn.execute(`UPDATE parcelas SET ${updates.join(', ')} WHERE id = ? AND contrato_id = ?`, [...values, parcelaId, contratoId]);
     await recalcSituacaoParcela(conn, parcelaId);
     await registrarHistorico(conn, { contratoId: Number(contratoId), usuarioId: req.user.id, acao: 'PARCELA_ALTERADA', descricao: `Parcela ${parcela.numero} atualizada (${updates.join(', ')})` });

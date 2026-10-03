@@ -10,6 +10,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
 const router = express.Router();
 
 router.use(authMiddleware);
+router.get('/',require('../controllers/documentController').search);
 
 router.get('/:contratoId/documentos', listDocumentos);
 router.post('/:contratoId/documentos', uploadDocumento);

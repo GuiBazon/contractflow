@@ -36,12 +36,14 @@ ensureUploadDirs();
 // Nome de arquivo controlado: uuid + extensao validada (evita path traversal e nomes maliciosos)
 function fileFilter(req, file, cb) {
   const ext = path.extname(file.originalname).toLowerCase();
+  const extensions = { 'application/pdf': ['.pdf'], 'image/jpeg': ['.jpg','.jpeg'], 'image/png': ['.png'], 'image/webp': ['.webp'] };
   if (!ALLOWED_MIMES.has(file.mimetype)) {
     return cb(Object.assign(new Error('Formato de arquivo não permitido (use PDF, JPEG, PNG ou WebP)'), { status: 400 }));
   }
   if (!ALLOWED_EXTENSIONS.has(ext)) {
     return cb(Object.assign(new Error('Extensão de arquivo não permitida'), { status: 400 }));
   }
+  if (!extensions[file.mimetype].includes(ext)) return cb(Object.assign(new Error('Extensão e formato do arquivo não correspondem'), { status: 400 }));
   file.safeExt = ext;
   cb(null, true);
 }

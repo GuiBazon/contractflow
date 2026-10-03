@@ -1,8 +1,8 @@
 const db = require('../config/db');
 const { recalcSituacaoParcela } = require('../services/financeiroService');
 const { registrarHistorico } = require('../services/historicoService');
-const { obterContratoDono } = require('../services/contratoService');
-const { isDate, isDecimal, str } = require('../utils/validators');
+const { obterContratoDono, bloquearContratoDono } = require('../services/contratoService');
+const { isDate, str } = require('../utils/validators');
 
 async function listPagamentos(req, res) {
   const { contratoId } = req.params;
@@ -82,7 +82,8 @@ async function createPagamento(req, res) {
     if (!contrato) throw new HttpError(404, 'Contrato não encontrado');
     conn = await db.getConnection();
     await conn.beginTransaction();
-    // Todas as escritas financeiras sobre uma parcela usam o mesmo lock.
+    await bloquearContratoDono(conn, contratoId, req.user.id);
+    // O contrato vem primeiro; o lock da parcela protege seu saldo.
     const [parcelas] = await conn.execute(
       'SELECT * FROM parcelas WHERE id = ? AND contrato_id = ? FOR UPDATE',
       [parcelaId, contratoId]

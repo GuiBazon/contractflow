@@ -36,7 +36,8 @@ estimativas sobre saldo em aberto: multa única e juros mensais proporcionais a
 30 dias. Não são adicionados automaticamente ao registro do pagamento, que
 continua limitado ao principal; cobrança efetiva de encargos exige regra própria.
 
-Pagamento e alteração de parcela usam lock na mesma linha dentro da transação.
+Pagamento, edição de contrato e alteração de parcela bloqueiam primeiro o
+contrato e depois a parcela dentro da transação, preservando a ordem dos locks.
 Oito requisições concorrentes de R$ 70 para uma parcela de R$ 100 permitem
 somente uma e rejeitam as demais com 400. Alterar/cancelar parcela com pagamentos
 continua bloqueado conforme a operação; não é possível marcar como paga sem pagar.
@@ -206,3 +207,42 @@ BUILDX_CONFIG=/workspace/contractflow-cloud/buildx docker build \
 Execute da raiz do repositório. Essa opção atende ao proxy desta máquina; em
 ambiente comum, `docker build -t contractflow-api-sprint2 api` basta. O certificado
 fica disponível somente durante o build; a verificação TLS permanece habilitada.
+
+## Edição de contratos e parcelas extras — RF06/07/14/15/16/33/41
+
+`PUT /api/contratos/:id` recebe os campos que serão alterados. Permite número,
+texto, datas, forma de pagamento, taxas, status, valor total, quantidade de
+parcelas e lista de vencimentos. Não transfere cliente ou proprietário.
+
+Antes de qualquer pagamento, mudar o valor ou o parcelamento recalcula as
+parcelas de forma transacional. Alterar somente o valor preserva as datas;
+alterar quantidade gera novas datas a partir do início, a menos que a lista de
+vencimentos seja fornecida. Os IDs das parcelas são recriados: a interface deve
+recarregar a listagem após editar. Havendo pagamentos, mudar número, valor total
+ou parcelamento recebe 400; campos descritivos continuam editáveis. Reenviar o
+mesmo valor/quantidade não impede a atualização desses campos descritivos.
+
+`PATCH /api/contratos/:id/parcelas/:parcelaId` permite valor antes de pagamentos,
+vencimento e status validado. Alterar valor ajusta o total declarado do contrato
+pelo mesmo delta. Cancelar parcela sem pagamentos retira seu saldo dos recebíveis,
+mas preserva o valor nominal do contrato. Status de contrato e seu histórico são
+atualizados juntos; cancelar/encerrar contrato preserva o financeiro já registrado.
+
+`POST /api/contratos/:id/parcelas` acrescenta parcelas com
+`{ quantidade_parcelas, valor_parcela, vencimentos? }`, até 120 parcelas no total.
+A operação amplia o valor e a quantidade do contrato; não redistribui o valor
+antigo. Sem datas explícitas, continua após o último vencimento e mantém o dia
+base do início (31/jan → 28/fev → 31/mar). Contratos encerrados/cancelados recebem
+400. Pedidos simultâneos são serializados para preservar números únicos.
+
+Anexos: multipart `arquivo` em `POST /api/contratos/:id/documentos`, com
+`tipo=ANEXO|ORIGINAL` e `descricao` opcional. MIME, extensão, assinatura do conteúdo
+e limite de 10 MB são verificados; arquivo inválido recebe 400/413 e é removido.
+Original não pode ser apagado; anexos podem ser excluídos, com histórico e remoção
+do arquivo. Download/exclusão verificam também que o documento pertence ao
+contrato da URL, não somente à conta.
+
+`GET /api/documentos?q=comprovante&contrato=1&tipo=ANEXO&de=2026-10-01&ate=2026-10-31`
+pesquisa nome/descrição, com filtros e paginação, sem expor caminhos do disco.
+O período filtra a data do upload. Listagem e download por contrato continuam
+compatíveis com os caminhos planos do Mobile.

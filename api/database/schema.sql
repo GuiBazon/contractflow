@@ -6,8 +6,8 @@
 -- Parcelas, pagamentos e documentos são acessados sempre através
 -- da cadeia contrato -> cliente -> usuário.
 --
--- Para um banco já existente, execute: DROP DATABASE contractflow;
--- e rode este script novamente.
+-- Este script inicializa bancos novos. Para bancos existentes,
+-- execute npm run db:migrate na API; não remova o banco para atualizar.
 -- ============================================================
 
 CREATE DATABASE IF NOT EXISTS contractflow
