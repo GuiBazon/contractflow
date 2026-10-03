@@ -22,7 +22,7 @@ A ideia principal é permitir que a empresa acompanhe sua situação financeira 
 - controlar despesas
 - manter documentos e histórico do contrato
 - oferecer dashboard e calendário financeiro
-- integrar OCR em etapas futuras
+- importar contratos por OCR com revisão e confirmação
 
 ## Stack do projeto
 - Backend: Node.js + Express
@@ -54,3 +54,20 @@ Responsável pela versão mobile do sistema, com foco em usabilidade e consulta 
 ## Observações finais
 - A branch principal deve ser usada para versões estáveis.
 - O desenvolvimento de features acontece em branches separadas.
+
+## Backend — Sprint 2
+
+API e testes da Sprint 2 estão na branch `feature/sprint-2-backend`. A entrega
+inclui recebíveis, despesas, dashboard, calendário/alertas, relatórios CSV/XLSX,
+OCR português de PDF/imagem/scan, gestão de usuários/sessões, calculadora e
+renovação, além da regressão dos CRUDs.
+
+- [Instalação e testes](api/README.md)
+- [API para integração Web/Mobile](docs/API_SPRINT_2.md)
+- [Requisitos com evidências](docs/REQUISITOS.md)
+- [Entrega, commits, cards e roteiro de apresentação](docs/ENTREGA_SPRINT_2.md)
+
+Validação local: 84 testes rápidos + 33 cenários MySQL; cobertura combinada de
+91,09% das linhas do backend medido. Workflow Backend automatiza as duas suítes
+e combina os relatórios. A versão final nas telas Web/Mobile ainda exige a
+integração e o ensaio da equipe; os resultados locais não atestam essa etapa.
