@@ -1,42 +1,33 @@
-// Imports de Páginas
-import Login from "./pages/login/login";
-import Register from "./pages/register/register";
-import Home from "./pages/home/home";
+import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
+import Layout, { Protected } from "./components/Layout";
+import Auth from "./pages/Auth";
+import Dashboard from "./pages/Dashboard";
 
-import { CssBaseline } from "@mui/material";
-
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import ProtectedRoute from "./components/protected_route/protected_route";
- 
-
-function App() {
+export default function App() {
   return (
-    <>
-      <CssBaseline />
-
-      <BrowserRouter>
-        <Routes>
-          {/* 🔓 PUBLIC */}
-          <Route path="/" element={<Login />} />
-
-          
-          
-          <Route path="/register" element={<Register />} />
-
-          {/* 🔒 PROTEGIDA */}
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Auth key="login" />} />
+        <Route path="/register" element={<Auth key="register" register />} />
+        <Route
+          element={
+            <Protected>
+              <Layout />
+            </Protected>
+          }
+        >
+          <Route path="/home" element={<Dashboard />} />
           <Route
-            path="/home"
+            path="*"
             element={
-              <ProtectedRoute>
-                <Home />
-              </ProtectedRoute>
+              <>
+                <h1>Página não encontrada</h1>
+                <Link to="/home">Voltar ao início</Link>
+              </>
             }
           />
-
-          </Routes>
-      </BrowserRouter>
-    </>
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
-
-export default App;
