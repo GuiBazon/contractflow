@@ -1,6 +1,7 @@
 const db = require('../config/db');
 const recebiveis = require('./recebivelService');
 const { period, dateWhere } = require('../utils/query');
+const { calcularProjecao } = require('./financeiroService');
 
 async function summary(usuarioId, query = {}) {
   const dates = period(query);
@@ -20,11 +21,10 @@ async function summary(usuarioId, query = {}) {
   const recebido = Number(income[0].recebido);
   const despesas_pagas = Number(expenses[0].pagas);
   const despesas_pendentes = Number(expenses[0].pendentes);
-  const saldo_realizado = Number((recebido - despesas_pagas).toFixed(2));
   return { periodo: dates, clientes: Number(counts[0].clientes), contratos_ativos: Number(counts[0].contratos_ativos),
     recebido, pendente: financeiro.pendente, atrasado: financeiro.atrasado,
-    despesas_pagas, despesas_pendentes, saldo_realizado,
-    saldo_projetado: Number((saldo_realizado + financeiro.pendente - despesas_pendentes).toFixed(2)) };
+    despesas_pagas, despesas_pendentes,
+    ...calcularProjecao({ recebido, pendente: financeiro.pendente, despesas_pagas, despesas_pendentes }) };
 }
 
 async function monthly(usuarioId, query) {

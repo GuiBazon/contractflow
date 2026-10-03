@@ -3,7 +3,7 @@ const { HttpError } = require('./http');
 
 function integer(value, name, { optional = false, max = Number.MAX_SAFE_INTEGER } = {}) {
   if (optional && (value === undefined || value === '')) return null;
-  if (!/^[1-9]\d*$/.test(String(value)) || !Number.isSafeInteger(Number(value)) || Number(value) > max) {
+  if (!['number', 'string'].includes(typeof value) || !/^[1-9]\d*$/.test(String(value)) || !Number.isSafeInteger(Number(value)) || Number(value) > max) {
     throw new HttpError(400, `${name} deve ser um inteiro positivo`);
   }
   return Number(value);
