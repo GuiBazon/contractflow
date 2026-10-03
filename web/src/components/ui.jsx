@@ -44,7 +44,7 @@ export function QueryState({ query, children }) {
     return (
       <Notice error>
         {query.error}{" "}
-        <button className="text-button" onClick={query.reload}>
+        <button type="button" className="text-button" onClick={query.reload}>
           Tentar novamente
         </button>
       </Notice>
@@ -114,6 +114,7 @@ export function Pagination({ data, page, onPage }) {
       </span>
       <div className="actions">
         <button
+          type="button"
           className="button secondary"
           disabled={page <= 1}
           onClick={() => onPage(page - 1)}
@@ -121,6 +122,7 @@ export function Pagination({ data, page, onPage }) {
           Anterior
         </button>
         <button
+          type="button"
           className="button secondary"
           disabled={page >= totalPages}
           onClick={() => onPage(page + 1)}
