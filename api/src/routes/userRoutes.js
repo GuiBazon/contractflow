@@ -1,0 +1,10 @@
+const router = require('express').Router();
+const controller = require('../controllers/userController');
+const { asyncHandler } = require('../utils/http');
+router.use(require('../middlewares/authMiddleware'),require('../middlewares/requireAdmin'));
+router.get('/',asyncHandler(controller.list));
+router.get('/:id',asyncHandler(controller.get));
+router.put('/:id',asyncHandler(controller.update));
+router.patch('/:id',asyncHandler(controller.update));
+router.delete('/:id',asyncHandler(controller.update));
+module.exports = router;

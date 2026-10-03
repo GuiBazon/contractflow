@@ -167,3 +167,42 @@ processamentos simultâneos (429 se ocupado), conversão e OCR têm limites de t
 Arquivos inválidos recebem 400; documento muito grande/páginas demais recebe 413.
 Para PDFs escaneados grandes, o cliente precisa de timeout compatível com o
 processamento; as amostras de apresentação são de uma página.
+
+## Usuários, permissões e sessões — RF03 / RNF01–05
+
+Cadastro/login preservam os caminhos e respostas da Sprint 1. Somente o primeiro
+cadastro vira ADMIN, inclusive com cadastros concorrentes. Cadastro público ignora
+perfil enviado pelo cliente. Senha: mínimo 6 caracteres, máximo 72 bytes UTF-8.
+
+| Método | URL | Acesso / comportamento |
+| --- | --- | --- |
+| GET | `/api/auth/me` | Sessão atual; `{ usuario: { id, nome, email, perfil } }` |
+| PATCH | `/api/auth/password` | `{ senha_atual, nova_senha }`; revoga sessões e exige novo login |
+| POST | `/api/auth/logout` | Revoga todas as sessões da própria conta |
+| GET | `/api/usuarios` | ADMIN; paginação e busca `q`; sem hash/token |
+| GET | `/api/usuarios/:id` | ADMIN; dados administrativos do usuário |
+| PUT ou PATCH | `/api/usuarios/:id` | ADMIN; `nome`, `email`, `perfil`, `ativo` |
+| DELETE | `/api/usuarios/:id` | ADMIN; desativa a conta, preserva registros financeiros |
+
+Último ADMIN ativo não pode ser desativado/rebaixado (409). Toda atualização
+administrativa revoga as sessões anteriores do alvo. JWT ainda dura 8 horas,
+mas perfil, atividade e versão da sessão são verificados no banco a cada request.
+Sessão revogada/desativada recebe 401; login desativado recebe 403.
+ADMIN gerencia contas; **não recebe acesso ao financeiro das outras contas**.
+
+`npm start`/`npm run dev` aplicam `database/migrations` automaticamente; migrações
+podem ser executadas com `npm run db:migrate`. O registro de versão/checksum impede
+alterar uma migração já aplicada. Não é necessário recriar o banco para atualizar
+`usuarios.token_version`. Testes também verificam repetição e preservação dos dados.
+
+No cloud, build de Docker pode usar a CA pública fornecida pelo ambiente:
+
+```bash
+BUILDX_CONFIG=/workspace/contractflow-cloud/buildx docker build \
+  --secret id=environment_ca,src=/usr/local/share/ca-certificates/environment-proxy-ca.crt \
+  -t contractflow-api-sprint2 api
+```
+
+Execute da raiz do repositório. Essa opção atende ao proxy desta máquina; em
+ambiente comum, `docker build -t contractflow-api-sprint2 api` basta. O certificado
+fica disponível somente durante o build; a verificação TLS permanece habilitada.

@@ -29,6 +29,11 @@ function makeDb() {
   };
 
   async function dispatch(sql, params) {
+    // Estado persistido da sessão; controles reais de desativação/revogação
+    // são exercitados também pela suíte com MySQL.
+    if (String(sql).startsWith('SELECT id, nome, email, perfil, ativo, token_version FROM usuarios WHERE id')) {
+      return [[{ id: params[0], nome: 'Usuario', email: 'u@example.com', perfil: 'USUARIO', ativo: 1, token_version: 0 }]];
+    }
     for (const { substr, handler } of handlers) {
       if (String(sql).includes(substr)) {
         return handler(sql, params);

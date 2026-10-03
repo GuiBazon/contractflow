@@ -16,6 +16,7 @@ async function initialize() {
       .replace(/CREATE DATABASE IF NOT EXISTS contractflow[\s\S]*?;/, '')
       .replace(/USE contractflow;/, '');
     await connection.query(schema);
+    await require('../../scripts/migrate').migrate(connection);
   } finally {
     await connection.end();
   }

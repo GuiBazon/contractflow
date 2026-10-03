@@ -4,8 +4,9 @@ Backend Node.js + Express + MySQL do ContractFlow.
 
 ## Requisitos
 
-- Node.js 20+
+- Node.js 24
 - MySQL 8+ (local) **ou** Docker + Docker Compose
+- Poppler (`pdftoppm`) para OCR de PDF escaneado; incluído no Docker.
 
 ## Configuração local
 
@@ -49,6 +50,11 @@ npm start          # produção
 ```
 
 Health check: `GET http://localhost:8080/api/health`
+
+`npm start` e `npm run dev` aplicam migrações aditivas antes de iniciar o servidor.
+Em banco existente, **preserve os dados**; use `npm run db:migrate` para atualizar
+o schema. O bootstrap `database/schema.sql` é apenas para banco novo.
+Rotas/formatos novos e regras financeiras: [API da Sprint 2](../docs/API_SPRINT_2.md).
 
 ## Docker (reproduzível)
 

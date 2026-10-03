@@ -17,6 +17,8 @@ RUN --mount=type=secret,id=environment_ca \
 
 # Copia o codigo-fonte
 COPY src ./src
+COPY scripts ./scripts
+COPY database/migrations ./database/migrations
 # Diretorio de uploads (criado em runtime se nao existir)
 RUN mkdir -p /app/uploads /app/.cache \
     && chown -R node:node /app/uploads /app/.cache
@@ -28,4 +30,4 @@ EXPOSE 8080
 
 USER node
 
-CMD ["node", "src/server.js"]
+CMD ["npm", "start"]

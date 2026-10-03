@@ -4,12 +4,13 @@
   "description": "Backend inicial do ContractFlow",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
+    "start": "node scripts/migrate.js && node src/server.js",
+    "dev": "node scripts/migrate.js && node --watch src/server.js",
     "test": "jest",
     "test:unit": "jest tests/unit",
     "test:api": "jest tests/integration",
-    "test:mysql": "jest --config jest.mysql.config.js --runInBand"
+    "test:mysql": "jest --config jest.mysql.config.js --runInBand",
+    "db:migrate": "node scripts/migrate.js"
   },
   "keywords": [
     "contractflow",

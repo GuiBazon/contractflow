@@ -24,6 +24,7 @@ app.use((req, res) => {
 
 // RNF14 - erros nao vazam detalhes internos para o cliente
 app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
   const status = err.status || 500;
   if (status >= 500) {
     console.error(err);
