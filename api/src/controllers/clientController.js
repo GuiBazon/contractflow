@@ -1,5 +1,7 @@
 const db = require('../config/db');
 const { onlyDigits, isValidCpfCnpj, isEmail, isState, str } = require('../utils/validators');
+const { pagination,integer } = require('../utils/query');
+const { asyncHandler } = require('../utils/http');
 
 const VALID_FIELDS = [
   'nome_razao_social',
@@ -18,10 +20,8 @@ const VALID_FIELDS = [
 
 // Todos os clientes sempre filtrados pelo dono (RNF04 / isolamento de dados)
 async function listClientes(req, res) {
-  const page = Math.max(1, Number(req.query.page) || 1);
-  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+  const { page,limit,offset } = pagination(req.query);
   const q = str(req.query.q);
-  const offset = (page - 1) * limit;
 
   const where = ['cl.usuario_id = ?'];
   const params = [req.user.id];
@@ -62,6 +62,7 @@ async function listClientes(req, res) {
 
 async function getClienteById(req, res) {
   const { id } = req.params;
+  integer(id,'Cliente');
 
   try {
     const [rows] = await db.execute(
@@ -156,6 +157,7 @@ async function createCliente(req, res) {
 
 async function updateCliente(req, res) {
   const { id } = req.params;
+  integer(id,'Cliente');
   const campos = req.body;
 
   if (Object.keys(campos).length === 0) {
@@ -234,6 +236,7 @@ async function updateCliente(req, res) {
 
 async function deleteCliente(req, res) {
   const { id } = req.params;
+  integer(id,'Cliente');
 
   try {
     const [result] = await db.execute(
@@ -258,9 +261,9 @@ async function deleteCliente(req, res) {
 }
 
 module.exports = {
-  listClientes,
-  getClienteById,
-  createCliente,
-  updateCliente,
-  deleteCliente,
+  listClientes: asyncHandler(listClientes),
+  getClienteById: asyncHandler(getClienteById),
+  createCliente: asyncHandler(createCliente),
+  updateCliente: asyncHandler(updateCliente),
+  deleteCliente: asyncHandler(deleteCliente),
 };

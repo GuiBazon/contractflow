@@ -11,16 +11,15 @@ const {
 const { getResumoContrato } = require('../services/financeiroService');
 const { registrarHistorico } = require('../services/historicoService');
 const { isDate, str } = require('../utils/validators');
+const { pagination,integer,choice,period } = require('../utils/query');
+const { asyncHandler } = require('../utils/http');
 
 async function listContratos(req, res) {
-  const page = Math.max(1, Number(req.query.page) || 1);
-  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+  const { page,limit,offset } = pagination(req.query);
   const q = str(req.query.q);
-  const status = str(req.query.status).toUpperCase();
-  const clienteId = Number(req.query.cliente);
-  const ini = str(req.query.inicio);
-  const fim = str(req.query.fim);
-  const offset = (page - 1) * limit;
+  const status = req.query.status === undefined ? null : choice(req.query.status,VALID_STATUS,'Status');
+  const clienteId = integer(req.query.cliente,'Cliente',{ optional: true });
+  const { de: ini,ate: fim } = period({ de: req.query.inicio ?? req.query.de,ate: req.query.fim ?? req.query.ate });
 
   const where = ['c.usuario_id = ?'];
   const params = [req.user.id];
@@ -88,6 +87,7 @@ async function listContratos(req, res) {
 
 async function getContratoById(req, res) {
   const { id } = req.params;
+  integer(id,'Contrato');
 
   try {
     const contrato = await obterContratoDono(id, req.user.id);
@@ -279,6 +279,7 @@ async function generateParcelas(req, res) {
 
 async function deleteContrato(req, res) {
   const { id } = req.params;
+  integer(id,'Contrato');
 
   try {
     const contrato = await obterContratoDono(id, req.user.id);
@@ -312,6 +313,7 @@ async function deleteContrato(req, res) {
 
 async function getHistorico(req, res) {
   const { id } = req.params;
+  integer(id,'Contrato');
 
   try {
     const contrato = await obterContratoDono(id, req.user.id);
@@ -336,12 +338,12 @@ async function getHistorico(req, res) {
 }
 
 module.exports = {
-  listContratos,
-  getContratoById,
-  createContrato,
-  updateContrato,
-  updateContratoStatus,
-  generateParcelas,
-  deleteContrato,
-  getHistorico,
+  listContratos: asyncHandler(listContratos),
+  getContratoById: asyncHandler(getContratoById),
+  createContrato: asyncHandler(createContrato),
+  updateContrato: asyncHandler(updateContrato),
+  updateContratoStatus: asyncHandler(updateContratoStatus),
+  generateParcelas: asyncHandler(generateParcelas),
+  deleteContrato: asyncHandler(deleteContrato),
+  getHistorico: asyncHandler(getHistorico),
 };
