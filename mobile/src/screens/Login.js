@@ -9,7 +9,6 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 
 import { colors, spacing, typography } from '../theme';
@@ -73,20 +72,6 @@ export function Login({ navigation }) {
     } finally {
       setCarregando(false);
     }
-  }
-
-  function handleEsqueciSenha() {
-    Alert.alert(
-      'Recuperacao de senha',
-      'A funcionalidade de recuperacao de senha sera implementada em breve.',
-    );
-  }
-
-  function handleCriarConta() {
-    Alert.alert(
-      'Criar conta',
-      'A tela de criacao de conta sera implementada em breve.',
-    );
   }
 
   return (
@@ -186,16 +171,6 @@ export function Login({ navigation }) {
                 accessibilityLabel="Entrar na conta"
               />
             )}
-
-            <TouchableOpacity
-              style={styles.linkBtn}
-              onPress={handleEsqueciSenha}
-              disabled={carregando}
-              accessibilityLabel="Esqueci minha senha"
-              accessibilityRole="button"
-            >
-              <Text style={styles.linkText}>Esqueci minha senha</Text>
-            </TouchableOpacity>
 
             <View style={styles.createAccountRow}>
               <Text style={styles.createAccountMuted}>

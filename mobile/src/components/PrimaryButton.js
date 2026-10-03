@@ -5,6 +5,8 @@ import { colors, spacing, typography } from '../theme';
 export function PrimaryButton({ title, onPress, style, disabled }) {
   return (
     <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={title}
       style={[styles.btn, disabled && styles.disabled, style]}
       onPress={onPress}
       disabled={disabled}

@@ -44,3 +44,8 @@ export function formatarCPFCNPJ(texto) {
     .replace(/(\d{3})(\d)/, '$1/$2')
     .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
 }
+
+export function parseValor(value) {
+  const text = String(value ?? '').trim();
+  return Number(text.includes(',') ? text.replace(/\./g, '').replace(',', '.') : text);
+}

@@ -21,6 +21,9 @@ export function BottomNavigation({ state, navigation }) {
           const isActive = state.routes[state.index].name === tab.name;
           return (
             <TouchableOpacity
+              accessibilityRole="tab"
+              accessibilityLabel={tab.label}
+              accessibilityState={{ selected: isActive }}
               key={tab.name}
               style={styles.tab}
               onPress={() => navigation.navigate(tab.name)}

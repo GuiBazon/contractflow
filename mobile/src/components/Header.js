@@ -8,15 +8,17 @@ export function Header({
   subtitle,
   leftIcon,
   rightIcon,
+  rightLabel = 'Mais opções',
   onLeftPress,
   onRightPress,
   rightIcon2,
+  rightLabel2 = 'Ação secundária',
   onRightPress2,
 }) {
   return (
     <View style={styles.container}>
       {leftIcon ? (
-        <TouchableOpacity onPress={onLeftPress} style={styles.iconBtn}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Voltar" onPress={onLeftPress} style={styles.iconBtn}>
           <Ionicons name={leftIcon} size={24} color={colors.textPrimary} />
         </TouchableOpacity>
       ) : (
@@ -28,12 +30,12 @@ export function Header({
       </View>
       <View style={styles.rightIcons}>
         {rightIcon2 && (
-          <TouchableOpacity onPress={onRightPress2} style={styles.iconBtn}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={rightLabel2} onPress={onRightPress2} style={styles.iconBtn}>
             <Ionicons name={rightIcon2} size={22} color={colors.textPrimary} />
           </TouchableOpacity>
         )}
         {rightIcon && (
-          <TouchableOpacity onPress={onRightPress} style={styles.iconBtn}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={rightLabel} onPress={onRightPress} style={styles.iconBtn}>
             <Ionicons name={rightIcon} size={22} color={colors.textPrimary} />
           </TouchableOpacity>
         )}

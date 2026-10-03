@@ -25,7 +25,8 @@
           "visible": "leanback",
           "behavior": "overlay-swipe"
         }
-      ]
+      ],
+      "expo-secure-store"
     ]
   }
 }

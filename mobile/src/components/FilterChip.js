@@ -4,7 +4,7 @@ import { colors, spacing, typography } from '../theme';
 
 export function FilterChip({ label, active, onPress }) {
   return (
-    <TouchableOpacity
+    <TouchableOpacity accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: active }}
       style={[styles.chip, active && styles.active]}
       onPress={onPress}
       activeOpacity={0.7}

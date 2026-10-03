@@ -2,9 +2,12 @@
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { colors, spacing, typography } from '../theme';
 
-export function SecondaryButton({ title, onPress, style, danger }) {
+export function SecondaryButton({ title, onPress, style, danger, disabled }) {
   return (
     <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      disabled={disabled}
       style={[styles.btn, danger && styles.btnDanger, style]}
       onPress={onPress}
       activeOpacity={0.8}

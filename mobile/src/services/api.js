@@ -1,7 +1,9 @@
 import axios from 'axios';
-import { getToken, limparSessao } from './storage';
+import { Platform } from 'react-native';
+import { getToken, limparSessao, salvarUsuario } from './storage';
+import { voltarAoLogin } from '../navigation/navigationRef';
 
-const API_URL = 'http://10.89.240.66:8080/api';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || (Platform.OS === 'android' ? 'http://10.0.2.2:8080/api' : 'http://127.0.0.1:8080/api');
 
 export { API_URL };
 
@@ -27,8 +29,8 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
-      limparSessao();
+    if (error.response?.status === 401 && !/\/auth\/(login|register)$/.test(error.config?.url || '')) {
+      limparSessao().finally(voltarAoLogin);
     }
     return Promise.reject(error);
   }
@@ -113,31 +115,19 @@ const api = {
   deleteDocumento: (contratoId, documentoId) =>
     apiClient.delete(`/documentos/${contratoId}/documentos/${documentoId}`).then((res) => res.data),
 
-  uploadDocumento: (contratoId, { uri, nome, mime, tipo = 'ANEXO', descricao }) => {
-    const formData = new FormData();
-    formData.append('arquivo', { uri, name: nome, type: mime });
-    formData.append('tipo', tipo);
-    if (descricao) formData.append('descricao', descricao);
-    return apiClient
-      .post(`/documentos/${contratoId}/documentos`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 30000,
-      })
-      .then((res) => res.data);
+  uploadDocumento: async (contratoId, { uri, nome, mime, file, tipo = 'ANEXO', descricao }) => {
+    const data = await arquivoMultipart({ uri, nome, mime, file });
+    data.append('tipo', tipo);
+    if (descricao) data.append('descricao', descricao);
+    return apiClient.post('/contratos/' + contratoId + '/documentos', data, multipartOptions(60000)).then((res) => res.data);
   },
-
-  ocrExtract: async ({ uri, nome, mime }) => {
-    const formData = new FormData();
-    formData.append('arquivo', { uri, name: nome, type: mime });
-    return apiClient
-      .post('/ocr/extract', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 60000,
-      })
-      .then((res) => res.data);
+  ocrExtract: async (asset) => {
+    const data = await arquivoMultipart(asset);
+    return apiClient.post('/ocr/extract', data, multipartOptions(660000)).then((res) => res.data);
   },
 
   ocrGet: (id) => apiClient.get(`/ocr/${id}`).then((res) => res.data),
+  ocrCancel: (id) => apiClient.delete(`/ocr/${id}`).then((res) => res.data),
 
   ocrUpdate: (id, dados) =>
     apiClient.patch(`/ocr/${id}`, { dados }).then((res) => res.data),
@@ -145,42 +135,61 @@ const api = {
   ocrConfirmar: (id, dados) =>
     apiClient.post(`/ocr/${id}/confirmar`, { dados }).then((res) => res.data),
 
+  me: () => apiClient.get('/auth/me').then((res) => res.data),
+  logout: async () => {
+    try { await apiClient.post('/auth/logout'); }
+    finally { await limparSessao(); voltarAoLogin(); }
+  },
+  mudarSenha: (dados) => apiClient.patch('/auth/password', dados).then((res) => res.data),
+  dashboard: (params = {}) => apiClient.get('/dashboard', { params }).then((res) => res.data),
+  listRecebiveis: (params = {}) => apiClient.get('/recebiveis', { params }).then((res) => res.data),
+  listDespesas: (params = {}) => apiClient.get('/despesas', { params }).then((res) => res.data),
+  getDespesa: (id) => apiClient.get('/despesas/' + id).then((res) => res.data),
+  createDespesa: (dados) => apiClient.post('/despesas', dados).then((res) => res.data),
+  updateDespesa: (id, dados) => apiClient.put('/despesas/' + id, dados).then((res) => res.data),
+  deleteDespesa: (id) => apiClient.delete('/despesas/' + id).then((res) => res.data),
+  alertas: (params = {}) => apiClient.get('/alertas', { params }).then((res) => res.data),
+  relatorio: (tipo, params = {}) => apiClient.get('/relatorios/' + tipo, { params }).then((res) => res.data),
+  calcular: (tipo, dados) => apiClient.post('/calculadora/' + tipo, dados).then((res) => res.data),
+  renovar: (id, dados) => apiClient.post('/contratos/' + id + '/renovar', dados).then((res) => res.data),
+  listUsuarios: (params = {}) => apiClient.get('/usuarios', { params }).then((res) => res.data),
+  documentos: (params = {}) => apiClient.get('/documentos', { params }).then((res) => res.data),
+  updateUsuario: (id, dados) => apiClient.put('/usuarios/' + id, dados).then((res) => res.data),
   async verificarSessao() {
-    const token = await getToken();
-    if (!token) return false;
-    try {
-      await apiClient.get('/clientes', { params: { limit: 1 } });
-      return true;
-    } catch (error) {
-      if (error.response && error.response.status === 401) {
-        await limparSessao();
-        return false;
-      }
-      return true;
+    if (!await getToken()) return false;
+    try { const data = await this.me(); await salvarUsuario(data.usuario); return true; }
+    catch (error) { if (error.response?.status === 401) await limparSessao(); return false; }
+  },
+  async calendario(params) {
+    const first = await apiClient.get('/calendario', { params: { ...params, page: 1, limit: 1000 } });
+    const result = first.data;
+    for (let page = 2; page <= result.paginacao.totalPages; page++) {
+      const next = await apiClient.get('/calendario', { params: { ...params, page, limit: 1000 } });
+      result.data.push(...next.data.data);
     }
+    return result;
+  },
+  async listTodosClientes() {
+    const first = await this.listClientes('', 1);
+    const result = first.data;
+    for (let page = 2; page <= first.paginacao.totalPages; page++) result.push(...(await this.listClientes('', page)).data);
+    return result;
   },
 
-  async listTodasParcelas() {
-    const contratosData = await this.listContratos({ limit: 100 });
-    const contratosLista = contratosData.data || [];
-    const detalhes = await Promise.all(
-      contratosLista.map((c) => this.listParcelas(c.id).catch(() => ({ data: [] })))
-    );
-    const resultado = [];
-    detalhes.forEach((p, i) => {
-      const contrato = contratosLista[i];
-      (p.data || []).forEach((parcela) => {
-        resultado.push({
-          ...parcela,
-          contrato_id: contrato.id,
-          contrato_numero: contrato.numero,
-          cliente_nome: contrato.cliente_nome,
-        });
-      });
-    });
-    return resultado;
-  },
 };
+
+function multipartOptions(timeout) {
+  return { timeout, headers: { 'Content-Type': Platform.OS === 'web' ? undefined : 'multipart/form-data' } };
+}
+async function arquivoMultipart({ uri, nome, mime, file }) {
+  const data = new FormData();
+  if (Platform.OS === 'web') {
+    const blob = file || await fetch(uri).then((response) => response.blob());
+    if (blob.size > 10 * 1024 * 1024) throw new Error('Arquivo deve ter até 10 MB.');
+    data.append('arquivo', blob, nome);
+  } else data.append('arquivo', { uri, name: nome, type: mime });
+  return data;
+}
 
 function normalizarErro(error) {
   return extrairMensagem(error, 'Ops, algo deu errado. Tente novamente.');

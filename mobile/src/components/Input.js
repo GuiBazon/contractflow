@@ -7,6 +7,7 @@ export function Input({ label, style, ...props }) {
     <View style={styles.container}>
       {label && <Text style={styles.label}>{label}</Text>}
       <TextInput
+        accessibilityLabel={label}
         style={[styles.input, style]}
         placeholderTextColor={colors.textMuted}
         {...props}
