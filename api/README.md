@@ -136,3 +136,11 @@ de teste existente, configure `CF_TEST_DB_HOST`, `CF_TEST_DB_PORT`,
 O workflow `.github/workflows/backend.yml` executa a suíte rápida com relatório
 de cobertura e a suíte MySQL em jobs separados, em push/PR que alterem a API.
 Resultados locais e execução do GitHub Actions são evidências distintas.
+
+### Dependências de produção
+
+O lockfile usa Express 4.22.3 e Multer 2.4.0. Os overrides de `qs` (6.16.0)
+e `uuid` (11.1.1, com suporte CommonJS) corrigem dependências transitivas de
+body-parser/ExcelJS. A exportação XLSX foi revalidada com essas versões.
+`npm audit --omit=dev` retornou zero vulnerabilidades na validação da Sprint 2;
+reavaliar o audit ao atualizar dependências, sem usar downgrade forçado do ExcelJS.
