@@ -69,3 +69,64 @@ Parcelas, pagamentos e documentos têm caminhos canônicos sob
 `GET /api/pagamentos` é alias compatível de `GET /api/receitas`; novas integrações
 devem utilizar `/receitas`. A configuração da URL da API continua sendo tarefa
 dos clientes; um IP privado gravado no código não serve a todas as redes.
+
+## Dashboard e projeção — RF27/32
+
+`GET /api/dashboard?de=2026-10-01&ate=2026-10-31`
+
+Resposta: `periodo`, `clientes`, `contratos_ativos`, `recebido`, `pendente`,
+`atrasado`, `despesas_pagas`, `despesas_pendentes`, `saldo_realizado`,
+`saldo_projetado`, `fluxo_mensal: [{ mes, receitas, despesas, saldo }]` e até 10
+`proximos_vencimentos` ainda não vencidos. Indicadores consideram todos os registros.
+Clientes/contratos ativos são contagens atuais independentes do intervalo.
+
+Sem `de/ate`, indicadores financeiros consideram todo o histórico. Com filtro,
+receitas usam data de pagamento, recebíveis usam vencimento, despesas usam data
+do lançamento. `saldo_realizado = recebido − despesas_pagas`;
+`saldo_projetado = saldo_realizado + pendente − despesas_pendentes`.
+São saldos dos registros da aplicação, sem saldo bancário inicial. Despesas
+canceladas e principal de parcelas canceladas ficam fora da projeção.
+
+## Calendário — RF29 / RN15
+
+`GET /api/calendario?de=2026-10-01&ate=2026-10-31`
+
+Intervalo obrigatório, máximo 366 dias. `tipo` opcional:
+`VENCIMENTO|PAGAMENTO|DESPESA|RENOVACAO`. Paginação `page` e `limit` (padrão
+1000, máximo 5000) permite percorrer todos os eventos sem perda silenciosa.
+
+Cada item contém `id` estável (ex.: `parcela-1`), `tipo`, `data`, `titulo`, `valor`,
+`situacao`, `contrato_id`, `contrato_numero`, `cliente_nome`, `parcela_id`.
+Campos de contrato são nulos para despesas. Vencimento representa saldo em
+aberto; pagamento representa a movimentação realizada. Quitadas/canceladas não
+geram vencimento aberto. RENOVACAO identifica término de contrato ativo/em renovação.
+
+## Alertas em tela — RF30/31/39/42
+
+`GET /api/alertas?dias=7&page=1&limit=20` (`dias`: 1–90).
+`/api/notificacoes` é alias da mesma consulta.
+
+Retorna parcelas com saldo vencido (`ATRASO`), próximas do vencimento
+(`VENCIMENTO`) e contratos próximos do término (`RENOVACAO`), com paginação.
+Dados são derivados no momento da consulta; não há envio de push/e-mail,
+marcação de leitura ou agendamento externo. Renovação efetiva pode ser registrada
+por novo contrato e histórico/status do contrato anterior, conforme fluxo da equipe.
+
+## Relatórios — RF37/38
+
+`GET /api/relatorios/:tipo?de=2026-10-01&ate=2026-10-31&formato=json`
+
+Tipos: `financeiro`, `recebiveis`, `receitas`, `despesas`, `contratos`.
+Formatos: `json` (padrão), `csv`, `xlsx`. JSON é paginado; financeiro retorna
+o resumo agregado. Exportações incluem **todos** os resultados filtrados, até
+10000 registros; acima disso retornam 413 pedindo filtros mais restritos.
+
+Recebíveis usam os mesmos filtros e resumo de `/recebiveis`; receitas aceitam
+cliente/contrato e período do pagamento; despesas aceitam categoria/status/busca
+e período do lançamento; contratos aceitam cliente/contrato/status e período do início.
+Financeiro utiliza as mesmas regras de `/dashboard`.
+
+CSV usa UTF-8 com BOM, separador `;`, campos escapados e neutralização de fórmulas.
+XLSX preserva números e textos em células próprias. Resposta de exportação é
+binária/texto com `Content-Disposition: attachment`; o cliente deve solicitar
+`responseType: 'blob'` no Web e usar download/compartilhamento apropriado no Mobile.

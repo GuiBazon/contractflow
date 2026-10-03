@@ -17,6 +17,11 @@ router.use('/pagamentos', paymentRoutes);
 router.use('/receitas', paymentAllRoutes);
 router.use('/recebiveis', require('./recebivelRoutes'));
 router.use('/despesas', require('./expenseRoutes'));
+router.use('/dashboard', require('./dashboardRoutes'));
+router.use('/calendario', require('./calendarRoutes'));
+router.use('/alertas', require('./alertRoutes'));
+router.use('/notificacoes', require('./alertRoutes'));
+router.use('/relatorios', require('./reportRoutes'));
 router.use('/documentos', documentRoutes);
 router.use('/ocr', ocrRoutes);
 

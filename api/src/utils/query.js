@@ -18,8 +18,8 @@ function pagination(query) {
 }
 
 function period(query, { required = false } = {}) {
-  const de = query.de === undefined ? null : str(query.de);
-  const ate = query.ate === undefined ? null : str(query.ate);
+  const de = query.de == null ? null : str(query.de);
+  const ate = query.ate == null ? null : str(query.ate);
   if ((required && (!de || !ate)) || (de !== null && !isDate(de)) || (ate !== null && !isDate(ate)) || (de && ate && de > ate)) {
     throw new HttpError(400, 'Informe um período válido em de/ate (AAAA-MM-DD)');
   }
