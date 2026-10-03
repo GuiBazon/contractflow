@@ -96,6 +96,11 @@ describe('contratoService.calcularValoresParcelas', () => {
       expect(vals.reduce((a, b) => a + b, 0)).toBeCloseTo(valor_total, 2);
     }
   });
+  test('valor pequeno em muitas parcelas nunca gera parcela negativa', () => {
+    const values = calcularValoresParcelas({ valor_total: 0.08, quantidade_parcelas: 12 });
+    expect(values.every(v => v >= 0)).toBe(true);
+    expect(values.reduce((a,b) => a+b,0)).toBeCloseTo(0.08, 2);
+  });
 });
 
 describe('contratoService.podeGerarParcelas (RN12)', () => {

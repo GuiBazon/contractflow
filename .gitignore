@@ -10,3 +10,4 @@ npm-debug.log*
 api/uploads/
 api/*.traineddata
 api/coverage/
+api/.cache/

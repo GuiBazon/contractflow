@@ -112,6 +112,7 @@ async function createContrato(req, res) {
 
   // cliente deve pertencer ao usuario (RNF04)
   try {
+    validarDados(dados);
     const [cliente] = await db.execute(
       'SELECT id FROM clientes WHERE id = ? AND usuario_id = ?',
       [dados.cliente_id, req.user.id]
@@ -120,6 +121,7 @@ async function createContrato(req, res) {
       return res.status(400).json({ message: 'Cliente inválido' });
     }
   } catch (error) {
+    if (error.status) return res.status(error.status).json({ message: error.message });
     console.error('erro ao validar cliente do contrato:', error);
     return res.status(500).json({ message: 'Erro ao criar contrato' });
   }
@@ -127,7 +129,8 @@ async function createContrato(req, res) {
   const result = await criarContratoComParcelas({ usuarioId: req.user.id, dados });
 
   if (result.erro) {
-    return res.status(result.erro.status || 500).json({ message: result.erro.message });
+    const status = result.erro.status || 500;
+    return res.status(status).json({ message: result.erro.code === 'ER_DUP_ENTRY' ? 'Já existe um contrato com este número' : status >= 500 ? 'Erro ao criar contrato' : result.erro.message });
   }
 
   return res.status(201).json({ message: 'Contrato criado com sucesso', contrato: result.contrato });

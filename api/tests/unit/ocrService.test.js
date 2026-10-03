@@ -13,6 +13,9 @@ describe('ocrService.parseValor', () => {
     expect(parseValor('nada aqui')).toBeNull();
     expect(parseValor('')).toBeNull();
   });
+  test('não perde dígitos quando o valor não possui separador de milhar', () => {
+    expect(parseValor('R$ 1234,56')).toBe(1234.56);
+  });
 });
 
 describe('ocrService.parseData', () => {
@@ -22,6 +25,7 @@ describe('ocrService.parseData', () => {
 
   test('retorna null para data inválida', () => {
     expect(parseData('sem data')).toBeNull();
+    expect(parseData('31/02/2026')).toBeNull();
   });
 });
 

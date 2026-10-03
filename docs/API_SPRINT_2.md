@@ -130,3 +130,40 @@ CSV usa UTF-8 com BOM, separador `;`, campos escapados e neutralização de fór
 XLSX preserva números e textos em células próprias. Resposta de exportação é
 binária/texto com `Content-Disposition: attachment`; o cliente deve solicitar
 `responseType: 'blob'` no Web e usar download/compartilhamento apropriado no Mobile.
+
+## Importação de documentos — RF08–13 / RN09/10/17/18
+
+1. `POST /api/ocr/extract`: multipart `arquivo`, PDF/JPEG/PNG/WebP, até 10 MB.
+   Retorna 201 com `extracao_id`, `dados`, `campos`, `confianca` e `aviso`.
+2. `GET /api/ocr/:id`: consulta própria extração e seu status.
+3. `PATCH /api/ocr/:id`: `{ "dados": { ...campos revisados... } }`.
+   `dados_json` é aceito como alias para compatibilidade com a documentação antiga.
+4. `POST /api/ocr/:id/confirmar`: `{ "dados": { ...campos revisados... } }`.
+5. `DELETE /api/ocr/:id`: cancela uma extração pendente.
+
+Confirmação aceita `cliente_id` próprio ou
+`cliente_novo: { nome_razao_social, cpf_cnpj }` com CPF/CNPJ válido. Se esse
+CPF/CNPJ já existe para a conta, reutiliza o cliente. Obrigatórios financeiros:
+valor total, quantidade (1–120) ou lista de vencimentos, data de início se não
+houver lista. Taxas entre 0 e 100, com até duas casas decimais. `numero` omitido
+vira `OCR-<id>`; preferir revisar explicitamente. Valores fixos de parcela devem
+somar o total do contrato. Centavos remanescentes ficam na última parcela.
+
+PDF textual usa extração direta; PDF escaneado usa Poppler + Tesseract em
+português, até 10 páginas. O modelo de idioma é instalado pelo npm, sem download
+durante a extração. Instalação local de Poppler: `apt-get install poppler-utils`
+em Debian/Ubuntu; Docker e GitHub Actions já incluem esse passo.
+
+Revisão não cria contrato. Confirmação bloqueia a extração e cria cliente,
+contrato, parcelas, documento ORIGINAL e histórico em uma única transação.
+Arquivo é copiado antes do commit; em erro, a cópia é removida e o banco revertido.
+Repetição/concorrência recebe 409; recursos de outra conta recebem 404.
+Interrupção abrupta do processo pode deixar cópia sem referência no disco;
+compensação automática cobre falhas retornadas pela operação, não falhas do host.
+
+`confianca` é um indicador heurístico de campos encontrados, não garantia de
+precisão. Conferência humana permanece obrigatória. Servidor limita a dois
+processamentos simultâneos (429 se ocupado), conversão e OCR têm limites de tempo.
+Arquivos inválidos recebem 400; documento muito grande/páginas demais recebe 413.
+Para PDFs escaneados grandes, o cliente precisa de timeout compatível com o
+processamento; as amostras de apresentação são de uma página.

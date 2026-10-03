@@ -3,12 +3,14 @@
 
 const db = require('../config/db');
 const { isDate, isDecimal, isInteger, str } = require('../utils/validators');
+const { money, integer } = require('../utils/query');
+const { HttpError } = require('../utils/http');
 const { registrarHistorico } = require('./historicoService');
 
 const VALID_STATUS = ['ATIVO', 'PENDENTE', 'ENCERRADO', 'CANCELADO', 'EM_RENOVACAO'];
 
-async function obterContratoDono(contratoId, usuarioId) {
-  const [rows] = await db.execute(
+async function obterContratoDono(contratoId, usuarioId, connection = db) {
+  const [rows] = await connection.execute(
     `SELECT c.*, cl.nome_razao_social AS cliente_nome, cl.cpf_cnpj AS cliente_cpf_cnpj
      FROM contratos c
      JOIN clientes cl ON cl.id = c.cliente_id
@@ -20,10 +22,12 @@ async function obterContratoDono(contratoId, usuarioId) {
 
 // monta o objeto de dados validado; lanca Error com campo message quando invalido
 function validarDados({ cliente_id, numero, valor_total, data_inicio, data_fim, status }) {
+  integer(cliente_id, 'Cliente');
+  money(valor_total, 'Valor total', { zero: true });
   const erros = [];
 
   if (!Number(cliente_id)) erros.push('Cliente é obrigatório');
-  if (!numero) erros.push('Número do contrato é obrigatório');
+  if (!numero || str(numero).length > 50) erros.push('Número do contrato é obrigatório (até 50 caracteres)');
   if (!isDecimal(valor_total)) erros.push('Valor total deve ser um número válido maior ou igual a zero');
   if (data_inicio && !isDate(data_inicio)) erros.push('Data de início inválida');
   if (data_fim && !isDate(data_fim)) erros.push('Data de fim inválida');
@@ -83,19 +87,23 @@ function calcularVencimentos({ quantidade_parcelas, vencimentos, data_inicio }) 
 // distribui o valor total entre as parcelas (a ultima absorve o centavo da divisao)
 function calcularValoresParcelas({ valor_total, valor_parcela, quantidade_parcelas }) {
   if (valor_parcela) return Array(quantidade_parcelas).fill(Number(valor_parcela));
-
-  const base = Number((valor_total / quantidade_parcelas).toFixed(2));
-  const valores = Array(quantidade_parcelas).fill(base);
-  const soma = base * quantidade_parcelas;
-  const diferenca = Number((valor_total - soma).toFixed(2));
-  valores[valores.length - 1] = Number((valores[valores.length - 1] + diferenca).toFixed(2));
+  const centavos = Math.round(valor_total * 100);
+  const base = Math.floor(centavos / quantidade_parcelas);
+  const valores = Array(quantidade_parcelas).fill(base / 100);
+  valores[valores.length - 1] = (centavos - base * (quantidade_parcelas - 1)) / 100;
   return valores;
 }
 
 // cria contrato + parcelas + historico em transacao (RN06/RF14/RF15)
-async function criarContratoComParcelas({ usuarioId, dados }) {
+async function criarContratoComParcelas({ usuarioId, dados, connection }) {
   try {
     validarDados(dados);
+    if (dados.vencimentos !== undefined && !Array.isArray(dados.vencimentos)) throw new HttpError(400, 'Vencimentos devem ser uma lista de datas');
+    integer(dados.quantidade_parcelas ?? dados.vencimentos?.length, 'Quantidade de parcelas', { max: 120 });
+    for (const rate of ['juros_percentual', 'multa_percentual']) {
+      if (money(dados[rate] ?? 0, rate, { zero: true }) > 100) throw new HttpError(400, `${rate} deve estar entre 0 e 100`);
+    }
+    if (dados.valor_parcela !== undefined && Math.round(money(dados.valor_parcela) * 100) * Number(dados.quantidade_parcelas ?? dados.vencimentos?.length) !== Math.round(Number(dados.valor_total) * 100)) throw new HttpError(400, 'Soma das parcelas deve corresponder ao valor total');
   } catch (e) {
     return { erro: e };
   }
@@ -123,9 +131,11 @@ async function criarContratoComParcelas({ usuarioId, dados }) {
     quantidade_parcelas,
   });
 
-  const conn = await db.getConnection();
+  const conn = connection || await db.getConnection();
   try {
-    await conn.beginTransaction();
+    if (!connection) await conn.beginTransaction();
+    const [[cliente]] = await conn.query('SELECT id FROM clientes WHERE id = ? AND usuario_id = ?', [dados.cliente_id, usuarioId]);
+    if (!cliente) throw new HttpError(400, 'Cliente inválido');
 
     const [result] = await conn.execute(
       `INSERT INTO contratos (
@@ -167,16 +177,16 @@ async function criarContratoComParcelas({ usuarioId, dados }) {
       descricao: `Contrato criado com ${quantidade_parcelas} parcela(s) e ${vencimentos.length} vencimento(s)`,
     });
 
-    await conn.commit();
-
-    const contrato = await obterContratoDono(contratoId, usuarioId);
+    const contrato = await obterContratoDono(contratoId, usuarioId, conn);
+    if (!connection) await conn.commit();
     return { contrato };
   } catch (error) {
-    await conn.rollback();
-    console.error('erro ao criar contrato:', error);
+    if (!connection) await conn.rollback();
+    if (error.code === 'ER_DUP_ENTRY') error.status = 409;
+    if (!error.status) console.error('erro ao criar contrato:', error);
     return { erro: error };
   } finally {
-    conn.release();
+    if (!connection) conn.release();
   }
 }
 
