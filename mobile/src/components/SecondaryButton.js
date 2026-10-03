@@ -1,6 +1,6 @@
-﻿import React from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { colors, spacing, typography } from '../theme';
+﻿import React from "react";
+import { TouchableOpacity, Text, StyleSheet } from "react-native";
+import { colors, spacing, typography } from "../theme";
 
 export function SecondaryButton({ title, onPress, style, danger, disabled }) {
   return (
@@ -22,7 +22,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderRadius: 10,
     paddingVertical: spacing.md,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
     borderColor: colors.border,
   },

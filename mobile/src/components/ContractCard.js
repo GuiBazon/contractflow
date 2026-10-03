@@ -1,22 +1,23 @@
-﻿import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors, spacing, typography } from '../theme';
-import { formatCurrency } from '../utils/format';
-import { StatusBadge } from './StatusBadge';
+﻿import React from "react";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { colors, spacing, typography } from "../theme";
+import { formatCurrency } from "../utils/format";
+import { StatusBadge } from "./StatusBadge";
 
 export function ContractCard({ contrato, onPress }) {
-  const progress = contrato.total_parcelas > 0
-    ? contrato.parcelas_pagas / contrato.total_parcelas
-    : 0;
+  const progress =
+    contrato.total_parcelas > 0
+      ? contrato.parcelas_pagas / contrato.total_parcelas
+      : 0;
 
   const nome =
     contrato.descricao ||
     contrato.tipo ||
     contrato.nome ||
     contrato.numero ||
-    'Contrato';
-  const cliente = contrato.cliente_nome || contrato.cliente || '—';
-  const codigo = contrato.numero || contrato.codigo || '';
+    "Contrato";
+  const cliente = contrato.cliente_nome || contrato.cliente || "—";
+  const codigo = contrato.numero || contrato.codigo || "";
   const parcelasPagas =
     contrato.parcelas_pagas !== undefined
       ? contrato.parcelas_pagas
@@ -25,16 +26,26 @@ export function ContractCard({ contrato, onPress }) {
     contrato.total_parcelas || contrato.quantidade_parcelas || 0;
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={"Abrir contrato " + contrato.numero}
+      style={styles.card}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
       <View style={styles.header}>
-        <Text style={styles.nome} numberOfLines={1}>{nome}</Text>
+        <Text style={styles.nome} numberOfLines={1}>
+          {nome}
+        </Text>
         <StatusBadge status={contrato.status} />
       </View>
       <Text style={styles.cliente}>{cliente}</Text>
       <Text style={styles.codigo}>{codigo}</Text>
       <View style={styles.footer}>
         <Text style={styles.valor}>{formatCurrency(contrato.valor_total)}</Text>
-        <Text style={styles.parcelas}>{parcelasPagas}/{totalParcelas} parcelas</Text>
+        <Text style={styles.parcelas}>
+          {parcelasPagas}/{totalParcelas} parcelas
+        </Text>
       </View>
       <View style={styles.progressBg}>
         <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
@@ -53,9 +64,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: spacing.xs,
   },
   nome: {
@@ -76,9 +87,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: spacing.sm,
   },
   valor: {

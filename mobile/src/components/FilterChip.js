@@ -1,10 +1,13 @@
-﻿import React from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { colors, spacing, typography } from '../theme';
+﻿import React from "react";
+import { TouchableOpacity, Text, StyleSheet } from "react-native";
+import { colors, spacing, typography } from "../theme";
 
 export function FilterChip({ label, active, onPress }) {
   return (
-    <TouchableOpacity accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: active }}
+    <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: active }}
       style={[styles.chip, active && styles.active]}
       onPress={onPress}
       activeOpacity={0.7}

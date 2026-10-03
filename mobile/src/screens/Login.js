@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,41 +9,41 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
-} from 'react-native';
+} from "react-native";
 
-import { colors, spacing, typography } from '../theme';
-import { Ionicons } from '@expo/vector-icons';
-import { Input, PrimaryButton, ContractFlowLogo } from '../components';
-import { api, normalizarErro } from '../services/api';
-import { salvarSessao } from '../services/storage';
+import { colors, spacing, typography } from "../theme";
+import { Ionicons } from "@expo/vector-icons";
+import { Input, PrimaryButton, ContractFlowLogo } from "../components";
+import { api, normalizarErro } from "../services/api";
+import { salvarSessao } from "../services/storage";
 
-export function Login({ navigation }) {
-  const [email, setEmail] = useState('');
-  const [senha, setSenha] = useState('');
+export function Login({ navigation, route }) {
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
   const [carregando, setCarregando] = useState(false);
-  const [erro, setErro] = useState('');
+  const [erro, setErro] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
 
   function validarFormulario() {
     const emailLimpo = email.trim();
 
     if (!emailLimpo) {
-      setErro('Digite seu e-mail.');
+      setErro("Digite seu e-mail.");
       return false;
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailLimpo)) {
-      setErro('E-mail invalido.');
+      setErro("E-mail invalido.");
       return false;
     }
 
     if (!senha) {
-      setErro('Digite sua senha.');
+      setErro("Digite sua senha.");
       return false;
     }
 
     if (senha.length < 6) {
-      setErro('A senha deve ter pelo menos 6 caracteres.');
+      setErro("A senha deve ter pelo menos 6 caracteres.");
       return false;
     }
 
@@ -51,7 +51,7 @@ export function Login({ navigation }) {
   }
 
   async function handleLogin() {
-    setErro('');
+    setErro("");
 
     if (carregando) return;
     if (!validarFormulario()) return;
@@ -62,11 +62,11 @@ export function Login({ navigation }) {
       const data = await api.login(email.trim(), senha);
 
       if (!data || !data.token) {
-        throw new Error('Resposta invalida do servidor.');
+        throw new Error("Resposta invalida do servidor.");
       }
 
       await salvarSessao(data.token, data.usuario);
-      navigation.replace('MainTabs');
+      navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
     } catch (e) {
       setErro(normalizarErro(e));
     } finally {
@@ -78,7 +78,7 @@ export function Login({ navigation }) {
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
           contentContainerStyle={styles.container}
@@ -98,9 +98,10 @@ export function Login({ navigation }) {
           </View>
 
           <View style={styles.form}>
-            <Text style={styles.formTitle}>
-              Entrar na sua conta
-            </Text>
+            {route.params?.aviso ? (
+              <Text style={styles.footer}>{route.params.aviso}</Text>
+            ) : null}
+            <Text style={styles.formTitle}>Entrar na sua conta</Text>
 
             <Input
               label="E-mail"
@@ -108,7 +109,7 @@ export function Login({ navigation }) {
               value={email}
               onChangeText={(texto) => {
                 setEmail(texto);
-                setErro('');
+                setErro("");
               }}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -125,7 +126,7 @@ export function Login({ navigation }) {
                 value={senha}
                 onChangeText={(texto) => {
                   setSenha(texto);
-                  setErro('');
+                  setErro("");
                 }}
                 secureTextEntry={!mostrarSenha}
                 editable={!carregando}
@@ -141,12 +142,12 @@ export function Login({ navigation }) {
                 disabled={carregando}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityLabel={
-                  mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'
+                  mostrarSenha ? "Ocultar senha" : "Mostrar senha"
                 }
                 accessibilityRole="button"
               >
                 <Ionicons
-                  name={mostrarSenha ? 'eye-off' : 'eye'}
+                  name={mostrarSenha ? "eye-off" : "eye"}
                   size={22}
                   color={colors.primary}
                 />
@@ -173,12 +174,10 @@ export function Login({ navigation }) {
             )}
 
             <View style={styles.createAccountRow}>
-              <Text style={styles.createAccountMuted}>
-                Nao tem uma conta?
-              </Text>
+              <Text style={styles.createAccountMuted}>Nao tem uma conta?</Text>
 
               <TouchableOpacity
-                onPress={() => navigation.navigate('Cadastro')}
+                onPress={() => navigation.navigate("Cadastro")}
                 disabled={carregando}
                 accessibilityLabel="Criar conta"
                 accessibilityRole="button"
@@ -207,20 +206,20 @@ const styles = StyleSheet.create({
 
   container: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     paddingHorizontal: spacing.xxxl,
     paddingVertical: spacing.xl,
   },
 
   topSection: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: spacing.xxxl + 8,
   },
 
   subtitle: {
     fontSize: typography.sizes.md,
     color: colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: spacing.sm,
   },
 
@@ -236,17 +235,17 @@ const styles = StyleSheet.create({
   },
 
   passwordContainer: {
-    position: 'relative',
+    position: "relative",
   },
 
   showPasswordButton: {
-    position: 'absolute',
+    position: "absolute",
     right: spacing.sm,
-    top: 'auto',
+    top: "auto",
     bottom: spacing.xxl,
     padding: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   errorContainer: {
@@ -257,12 +256,12 @@ const styles = StyleSheet.create({
   erro: {
     color: colors.danger,
     fontSize: typography.sizes.sm,
-    textAlign: 'center',
+    textAlign: "center",
   },
 
   loadingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: spacing.md,
   },
 
@@ -273,7 +272,7 @@ const styles = StyleSheet.create({
   },
 
   linkBtn: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: spacing.lg,
   },
 
@@ -284,9 +283,9 @@ const styles = StyleSheet.create({
   },
 
   createAccountRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     gap: spacing.xs,
   },
 
@@ -302,7 +301,7 @@ const styles = StyleSheet.create({
   },
 
   footer: {
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: typography.sizes.xs,
     color: colors.textMuted,
   },

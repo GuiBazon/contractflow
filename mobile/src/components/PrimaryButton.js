@@ -1,6 +1,6 @@
-﻿import React from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { colors, spacing, typography } from '../theme';
+﻿import React from "react";
+import { TouchableOpacity, Text, StyleSheet } from "react-native";
+import { colors, spacing, typography } from "../theme";
 
 export function PrimaryButton({ title, onPress, style, disabled }) {
   return (
@@ -22,7 +22,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: spacing.md,
-    alignItems: 'center',
+    alignItems: "center",
   },
   disabled: {
     opacity: 0.5,

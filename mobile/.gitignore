@@ -2,6 +2,9 @@ node_modules/
 .expo/
 .expo-shared/
 dist/
+dist-android/
+test-results/
+playwright-report/
 web-build/
 *.log
 .DS_Store

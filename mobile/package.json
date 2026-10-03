@@ -6,7 +6,11 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "lint": "eslint .",
+    "build:web": "expo export --platform web",
+    "build:android": "expo export --platform android --output-dir dist-android",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.15",
@@ -32,5 +36,12 @@
     "react-native-svg": "15.15.4",
     "react-native-web": "~0.21.0"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
+    "eslint": "^10.12.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0"
+  }
 }

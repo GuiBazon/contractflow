@@ -1,121 +1,45 @@
-﻿import React, { useEffect, useState, useCallback } from 'react';
-import { View, FlatList, StyleSheet, SafeAreaView, Text, RefreshControl } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { colors, spacing, typography } from '../theme';
-import { api, normalizarErro } from '../services/api';
-import { Header, SearchInput, ClientCard, EmptyState, LoadingState, ErrorState } from '../components';
-
-export function Clientes() {
-  const navigation = useNavigation();
-  const [busca, setBusca] = useState('');
-  const [clientes, setClientes] = useState([]);
-  const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState('');
-
-  async function carregarClientes() {
-    try {
-      setErro('');
-      const data = await api.listClientes(busca);
-      setClientes(data.data || []);
-    } catch (e) {
-      setErro(normalizarErro(e));
-    } finally {
-      setCarregando(false);
-    }
-  }
-
-  useEffect(() => {
-    carregarClientes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [busca]);
-
-  useFocusEffect(
-    useCallback(() => {
-      carregarClientes();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [busca])
+import React, { useCallback, useState } from "react";
+import { Text } from "react-native";
+import { Screen, QueryResult, Pager, s } from "../components/SprintUI";
+import { ClientCard, Input, PrimaryButton } from "../components";
+import { api } from "../services/api";
+import useDados from "../hooks/useDados";
+export function Clientes({ navigation }) {
+  const [busca, setBusca] = useState("");
+  const [page, setPage] = useState(1);
+  const query = useDados(
+    useCallback(() => api.listClientes(busca, page), [busca, page]),
   );
-
-  function abrirNovoCliente() {
-    navigation.navigate('ClienteForm');
-  }
-
-  function abrirCliente(cliente) {
-    navigation.navigate('ClienteForm', { clienteId: cliente.id });
-  }
-
-  if (carregando) {
-    return (
-      <SafeAreaView style={styles.safe}>
-        <Header title="Clientes" rightIcon="add-circle-outline" onRightPress={abrirNovoCliente} />
-        <LoadingState message="Carregando clientes..." />
-      </SafeAreaView>
-    );
-  }
-
-  if (erro) {
-    return (
-      <SafeAreaView style={styles.safe}>
-        <Header title="Clientes" rightIcon="add-circle-outline" onRightPress={abrirNovoCliente} />
-        <ErrorState message={erro} onRetry={carregarClientes} />
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.safe}>
-      <Header title="Clientes" rightIcon="add-circle-outline" onRightPress={abrirNovoCliente} />
-      <View style={styles.body}>
-        <SearchInput
-          placeholder="Buscar clientes por nome ou CPF/CNPJ..."
-          value={busca}
-          onChangeText={setBusca}
-        />
-        <View style={styles.countRow}>
-          <Text style={styles.countText}>
-            {clientes.length} cliente{clientes.length !== 1 ? 's' : ''}
-          </Text>
-        </View>
-        <FlatList
-          data={clientes}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => <ClientCard cliente={item} onPress={() => abrirCliente(item)} />}
-          ListEmptyComponent={
-            <EmptyState
-              icon="people-outline"
-              title="Nenhum cliente encontrado"
-              message="Toque em + para cadastrar seu primeiro cliente."
-            />
-          }
-          refreshControl={
-            <RefreshControl refreshing={false} onRefresh={carregarClientes} tintColor={colors.primary} />
-          }
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-        />
-      </View>
-    </SafeAreaView>
+    <Screen title="Clientes">
+      <PrimaryButton
+        title="Novo cliente"
+        onPress={() => navigation.navigate("FormCliente")}
+      />
+      <Input
+        label="Buscar clientes"
+        placeholder="Nome, CPF/CNPJ, e-mail ou cidade"
+        value={busca}
+        onChangeText={(value) => {
+          setBusca(value);
+          setPage(1);
+        }}
+      />
+      <QueryResult query={query}>
+        {query.data?.data.map((cliente) => (
+          <ClientCard
+            key={cliente.id}
+            cliente={cliente}
+            onPress={() =>
+              navigation.navigate("DetalheCliente", { clienteId: cliente.id })
+            }
+          />
+        ))}
+        {query.data?.data.length === 0 && (
+          <Text style={s.note}>Nenhum cliente encontrado.</Text>
+        )}
+        <Pager paginacao={query.data?.paginacao} onPage={setPage} />
+      </QueryResult>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  body: {
-    flex: 1,
-    paddingHorizontal: spacing.lg,
-  },
-  countRow: {
-    marginTop: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  countText: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
-  },
-  list: {
-    paddingBottom: spacing.xxl,
-  },
-});

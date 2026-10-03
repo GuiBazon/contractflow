@@ -1,39 +1,58 @@
-﻿import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
-import * as DocumentPicker from 'expo-document-picker';
-import { colors, spacing, typography } from '../theme';
-import { Header, PrimaryButton, SecondaryButton } from '../components';
-import { api, normalizarErro } from '../services/api';
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
+import * as DocumentPicker from "expo-document-picker";
+import { colors, spacing, typography } from "../theme";
+import { Header, PrimaryButton, SecondaryButton } from "../components";
+import { api, normalizarErro } from "../services/api";
 
-const ETAPAS = ['Upload', 'Processo', 'Revisão', 'Confirmação'];
+const ETAPAS = ["Upload", "Processo", "Revisão", "Confirmação"];
 
 const ORIGENS = [
-  { key: 'pdf', icon: 'document-text-outline', title: 'Selecionar PDF', sub: 'Contrato em PDF' },
-  { key: 'galeria', icon: 'images-outline', title: 'Galeria / Arquivos', sub: 'Imagem ou arquivo salvo' },
+  {
+    key: "pdf",
+    icon: "document-text-outline",
+    title: "Selecionar PDF",
+    sub: "Contrato em PDF",
+  },
+  {
+    key: "galeria",
+    icon: "images-outline",
+    title: "Galeria / Arquivos",
+    sub: "Imagem ou arquivo salvo",
+  },
 ];
 
 export function ImportarContrato() {
   const navigation = useNavigation();
-  const route = useRoute();
+
   const [origem, setOrigem] = useState(null);
   const [processando, setProcessando] = useState(false);
   const [salvo, setSalvo] = useState(null);
-  const [erro, setErro] = useState('');
+  const [erro, setErro] = useState("");
 
   const etapaAtual = origem == null ? 0 : processando ? 1 : salvo ? 2 : 0;
 
   async function escolher(o) {
-    setErro('');
+    setErro("");
     setOrigem(o);
     setProcessando(true);
     setSalvo(null);
 
     try {
-      const tipo = o.key === 'pdf'
-        ? ['application/pdf']
-        : ['image/jpeg', 'image/png', 'image/webp'];
+      const tipo =
+        o.key === "pdf"
+          ? ["application/pdf"]
+          : ["image/jpeg", "image/png", "image/webp"];
 
       const picked = await DocumentPicker.getDocumentAsync({
         type: tipo,
@@ -48,14 +67,17 @@ export function ImportarContrato() {
       }
 
       const asset = picked.assets[0];
+      if (asset.size > 10 * 1024 * 1024)
+        throw new Error("Arquivo deve ter até 10 MB.");
       const resultado = await api.ocrExtract({
         uri: asset.uri,
-        nome: asset.name || 'documento.pdf',
-        mime: asset.mimeType || 'application/pdf',
+        file: asset.file,
+        nome: asset.name || "documento.pdf",
+        mime: asset.mimeType || "application/pdf",
       });
 
       setSalvo({
-        nomeArquivo: asset.name || 'documento.pdf',
+        nomeArquivo: asset.name || "documento.pdf",
         extracaoId: resultado.extracao_id,
         dados: resultado.dados || {},
         campos: resultado.campos || [],
@@ -72,22 +94,52 @@ export function ImportarContrato() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <Header title="Importação Inteligente IA" leftIcon="arrow-back" onLeftPress={() => navigation.goBack()} />
+      <Header
+        title="Importar contrato"
+        leftIcon="arrow-back"
+        onLeftPress={() => navigation.goBack()}
+      />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <View style={styles.stepper}>
           {ETAPAS.map((e, i) => (
             <React.Fragment key={e}>
               <View style={styles.stepWrap}>
                 <View
-                  style={[styles.stepCircle, (i <= etapaAtual || salvo) && styles.stepCircleActive]}
+                  style={[
+                    styles.stepCircle,
+                    (i <= etapaAtual || salvo) && styles.stepCircleActive,
+                  ]}
                 >
-                  {i < etapaAtual || (salvo && i < 3)
-                    ? <Ionicons name="checkmark" size={14} color={colors.white} />
-                    : <Text style={[styles.stepNum, (i <= etapaAtual) && styles.stepNumActive]}>{i + 1}</Text>}
+                  {i < etapaAtual || (salvo && i < 3) ? (
+                    <Ionicons name="checkmark" size={14} color={colors.white} />
+                  ) : (
+                    <Text
+                      style={[
+                        styles.stepNum,
+                        i <= etapaAtual && styles.stepNumActive,
+                      ]}
+                    >
+                      {i + 1}
+                    </Text>
+                  )}
                 </View>
-                <Text style={[styles.stepLabel, (i <= etapaAtual) && styles.stepLabelActive]}>{e}</Text>
+                <Text
+                  style={[
+                    styles.stepLabel,
+                    i <= etapaAtual && styles.stepLabelActive,
+                  ]}
+                >
+                  {e}
+                </Text>
               </View>
-              {i < ETAPAS.length - 1 && <View style={[styles.stepLine, i < etapaAtual && styles.stepLineActive]} />}
+              {i < ETAPAS.length - 1 && (
+                <View
+                  style={[
+                    styles.stepLine,
+                    i < etapaAtual && styles.stepLineActive,
+                  ]}
+                />
+              )}
             </React.Fragment>
           ))}
         </View>
@@ -96,7 +148,14 @@ export function ImportarContrato() {
           <>
             <Text style={styles.caption}>Como deseja importar o contrato?</Text>
             {ORIGENS.map((o) => (
-              <TouchableOpacity key={o.key} style={styles.origemCard} onPress={() => escolher(o)} activeOpacity={0.7}>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={o.title}
+                key={o.key}
+                style={styles.origemCard}
+                onPress={() => escolher(o)}
+                activeOpacity={0.7}
+              >
                 <View style={styles.origemIcon}>
                   <Ionicons name={o.icon} size={22} color={colors.primary} />
                 </View>
@@ -104,7 +163,11 @@ export function ImportarContrato() {
                   <Text style={styles.origemTitle}>{o.title}</Text>
                   <Text style={styles.origemSub}>{o.sub}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={colors.textMuted}
+                />
               </TouchableOpacity>
             ))}
           </>
@@ -113,7 +176,8 @@ export function ImportarContrato() {
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.processingTitle}>Processando documento</Text>
             <Text style={styles.processingSub}>
-              Enviando ao servidor e lendo os dados com OCR... isso pode levar alguns segundos.
+              Enviando ao servidor e lendo os dados com OCR... isso pode levar
+              alguns segundos.
             </Text>
           </View>
         ) : salvo ? (
@@ -125,17 +189,23 @@ export function ImportarContrato() {
             <Text style={styles.doneSub}>
               {salvo.confianca > 0
                 ? `Confiança da leitura: ${salvo.confianca}%. Revise os dados detectados antes de confirmar.`
-                : 'Nenhum dado foi detectado automaticamente. Preencha manualmente na revisão.'}
+                : "Nenhum dado foi detectado automaticamente. Preencha manualmente na revisão."}
             </Text>
-            {salvo.aviso ? <Text style={styles.aviso}>{salvo.aviso}</Text> : null}
+            {salvo.aviso ? (
+              <Text style={styles.aviso}>{salvo.aviso}</Text>
+            ) : null}
             <View style={styles.fileRow}>
-              <Ionicons name="document-attach-outline" size={18} color={colors.primary} />
+              <Ionicons
+                name="document-attach-outline"
+                size={18}
+                color={colors.primary}
+              />
               <Text style={styles.fileName}>{salvo.nomeArquivo}</Text>
             </View>
             <PrimaryButton
               title="Revisar dados"
               onPress={() =>
-                navigation.navigate('RevisaoContrato', {
+                navigation.navigate("RevisaoContrato", {
                   extracaoId: salvo.extracaoId,
                 })
               }
@@ -145,13 +215,18 @@ export function ImportarContrato() {
           </View>
         ) : (
           <View style={styles.doneCard}>
-            <View style={[styles.doneIcon, { backgroundColor: colors.dangerLight }]}>
+            <View
+              style={[styles.doneIcon, { backgroundColor: colors.dangerLight }]}
+            >
               <Ionicons name="alert" size={40} color={colors.danger} />
             </View>
             <Text style={styles.doneTitle}>Não foi possível processar</Text>
             <Text style={styles.doneSub}>{erro}</Text>
             <View style={styles.spacer} />
-            <SecondaryButton title="Tentar novamente" onPress={() => setOrigem(null)} />
+            <SecondaryButton
+              title="Tentar novamente"
+              onPress={() => setOrigem(null)}
+            />
           </View>
         )}
       </ScrollView>
@@ -172,12 +247,12 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   stepper: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     marginBottom: spacing.xl,
   },
   stepWrap: {
-    alignItems: 'center',
+    alignItems: "center",
     width: 64,
   },
   stepCircle: {
@@ -187,8 +262,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   stepCircleActive: {
     backgroundColor: colors.primary,
@@ -206,7 +281,7 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xs,
     color: colors.textMuted,
     marginTop: spacing.xs,
-    textAlign: 'center',
+    textAlign: "center",
   },
   stepLabelActive: {
     color: colors.textPrimary,
@@ -227,8 +302,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   origemCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: colors.white,
     borderRadius: 14,
     padding: spacing.lg,
@@ -242,8 +317,8 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 12,
     backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   origemInfo: {
     flex: 1,
@@ -259,7 +334,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   processingCard: {
-    alignItems: 'center',
+    alignItems: "center",
     backgroundColor: colors.white,
     borderRadius: 14,
     padding: spacing.xxl,
@@ -276,10 +351,10 @@ const styles = StyleSheet.create({
   processingSub: {
     fontSize: typography.sizes.md,
     color: colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
   },
   doneCard: {
-    alignItems: 'center',
+    alignItems: "center",
     backgroundColor: colors.white,
     borderRadius: 14,
     padding: spacing.xl,
@@ -291,8 +366,8 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 36,
     backgroundColor: colors.successLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: spacing.lg,
   },
   doneTitle: {
@@ -304,24 +379,24 @@ const styles = StyleSheet.create({
   doneSub: {
     fontSize: typography.sizes.md,
     color: colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: spacing.lg,
   },
   aviso: {
     fontSize: typography.sizes.sm,
-    color: colors.warning || '#B45309',
-    textAlign: 'center',
+    color: colors.warning || "#B45309",
+    textAlign: "center",
     marginBottom: spacing.md,
   },
   fileRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
     backgroundColor: colors.surface,
     borderRadius: 10,
     padding: spacing.md,
     marginBottom: spacing.lg,
-    alignSelf: 'stretch',
+    alignSelf: "stretch",
   },
   fileName: {
     fontSize: typography.sizes.sm,

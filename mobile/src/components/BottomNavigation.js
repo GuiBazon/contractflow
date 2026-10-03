@@ -1,21 +1,51 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../theme';
+import React from "react";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { colors, spacing } from "../theme";
 
 export function BottomNavigation({ state, navigation }) {
   const insets = useSafeAreaInsets();
   const tabs = [
-    { name: 'Inicio', label: 'Inicio', icon: 'home-outline', activeIcon: 'home' },
-    { name: 'Contratos', label: 'Contratos', icon: 'document-text-outline', activeIcon: 'document-text' },
-    { name: 'Clientes', label: 'Clientes', icon: 'people-outline', activeIcon: 'people' },
-    { name: 'Agenda', label: 'Agenda', icon: 'calendar-outline', activeIcon: 'calendar' },
-    { name: 'Financeiro', label: 'Financeiro', icon: 'wallet-outline', activeIcon: 'wallet' },
+    {
+      name: "Inicio",
+      label: "Inicio",
+      icon: "home-outline",
+      activeIcon: "home",
+    },
+    {
+      name: "Contratos",
+      label: "Contratos",
+      icon: "document-text-outline",
+      activeIcon: "document-text",
+    },
+    {
+      name: "Clientes",
+      label: "Clientes",
+      icon: "people-outline",
+      activeIcon: "people",
+    },
+    {
+      name: "Agenda",
+      label: "Agenda",
+      icon: "calendar-outline",
+      activeIcon: "calendar",
+    },
+    {
+      name: "Financeiro",
+      label: "Financeiro",
+      icon: "wallet-outline",
+      activeIcon: "wallet",
+    },
   ];
 
   return (
-    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
+    <View
+      style={[
+        styles.container,
+        { paddingBottom: Math.max(insets.bottom, spacing.sm) },
+      ]}
+    >
       <View style={styles.tabs}>
         {tabs.map((tab) => {
           const isActive = state.routes[state.index].name === tab.name;
@@ -29,7 +59,9 @@ export function BottomNavigation({ state, navigation }) {
               onPress={() => navigation.navigate(tab.name)}
               activeOpacity={0.7}
             >
-              <View style={[styles.iconWrap, isActive && styles.iconWrapActive]}>
+              <View
+                style={[styles.iconWrap, isActive && styles.iconWrapActive]}
+              >
                 <Ionicons
                   name={isActive ? tab.activeIcon : tab.icon}
                   size={22}
@@ -50,28 +82,28 @@ export function BottomNavigation({ state, navigation }) {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.white,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 4,
   },
   tabs: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
     paddingTop: spacing.sm,
     paddingHorizontal: spacing.xs,
   },
   tab: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     flex: 1,
   },
   iconWrap: {
     width: 36,
     height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 14,
   },
   iconWrapActive: {
@@ -81,10 +113,10 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.inactive,
     marginTop: 2,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   labelActive: {
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
