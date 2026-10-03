@@ -69,5 +69,13 @@ renovação, além da regressão dos CRUDs.
 
 Validação local: 84 testes rápidos + 33 cenários MySQL; cobertura combinada de
 91,09% das linhas do backend medido. Workflow Backend automatiza as duas suítes
-e combina os relatórios. A versão final nas telas Web/Mobile ainda exige a
-integração e o ensaio da equipe; os resultados locais não atestam essa etapa.
+e combina os relatórios. Os resultados acima se referem ao backend. Os ensaios das interfaces e da
+integração têm evidências próprias nas branches experimentais abaixo.
+
+## Interfaces de teste — Sprint 2
+
+- [front-teste](https://github.com/GuiBazon/contractflow/tree/front-teste): web em React + Vite, JavaScript; 7 cenários E2E com API/MySQL reais.
+- [mobile-teste](https://github.com/GuiBazon/contractflow/tree/mobile-teste): aplicativo React Native + Expo; 6 cenários E2E na prévia web e bundle Android gerado.
+- [Execução, integração e evidências](docs/FRONT_MOBILE_TESTE.md).
+
+Cada branch contém a interface correspondente. Ainda é necessário conferir o Figma oficial, o resultado remoto do Actions e executar o mobile em aparelho antes da apresentação final.
