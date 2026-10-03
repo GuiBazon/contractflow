@@ -48,94 +48,49 @@ async function listParcelas(req, res) {
 }
 
 async function updateParcela(req, res) {
+  const { integer, money, choice } = require('../utils/query');
+  const { HttpError } = require('../utils/http');
   const { contratoId, parcelaId } = req.params;
-
+  let conn;
   try {
+    integer(parcelaId, 'Parcela');
     const contrato = await obterContratoDono(contratoId, req.user.id);
-    if (!contrato) {
-      return res.status(404).json({ message: 'Contrato não encontrado' });
-    }
-
-    const [parcelas] = await db.execute(
-      'SELECT * FROM parcelas WHERE id = ? AND contrato_id = ?',
-      [parcelaId, contratoId]
-    );
-    if (parcelas.length === 0) {
-      return res.status(404).json({ message: 'Parcela não encontrada' });
-    }
+    if (!contrato) throw new HttpError(404, 'Contrato não encontrado');
+    conn = await db.getConnection();
+    await conn.beginTransaction();
+    const [parcelas] = await conn.execute('SELECT * FROM parcelas WHERE id = ? AND contrato_id = ? FOR UPDATE', [parcelaId, contratoId]);
+    if (!parcelas.length) throw new HttpError(404, 'Parcela não encontrada');
     const parcela = parcelas[0];
-
-    const [pags] = await db.execute(
-      'SELECT COUNT(*) AS total FROM pagamentos WHERE parcela_id = ?',
-      [parcelaId]
-    );
-    const haPagamentos = Number(pags[0].total) > 0;
-
+    const [[{ pago }]] = await conn.query('SELECT COALESCE(SUM(valor),0) AS pago FROM pagamentos WHERE parcela_id = ?', [parcelaId]);
     const updates = [];
     const values = [];
-
-    if (Object.prototype.hasOwnProperty.call(req.body, 'data_vencimento')) {
-      if (!isDate(req.body.data_vencimento)) {
-        return res.status(400).json({ message: 'Data de vencimento inválida' });
-      }
-      updates.push('data_vencimento = ?');
-      values.push(req.body.data_vencimento);
+    if (Object.hasOwn(req.body, 'data_vencimento')) {
+      if (!isDate(req.body.data_vencimento)) throw new HttpError(400, 'Data de vencimento inválida');
+      updates.push('data_vencimento = ?'); values.push(req.body.data_vencimento);
     }
-
-    if (Object.prototype.hasOwnProperty.call(req.body, 'valor')) {
-      if (haPagamentos) {
-        return res.status(400).json({ message: 'Valor da parcela não pode ser alterado após pagamentos' });
-      }
-      if (!isDecimal(req.body.valor)) {
-        return res.status(400).json({ message: 'Valor da parcela inválido' });
-      }
-      updates.push('valor = ?');
-      values.push(Number(req.body.valor));
+    if (Object.hasOwn(req.body, 'valor')) {
+      if (Number(pago) > 0) throw new HttpError(400, 'Valor da parcela não pode ser alterado após pagamentos');
+      updates.push('valor = ?'); values.push(money(req.body.valor, 'Valor da parcela', { zero: true }));
     }
-
-    if (Object.prototype.hasOwnProperty.call(req.body, 'status')) {
-      const novoStatus = str(req.body.status).toUpperCase();
-      if (!['PENDENTE', 'PAGA', 'VENCIDA', 'CANCELADA'].includes(novoStatus)) {
-        return res.status(400).json({ message: 'Status da parcela inválido' });
-      }
-      if (novoStatus === 'CANCELADA' && haPagamentos) {
-        return res.status(400).json({ message: 'Parcela com pagamentos não pode ser cancelada' });
-      }
-      updates.push('status = ?');
-      values.push(novoStatus);
+    if (Object.hasOwn(req.body, 'status')) {
+      const status = choice(req.body.status, ['PENDENTE', 'PAGA', 'VENCIDA', 'CANCELADA'], 'Status da parcela');
+      if (status === 'CANCELADA' && Number(pago) > 0) throw new HttpError(400, 'Parcela com pagamentos não pode ser cancelada');
+      if (status === 'PAGA' && Number(pago) < Number(parcela.valor)) throw new HttpError(400, 'Registre o pagamento para quitar a parcela');
+      updates.push('status = ?'); values.push(status);
     }
-
-    if (updates.length === 0) {
-      return res.status(400).json({ message: 'Nenhum campo válido enviado' });
-    }
-
-    values.push(parcelaId, contratoId);
-    await db.execute(
-      `UPDATE parcelas p
-       JOIN contratos c ON c.id = p.contrato_id
-       JOIN clientes cl ON cl.id = c.cliente_id
-       SET ${updates.join(', ')}
-       WHERE p.id = ? AND p.contrato_id = ? AND cl.usuario_id = ?`,
-      values
-    );
-
-    await registrarHistorico(db, {
-      contratoId: Number(contratoId),
-      usuarioId: req.user.id,
-      acao: 'PARCELA_ALTERADA',
-      descricao: `Parcela ${parcela.numero} atualizada (${updates.join(', ')})`,
-    });
-
-    const [atualizada] = await db.execute(
-      `SELECT id, numero, valor, data_vencimento, status FROM parcelas WHERE id = ?`,
-      [parcelaId]
-    );
-
-    return res.json({ message: 'Parcela atualizada com sucesso', parcela: atualizada[0] });
+    if (!updates.length) throw new HttpError(400, 'Nenhum campo válido enviado');
+    await conn.execute(`UPDATE parcelas SET ${updates.join(', ')} WHERE id = ? AND contrato_id = ?`, [...values, parcelaId, contratoId]);
+    await recalcSituacaoParcela(conn, parcelaId);
+    await registrarHistorico(conn, { contratoId: Number(contratoId), usuarioId: req.user.id, acao: 'PARCELA_ALTERADA', descricao: `Parcela ${parcela.numero} atualizada (${updates.join(', ')})` });
+    const [[atualizada]] = await conn.query('SELECT id, numero, valor, data_vencimento, status FROM parcelas WHERE id = ?', [parcelaId]);
+    await conn.commit();
+    return res.json({ message: 'Parcela atualizada com sucesso', parcela: atualizada });
   } catch (error) {
-    console.error('erro ao atualizar parcela:', error);
-    return res.status(500).json({ message: 'Erro ao atualizar parcela' });
-  }
+    if (conn) await conn.rollback();
+    const status = error.status || 500;
+    if (status >= 500) console.error('erro ao atualizar parcela:', error);
+    return res.status(status).json({ message: status >= 500 ? 'Erro ao atualizar parcela' : error.message });
+  } finally { if (conn) conn.release(); }
 }
 
 module.exports = { listParcelas, updateParcela, recalcSituacaoParcela };

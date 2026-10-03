@@ -68,98 +68,56 @@ const where = ['par.contrato_id = ?', 'cl.usuario_id = ?'];
 }
 
 async function createPagamento(req, res) {
+  const { integer, money } = require('../utils/query');
+  const { HttpError } = require('../utils/http');
   const { contratoId } = req.params;
-  const parcelaId = Number(req.body.parcela_id);
-  const valor = Number(req.body.valor);
   const data_pagamento = str(req.body.data_pagamento);
   const forma_pagamento = str(req.body.forma_pagamento) || null;
-
-  if (!parcelaId) {
-    return res.status(400).json({ message: 'Parcela é obrigatória' });
-  }
-  if (!isDecimal(valor) || valor <= 0) {
-    return res.status(400).json({ message: 'Valor do pagamento deve ser maior que zero' });
-  }
-  if (!isDate(data_pagamento)) {
-    return res.status(400).json({ message: 'Data do pagamento inválida' });
-  }
-
+  let conn;
   try {
+    const parcelaId = integer(req.body.parcela_id, 'Parcela');
+    const valor = money(req.body.valor, 'Valor do pagamento');
+    if (!isDate(data_pagamento)) throw new HttpError(400, 'Data do pagamento inválida');
     const contrato = await obterContratoDono(contratoId, req.user.id);
-    if (!contrato) {
-      return res.status(404).json({ message: 'Contrato não encontrado' });
-    }
-
-    const [parcelas] = await db.execute(
-      'SELECT * FROM parcelas WHERE id = ? AND contrato_id = ?',
+    if (!contrato) throw new HttpError(404, 'Contrato não encontrado');
+    conn = await db.getConnection();
+    await conn.beginTransaction();
+    // Todas as escritas financeiras sobre uma parcela usam o mesmo lock.
+    const [parcelas] = await conn.execute(
+      'SELECT * FROM parcelas WHERE id = ? AND contrato_id = ? FOR UPDATE',
       [parcelaId, contratoId]
     );
-    if (parcelas.length === 0) {
-      return res.status(404).json({ message: 'Parcela não encontrada neste contrato' });
-    }
+    if (parcelas.length === 0) throw new HttpError(404, 'Parcela não encontrada neste contrato');
     const parcela = parcelas[0];
-
-    if (parcela.status === 'CANCELADA') {
-      return res.status(400).json({ message: 'Parcela cancelada não aceita pagamentos' });
-    }
-
-    const [[{ totalPago }]] = await db.query(
-      'SELECT COALESCE(SUM(valor),0) AS totalPago FROM pagamentos WHERE parcela_id = ?',
-      [parcelaId]
+    if (parcela.status === 'CANCELADA') throw new HttpError(400, 'Parcela cancelada não aceita pagamentos');
+    const [[{ totalPago }]] = await conn.query(
+      'SELECT COALESCE(SUM(valor),0) AS totalPago FROM pagamentos WHERE parcela_id = ?', [parcelaId]
     );
-
-    if (Number(totalPago) + valor > Number(parcela.valor) + 0.001) {
-      return res.status(400).json({
-        message: `Pagamento excede o valor da parcela (restam R$ ${(Number(parcela.valor) - Number(totalPago)).toFixed(2)})`,
-      });
-    }
-
-    const conn = await db.getConnection();
-    let pagamentoId;
-    try {
-      await conn.beginTransaction();
-
-      const [result] = await conn.execute(
-        `INSERT INTO pagamentos (parcela_id, valor, data_pagamento, forma_pagamento, observacoes)
-         VALUES (?, ?, ?, ?, ?)`,
-        [parcelaId, Number(valor.toFixed(2)), data_pagamento, forma_pagamento, req.body.observacoes ? String(req.body.observacoes) : null]
-      );
-      pagamentoId = result.insertId;
-
-      await recalcSituacaoParcela(conn, parcelaId);
-
-      await registrarHistorico(conn, {
-        contratoId: Number(contratoId),
-        usuarioId: req.user.id,
-        acao: 'PAGAMENTO',
-        descricao: `Pagamento de R$ ${Number(valor).toFixed(2)} registrado na parcela ${parcela.numero} em ${data_pagamento}`,
-      });
-
-      await conn.commit();
-
-      const [[novoTotal]] = await conn.query(
-        'SELECT COALESCE(SUM(valor),0) AS pago FROM pagamentos WHERE parcela_id = ?',
-        [parcelaId]
-      );
-      return res.status(201).json({
-        message: 'Pagamento registrado com sucesso',
-        pagamento: { id: pagamentoId, parcela_id: parcelaId, valor, data_pagamento, forma_pagamento },
-        parcela: {
-          id: parcelaId,
-          pago: Number(novoTotal.pago),
-          valor: Number(parcela.valor),
-          quitada: Number(novoTotal.pago) >= Number(parcela.valor),
-        },
-      });
-    } catch (error) {
-      await conn.rollback();
-      throw error;
-    } finally {
-      conn.release();
-    }
+    const restante = Math.round(Number(parcela.valor) * 100) - Math.round(Number(totalPago) * 100);
+    if (Math.round(valor * 100) > restante) throw new HttpError(400, `Pagamento excede o valor da parcela (restam R$ ${(restante / 100).toFixed(2)})`);
+    const [result] = await conn.execute(
+      `INSERT INTO pagamentos (parcela_id, valor, data_pagamento, forma_pagamento, observacoes) VALUES (?, ?, ?, ?, ?)`,
+      [parcelaId, valor, data_pagamento, forma_pagamento, req.body.observacoes ? String(req.body.observacoes) : null]
+    );
+    await recalcSituacaoParcela(conn, parcelaId);
+    await registrarHistorico(conn, {
+      contratoId: Number(contratoId), usuarioId: req.user.id, acao: 'PAGAMENTO',
+      descricao: `Pagamento de R$ ${valor.toFixed(2)} registrado na parcela ${parcela.numero} em ${data_pagamento}`,
+    });
+    const [[novoTotal]] = await conn.query('SELECT COALESCE(SUM(valor),0) AS pago FROM pagamentos WHERE parcela_id = ?', [parcelaId]);
+    await conn.commit();
+    return res.status(201).json({
+      message: 'Pagamento registrado com sucesso',
+      pagamento: { id: result.insertId, parcela_id: parcelaId, valor, data_pagamento, forma_pagamento },
+      parcela: { id: parcelaId, pago: Number(novoTotal.pago), valor: Number(parcela.valor), quitada: Number(novoTotal.pago) >= Number(parcela.valor) },
+    });
   } catch (error) {
-    console.error('erro ao registrar pagamento:', error);
-    return res.status(500).json({ message: 'Erro ao registrar pagamento' });
+    if (conn) await conn.rollback();
+    const status = error.status || 500;
+    if (status >= 500) console.error('erro ao registrar pagamento:', error);
+    return res.status(status).json({ message: status >= 500 ? 'Erro ao registrar pagamento' : error.message });
+  } finally {
+    if (conn) conn.release();
   }
 }
 

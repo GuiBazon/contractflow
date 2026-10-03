@@ -24,9 +24,9 @@ app.use((req, res) => {
 
 // RNF14 - erros nao vazam detalhes internos para o cliente
 app.use((err, req, res, next) => {
-  console.error(err);
   const status = err.status || 500;
   if (status >= 500) {
+    console.error(err);
     return res.status(status).json({ message: 'Erro interno do servidor' });
   }
   return res.status(status).json({ message: err.message });

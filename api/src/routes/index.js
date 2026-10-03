@@ -15,6 +15,8 @@ router.use('/contratos', contractRoutes);
 router.use('/parcelas', parcelaRoutes);
 router.use('/pagamentos', paymentRoutes);
 router.use('/receitas', paymentAllRoutes);
+router.use('/recebiveis', require('./recebivelRoutes'));
+router.use('/despesas', require('./expenseRoutes'));
 router.use('/documentos', documentRoutes);
 router.use('/ocr', ocrRoutes);
 

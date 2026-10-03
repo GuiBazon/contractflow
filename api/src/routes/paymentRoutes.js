@@ -12,6 +12,8 @@ const allRouter = express.Router();
 router.use(authMiddleware);
 allRouter.use(authMiddleware);
 
+// Compatibilidade com o cliente Web da Sprint 1.
+router.get('/', listAllPagamentos);
 router.get('/:contratoId/pagamentos', listPagamentos);
 router.post('/:contratoId/pagamentos', createPagamento);
 
