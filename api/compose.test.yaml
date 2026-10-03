@@ -1,0 +1,16 @@
+name: contractflow-test
+services:
+  db:
+    image: mysql:8.0@sha256:7dcddc01f13bab2f15cde676d44d01f61fc9f99fe7785e86196dfc07d358ae2b
+    environment:
+      MYSQL_DATABASE: contractflow_test
+      MYSQL_USER: contractflow_test
+      MYSQL_PASSWORD: contractflow_test
+      MYSQL_ROOT_PASSWORD: test_root_only
+    ports:
+      - '127.0.0.1:${CF_TEST_DB_PORT:-3307}:3306'
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '--silent']
+      interval: 2s
+      timeout: 5s
+      retries: 60

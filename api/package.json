@@ -8,7 +8,8 @@
     "dev": "node --watch src/server.js",
     "test": "jest",
     "test:unit": "jest tests/unit",
-    "test:api": "jest tests/integration"
+    "test:api": "jest tests/integration",
+    "test:mysql": "jest --config jest.mysql.config.js --runInBand"
   },
   "keywords": [
     "contractflow",

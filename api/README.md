@@ -108,3 +108,25 @@ npm run test:api    # apenas integração/API
   e situação de parcela.
 - Os testes de integração exercitam as rotas e controllers reais (via supertest) com um
   `db` simulado — cobrem autenticação, isolamento por usuário e regras de negócio.
+
+### Testes com MySQL real (Sprint 2)
+
+Além da suíte rápida, o fluxo cliente → contrato → parcelas → pagamento → saldo
+é executado contra MySQL 8, incluindo isolamento e constraints reais:
+
+```bash
+# A partir de api/. Banco separado, porta 3307; não usa o .env da aplicação.
+docker compose -f compose.test.yaml up -d --wait
+npm run test:mysql
+docker compose -f compose.test.yaml down
+```
+
+Os testes apagam exclusivamente dados do banco `contractflow_test` antes de cada
+cenário. Nunca aponte essa suíte para dados que deseja preservar. Para um servidor
+de teste existente, configure `CF_TEST_DB_HOST`, `CF_TEST_DB_PORT`,
+`CF_TEST_DB_USER`, `CF_TEST_DB_PASSWORD` e `CF_TEST_DB_NAME`. O nome só aceita
+`contractflow_test` ou `contractflow_test_<sufixo>`; uploads são temporários.
+
+O workflow `.github/workflows/backend.yml` executa a suíte rápida com relatório
+de cobertura e a suíte MySQL em jobs separados, em push/PR que alterem a API.
+Resultados locais e execução do GitHub Actions são evidências distintas.
