@@ -228,7 +228,7 @@ export function Formulario({
       if (field.disabled || !formData.has(field.name)) continue;
       const value = formData.get(field.name);
       values[field.name] =
-        value === "" ? null : field.type === "number" ? Number(value) : value;
+        field.type === "number" ? (value === "" ? null : Number(value)) : value;
     }
     setBusy(true);
     setError("");

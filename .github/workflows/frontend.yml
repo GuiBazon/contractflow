@@ -1,0 +1,85 @@
+name: Frontend — React Vite e fluxos reais
+on:
+  push:
+    paths: ['web/**', 'api/**', '.github/workflows/frontend.yml']
+  pull_request:
+    paths: ['web/**', 'api/**', '.github/workflows/frontend.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: frontend-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_root_only
+          MYSQL_DATABASE: contractflow_test_web
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -ptest_root_only"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: test_root_only
+      DB_NAME: contractflow_test_web
+      JWT_SECRET: contractflow-ci-browser-tests-only-ephemeral-secret
+      PORT: 8080
+      CORS_ORIGINS: http://127.0.0.1:5175
+      NODE_ENV: test
+      CF_E2E_API_URL: http://127.0.0.1:8080/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            api/package-lock.json
+            web/package-lock.json
+      - run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      - run: npm ci --prefix api && npm ci --prefix web
+      - name: Inicializar banco isolado
+        working-directory: api
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const mysql = require('mysql2/promise');
+          (async () => {
+            if (!/^contractflow_test_[a-z0-9_]+$/.test(process.env.DB_NAME)) throw new Error('Banco não é de teste');
+            const db = await mysql.createConnection({
+              host: process.env.DB_HOST, user: process.env.DB_USER,
+              password: process.env.DB_PASSWORD, multipleStatements: true
+            });
+            const schema = fs.readFileSync('database/schema.sql', 'utf8')
+              .replace('CREATE DATABASE IF NOT EXISTS contractflow', 'CREATE DATABASE IF NOT EXISTS ' + process.env.DB_NAME)
+              .replace('USE contractflow;', 'USE ' + process.env.DB_NAME + ';');
+            await db.query(schema); await db.end();
+          })().catch(error => { console.error(error); process.exit(1); });
+          NODE
+      - name: Iniciar API
+        run: |
+          npm --prefix api start > /tmp/contractflow-e2e-api.log 2>&1 &
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8080/api/health > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/contractflow-e2e-api.log
+          exit 1
+      - run: npm --prefix web run lint && npm --prefix web run build
+      - run: npx playwright install --with-deps chromium
+        working-directory: web
+      - run: npm run test:e2e
+        working-directory: web
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: frontend-browser-failure
+          path: web/test-results
+          retention-days: 7

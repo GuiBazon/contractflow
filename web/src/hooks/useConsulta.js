@@ -14,6 +14,7 @@ export default function useConsulta(path, params = {}, allPages = false) {
   });
   const [revision, setRevision] = useState(0);
   const reload = useCallback(() => setRevision((value) => value + 1), []);
+  const key = path + "?" + query + "#" + revision + ":" + allPages;
   useEffect(() => {
     const controller = new AbortController();
     async function consultar() {
@@ -36,19 +37,35 @@ export default function useConsulta(path, params = {}, allPages = false) {
           }
         }
         if (!controller.signal.aborted)
-          setResult({ data, loading: false, error: "" });
+          setResult({ key, data, loading: false, error: "" });
       } catch (error) {
         if (!controller.signal.aborted)
-          setResult({ data: null, loading: false, error: mensagemErro(error) });
+          setResult({
+            key,
+            data: null,
+            loading: false,
+            error: mensagemErro(error),
+          });
       }
     }
     Promise.resolve().then(() => {
       if (!controller.signal.aborted) {
-        setResult((old) => ({ ...old, loading: true, error: "" }));
+        setResult((old) => ({
+          ...old,
+          key,
+          data: null,
+          loading: true,
+          error: "",
+        }));
         consultar();
       }
     });
     return () => controller.abort();
-  }, [path, query, revision, allPages]);
-  return { ...result, reload };
+  }, [path, query, revision, allPages, key]);
+  return {
+    ...result,
+    data: result.key === key ? result.data : null,
+    loading: result.key !== key || result.loading,
+    reload,
+  };
 }
