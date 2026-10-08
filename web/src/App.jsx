@@ -2,12 +2,13 @@
 import Login from "./pages/login/login";
 import Register from "./pages/register/register";
 import Home from "./pages/home/home";
+import Dashboard from "./pages/dashboard/dashboard";
 
 import { CssBaseline } from "@mui/material";
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./components/protected_route/protected_route";
- 
+
 
 function App() {
   return (
@@ -18,12 +19,9 @@ function App() {
         <Routes>
           {/* 🔓 PUBLIC */}
           <Route path="/" element={<Login />} />
-
-          
-          
           <Route path="/register" element={<Register />} />
 
-          {/* 🔒 PROTEGIDA */}
+          {/* 🔒 PROTEGIDAS */}
           <Route
             path="/home"
             element={
@@ -33,7 +31,15 @@ function App() {
             }
           />
 
-          </Routes>
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
       </BrowserRouter>
     </>
   );

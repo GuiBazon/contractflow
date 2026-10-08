@@ -114,7 +114,7 @@ function Login() {
       showAlert("success", "Login realizado com sucesso!");
 
       setTimeout(() => {
-        navigate("/home");
+        navigate("/dashboard");
       }, 800);
     } catch (error) {
       console.error("Erro no login:", error);
