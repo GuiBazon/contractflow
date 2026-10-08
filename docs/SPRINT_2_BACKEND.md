@@ -2,7 +2,9 @@
 
 Entrega informada: **03/11, às 23:59**. Plano preparado em 02/10/2026.
 Referência técnica: checkout no commit `e753de5`, última entrega registrada em 10/09.
-Este documento é um **backlog proposto**, não um registro de funcionalidades entregues.
+Este plano foi atualizado após a execução do backend. A seção 2 preserva o
+diagnóstico inicial; o estado atual e os commits estão na seção 9 e em
+[ENTREGA_SPRINT_2.md](ENTREGA_SPRINT_2.md).
 Responsabilidade confirmada pelo usuário: todo o backend, incluindo OCR, financeiro
 e testes. Execução autorizada ao assistente; a disponibilidade do usuário não
 limita a implementação. Revisão e ensaio seguem necessários para a apresentação.
@@ -31,9 +33,9 @@ da dificuldade na apresentação.
 Uma API pronta só atende parte da demonstração. Cada entrega de backend precisa
 ter uma tarefa correspondente de integração nas interfaces previstas pela equipe.
 
-## 2. Diagnóstico do repositório
+## 2. Diagnóstico inicial do repositório (antes desta implementação)
 
-Verificado nesta preparação:
+Verificado no checkout inicial `e753de5`, antes das correções:
 
 - API Express/MySQL com autenticação, clientes, contratos, parcelas, pagamentos,
   documentos, histórico e rotas de OCR.
@@ -55,7 +57,7 @@ Verificado nesta preparação:
   dele como isolada em outra branch. `docs/ENDPOINTS.md` descreve revisão com
   `dados_json`, enquanto controller e Mobile enviam `dados`.
 
-Riscos observados no código, **a reproduzir com testes antes de declarar correção**:
+Riscos do checkout inicial; agora reproduzidos/corrigidos nos cenários MySQL:
 
 - Pagamento valida o saldo antes de iniciar a transação: requisições simultâneas
   podem ultrapassar o valor da parcela.
@@ -95,23 +97,25 @@ Priorizar requisitos obrigatórios e de prioridade ALTA. Requisitos MÉDIA com
 silenciosamente algo já prometido no protótipo ou no planejamento da equipe.
 
 Antes de um endpoint novo, registrar método, URL, body/query, resposta de exemplo,
-erros, filtros, paginação, permissões e regra financeira. URLs novas abaixo são
-**propostas**, não endpoints já disponíveis.
+erros, filtros, paginação, permissões e regra financeira. URLs detalhadas em [API_SPRINT_2.md](API_SPRINT_2.md) já estão disponíveis
+na branch de trabalho; os exemplos do backlog foram a base da implementação.
 
 ## 4. Backlog em ordem de execução
 
-Todos os cards abaixo começam como **Planejado**. Os IDs são referências locais;
-substituir/adicionar os links dos cards efetivamente criados no Trello.
+Os IDs abaixo são **referências locais**, não cards criados no Trello.
+A implementação de API foi concluída e testada; integração das telas e
+vinculação de evidências continuam pendentes. Ver estado de cada entrega em
+[ENTREGA_SPRINT_2.md](ENTREGA_SPRINT_2.md).
 
 | Card | Entrega | Aceite e testes essenciais | Dependência de interface |
 | --- | --- | --- | --- |
 | BE-S2-01 | CI com a suíte existente | GitHub Actions em push/PR; Node compatível; `npm ci`; falhas interrompem job; logs/resultados acessíveis. Execução local é distinta de execução no GitHub. | Equipe consulta o resultado do PR |
 | BE-S2-02 | Contrato de integração e documentação | Corrigir divergências de URL/payload nos documentos; registrar padrão de datas/dinheiro; combinar configuração de URL da API; manter compatibilidade das rotas já usadas. | Web corrige `/receitas`; Web/Mobile configuram a URL da API |
 | BE-S2-03 | Testes com MySQL real | Banco exclusivo de teste; schema aplicado automaticamente; criação de cliente/contrato/parcelas/pagamento; login/isolamento; limpeza previsível; execução também no Actions. Nunca limpar o banco de demonstração. | Fixtures reutilizáveis na demonstração |
-| BE-S2-04 | Recebíveis, atrasos e integridade de pagamentos | Propor `GET /api/recebiveis`; saldo por parcela = valor − pagamentos; quitação parcial/integral; cancelada fora dos totais previstos; autorização; filtros/paginação; duas requisições concorrentes não ultrapassam saldo. Reusar serviços existentes. | Financeiro e detalhe de contrato exibem os mesmos valores |
-| BE-S2-05 | CRUD de despesas | Propor `/api/despesas`; criar/listar/detalhar/editar/remover conforme regra acordada; dono, valor, data, status/categoria; paginação; entradas inválidas; usuário B não vê/altera despesa de A. Registrar eventual migração sem exigir recriar banco existente. | Telas de despesas Web/Mobile |
-| BE-S2-06 | Dashboard e projeção | Propor `GET /api/dashboard`; agregações no banco, sem somar só uma página; recebido, pendente, atraso líquido, contratos/clientes, vencimentos, receitas/despesas e projeção conforme regra documentada. Testar mais de 100 registros e pagamentos parciais. | Dashboard real nas duas interfaces; substituir agregações parciais |
-| BE-S2-07 | Calendário e alertas | Propor `GET /api/calendario?de=...&ate=...`; vencimentos/pagamentos/eventos definidos no escopo; intervalo validado; datas coerentes; isolamento; quitadas/canceladas tratadas conforme tipo de evento. Alertas inicialmente em tela, se aceito; push/e-mail somente se previsto. | Agenda Web/Mobile e navegação ao contrato |
+| BE-S2-04 | Recebíveis, atrasos e integridade de pagamentos | `GET /api/recebiveis`; saldo por parcela = valor − pagamentos; quitação parcial/integral; cancelada fora dos totais previstos; autorização; filtros/paginação; duas requisições concorrentes não ultrapassam saldo. Reusar serviços existentes. | Financeiro e detalhe de contrato exibem os mesmos valores |
+| BE-S2-05 | CRUD de despesas | `/api/despesas`; criar/listar/detalhar/editar/remover conforme regra acordada; dono, valor, data, status/categoria; paginação; entradas inválidas; usuário B não vê/altera despesa de A. Registrar eventual migração sem exigir recriar banco existente. | Telas de despesas Web/Mobile |
+| BE-S2-06 | Dashboard e projeção | `GET /api/dashboard`; agregações no banco, sem somar só uma página; recebido, pendente, atraso líquido, contratos/clientes, vencimentos, receitas/despesas e projeção conforme regra documentada. Testar mais de 100 registros e pagamentos parciais. | Dashboard real nas duas interfaces; substituir agregações parciais |
+| BE-S2-07 | Calendário e alertas | `GET /api/calendario?de=...&ate=...`; vencimentos/pagamentos/eventos definidos no escopo; intervalo validado; datas coerentes; isolamento; quitadas/canceladas tratadas conforme tipo de evento. Alertas inicialmente em tela, se aceito; push/e-mail somente se previsto. | Agenda Web/Mobile e navegação ao contrato |
 | BE-S2-08 | OCR: leitura e revisão demonstráveis | Testar PDF textual, imagem em português, arquivo inválido e extração sem campos; dados ausentes editáveis; avisos claros; revisão persistida; definir suporte exigido a PDF escaneado. Se prometido, implementar e testar; se fora do escopo, registrar decisão. Modelos necessários disponíveis antes da apresentação. | Importação/revisão nas interfaces previstas; amostra controlada |
 | BE-S2-09 | OCR: confirmação íntegra | Revisado → cliente/contrato/parcelas/documento original/histórico; repetir/concorrer confirmação não duplica; usuário B não acessa extração de A; falha de banco/arquivo não deixa contrato incompleto; transação + compensação do arquivo, sem supor rollback de SQL sobre disco. | Contrato criado aparece na listagem e original abre no detalhe |
 | BE-S2-10 | Permissões e usuários | Implementar política aprovada para ADMIN/USUARIO; gestão de usuários se prevista; usuário comum recebe 403 nas operações restritas; desativação/rebaixamento afeta sessão conforme política; não remover último ADMIN nem retornar hash de senha. ADMIN não ganha acesso financeiro de outros por acidente. | Área administrativa e estados de acesso, se previstos |
@@ -161,7 +165,7 @@ Exemplos de branches e commits (sugestões; não foram criados):
 
 | Tarefa | Branch sugerida | Exemplo de commit |
 | --- | --- | --- |
-| CI | `ci/s2-backend` | `ci(api): executar testes em pushes e pull requests` |
+| CI | `feature/sprint-2-backend` | `ci(api): executar testes em pushes e pull requests` |
 | MySQL real | `test/s2-mysql` | `test(api): validar fluxo financeiro com MySQL real` |
 | Recebíveis | `feat/s2-recebiveis` | `feat(api): listar recebiveis com saldo e situacao` |
 | Concorrência | mesma tarefa financeira, se isolável | `fix(api): impedir pagamentos concorrentes acima do saldo` |
@@ -232,17 +236,23 @@ de startup. Testar no equipamento e rede de apresentação; o setup cloud não p
 que um celular físico alcança a API. Ter uma demonstração alternativa dos fluxos
 essenciais e declarar limitações sem afirmar que uma falha foi corrigida.
 
-## 9. Registro inicial de evidências
+## 9. Registro atual de evidências
 
-| Item | Situação nesta preparação |
+| Item | Situação verificada |
 | --- | --- |
-| Testes existentes | 69/69 passaram localmente, 5 suítes; DB simulado |
-| GitHub Actions | Workflow preparado; execução remota ainda não verificada |
-| MySQL real | 4 cenários passaram localmente: fluxo financeiro, isolamento, constraints e autenticação |
-| Novos módulos deste backlog | Planejados, não implementados |
-| Cards/branches/PRs da Sprint 2 | Branch local `feature/sprint-2-backend`; cards e PR ainda não vinculados |
-| Plano | Incluído na primeira entrega de CI e testes |
+| Testes rápidos | 84/84 passaram localmente, seis suítes |
+| MySQL real | 33/33 passaram localmente, sete suítes; DB isolado e uploads temporários |
+| Cobertura combinada | 91,09% linhas, 85,68% instruções, 71,13% ramificações, 92,90% funções |
+| GitHub Actions | Workflow com testes rápidos, MySQL e merge de cobertura; consultar run remoto antes de afirmar sucesso |
+| Novos módulos | Implementados/testados na API; formatos e limites documentados |
+| Docker de produção | Build e runtime como `node`; login/financeiro/CSV/XLSX/OCR em rede interna sem internet passaram |
+| Ambiente cloud | API/MySQL/Web iniciados; login e listagens pelo proxy verificados; script e instruções reutilizáveis salvos |
+| Branch | `feature/sprint-2-backend`, publicada no GitHub; main preservada |
+| Trello/Notion/Figma | Links da cópia versionada; nenhum card ou documento externo foi alterado |
+| Interfaces finais | Integração e demonstração Web/Mobile pendentes; calculadora/mobile/totais exigem alinhamento |
 
-Primeira entrega técnica proposta: **BE-S2-01**, automatizando a suíte atual,
-seguida dos contratos de integração e testes com MySQL. Os dados do Trello/Notion
-externos e a disponibilidade real podem ajustar a ordem e o escopo deste plano.
+Commits, critérios de aceite dos cards, cenários e roteiro individual em
+[ENTREGA_SPRINT_2.md](ENTREGA_SPRINT_2.md). Os commits foram feitos ao concluir
+blocos reais de implementação/validação, com horários reais. O calendário acima
+continua útil para os ensaios e integrações até 03/11; não representa datas
+artificiais para espalhar o histórico já produzido.

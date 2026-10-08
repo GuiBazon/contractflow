@@ -1,6 +1,8 @@
 # ContractFlow — Endpoints da API
 
-> Status: rotas registradas e verificadas por testes de integração (supertest + db simulado).
+> Sprint 2: rotas registradas e verificadas com Supertest, incluindo MySQL real.
+> Novos formatos, regras e exemplos: [API da Sprint 2](API_SPRINT_2.md).
+> Como repetir/evidências: [Entrega do backend](ENTREGA_SPRINT_2.md).
 
 Base path: `/api` · Formato de erro: `{ "message": "..." }`
 
@@ -36,10 +38,10 @@ Todas as rotas de clientes exigem autenticação via `Bearer` token. Dados sempr
 | `GET` | `/api/contratos` | Lista contratos com filtros e paginação. Retorna recebido/pendente por contrato. | `?page=1&limit=20&q=…&status=ATIVO&cliente=1&inicio=…&fim=…` |
 | `GET` | `/api/contratos/:id` | Detalhe do contrato + resumo financeiro (valor_total, recebido, pendente). | — |
 | `POST` | `/api/contratos` | Cria contrato **com parcelas geradas automaticamente** em transação (RF14/15). Gera vencimentos mensais a partir de `data_inicio` ou aceita lista de vencimentos. Última parcela absorve centavos. | `{ cliente_id, numero, tipo, descricao, valor_total, data_inicio, data_fim, forma_pagamento, quantidade_parcelas, juros_percentual, multa_percentual, observacoes, vencimentos?: [] }` |
-| `PUT` | `/api/contratos/:id` | Atualiza dados básicos. Bloqueia alteração de `numero`/`valor_total` se já existir pagamento. Registra histórico. | `{ descricao, data_inicio, data_fim, forma_pagamento, juros_percentual, multa_percentual, observacoes, numero?, valor_total? }` |
+| `PUT` | `/api/contratos/:id` | Edita/replaneja antes de pagamentos; preserva datas quando só muda o valor. Número/valor/parcelamento protegidos após pagamento. | Campos permitidos, `quantidade_parcelas`, `vencimentos`; ver regras detalhadas |
 | `DELETE` | `/api/contratos/:id` | Remove contrato **só se não tiver parcelas**. Senão retorna 409 orientando usar cancelamento (RN11). | — |
 | `PATCH` | `/api/contratos/:id/status` | Altera status. Registra no histórico. | `{ status: "ATIVO" \| "PENDENTE" \| "ENCERRADO" \| "CANCELADO" \| "EM_RENOVACAO" }` |
-| `POST` | `/api/contratos/:id/parcelas` | Gera parcelas extras. Bloqueado se contrato ENCERRADO ou CANCELADO (RN12). | `{ quantidade_parcelas, vencimentos?: [], valor_parcela }` |
+| `POST` | `/api/contratos/:id/parcelas` | Acrescenta parcelas e amplia o total; até 120 parcelas no contrato. Bloqueia ENCERRADO/CANCELADO (RN12). | `{ quantidade_parcelas, vencimentos?: [], valor_parcela }` |
 | `GET` | `/api/contratos/:id/historico` | Lista eventos registrados (criação, alterações, pagamentos, status) (RF36). | — |
 
 ---
@@ -63,7 +65,7 @@ Todas as rotas de clientes exigem autenticação via `Bearer` token. Dados sempr
 | `POST` | `/api/contratos/:contratoId/pagamentos` | Registra pagamento. Valida que não excede valor da parcela e a parcela não está cancelada. Em transação insere → recalcula situação → registra histórico. | `{ parcela_id, valor, data_pagamento, forma_pagamento, observacoes }` |
 | `GET` | `/api/pagamentos/:contratoId/pagamentos` | Mesmo que acima (formato plano p/ o mobile). | `?page=1&limit=50&de=…&ate=…` |
 | `POST` | `/api/pagamentos/:contratoId/pagamentos` | Mesmo que acima (formato plano p/ o mobile). | `{ parcela_id, valor, data_pagamento, forma_pagamento, observacoes }` |
-| `GET` | `/api/receitas` | Todos os pagamentos do usuário (cross-contratos). Para RF26 (receitas) e RF24 (recebíveis). | `?page=1&limit=50&de=…&ate=…&cliente=1` |
+| `GET` | `/api/receitas` | Pagamentos registrados do usuário (RF26). Alias `/api/pagamentos` preservado. Saldo em aberto fica em `/recebiveis`. | `?page=1&limit=50&de=…&ate=…&cliente=1&contrato=1` |
 
 ---
 
@@ -71,7 +73,7 @@ Todas as rotas de clientes exigem autenticação via `Bearer` token. Dados sempr
 
 | Método | Rota | Descrição | Body / Query |
 |--------|------|-----------|--------------|
-| `POST` | `/api/contratos/:contratoId/documentos` | Upload multipart (`arquivo`). Tipo `ORIGINAL` ou `ANEXO`. Valida MIME/tamanho. Armazena com UUID no nome, gera hash SHA-256. | multipart: `arquivo` + `{ tipo, descricao }` |
+| `POST` | `/api/contratos/:contratoId/documentos` | Upload multipart (`arquivo`). Tipo `ORIGINAL` ou `ANEXO`. Valida MIME/extensão/conteúdo/tamanho. Armazena com UUID no nome, gera hash SHA-256. | multipart: `arquivo` + `{ tipo, descricao }` |
 | `GET` | `/api/contratos/:contratoId/documentos` | Lista documentos do contrato. | — |
 | `GET` | `/api/contratos/:contratoId/documentos/:documentoId/arquivo` | Serve o arquivo binário (Content-Type correto, disposition `inline`). Valida ownership. | — |
 | `DELETE` | `/api/contratos/:contratoId/documentos/:documentoId` | Remove anexo do disco e banco. **Bloqueia** deletar documentos tipo ORIGINAL (RN10). | — |
@@ -88,8 +90,8 @@ Todas as rotas de clientes exigem autenticação via `Bearer` token. Dados sempr
 |--------|------|-----------|--------------|
 | `POST` | `/api/ocr/extract` | Extrai texto/sugestões de PDF ou imagem (RN09: só sugestão). | multipart: `arquivo` |
 | `GET` | `/api/ocr/:id` | Detalha uma extração. | — |
-| `PATCH` | `/api/ocr/:id` | Revisa/corrige os dados extraídos (RF12). | `{ dados_json }` |
-| `POST` | `/api/ocr/:id/confirmar` | Confirma e cria o contrato (RF13/RN17). | — |
+| `PATCH` | `/api/ocr/:id` | Persiste dados revisados sem criar contrato. `dados_json` aceito como alias antigo. | `{ dados: { ...campos } }` |
+| `POST` | `/api/ocr/:id/confirmar` | Confirma cliente/contrato/parcelas/original/histórico em transação; repetir recebe 409. | `{ dados: { ...campos revisados } }` |
 | `DELETE` | `/api/ocr/:id` | Cancela a extração. | — |
 
 ---
@@ -102,16 +104,28 @@ Todas as rotas de clientes exigem autenticação via `Bearer` token. Dados sempr
 
 ---
 
-## Controllers ainda NÃO implementados
+## Módulos entregues na Sprint 2
 
-| Módulo | Módulo final | Requisito |
-|--------|-------------|-----------|
-| `dashboardController.js` | Indicadores gerais do sistema | RF32, RN14 |
-| `expenseController.js` | CRUD de despesas (aluguel, fornecedores, etc.) | RF25 |
-| `reportController.js` | Exportação CSV de contratos/recebíveis/pagamentos | RF37, RF38 |
-| `userController.js` | Gerenciamento de usuários (listar, promover, desativar) | RF03, RNF04 |
+Todas estas rotas exigem Bearer token; financeiro continua isolado por dono,
+inclusive para ADMIN. Detalhes em [API_SPRINT_2.md](API_SPRINT_2.md).
 
-> O núcleo já implementado inclui `ocrController` (`/api/ocr`: extract → revisão → confirmar/cancelar). Serviços auxiliares: `contratoService`, `financeiroService`, `ocrService`, `historicoService`.
+| Método | Rota | Função |
+| --- | --- | --- |
+| GET / PATCH / POST | `/api/auth/me`, `/api/auth/password`, `/api/auth/logout` | Sessão atual, troca autenticada e revogação |
+| GET / GET :id / PUT / PATCH / DELETE | `/api/usuarios` e `/api/usuarios/:id` | Gestão administrativa; desativação preserva dados; último ADMIN protegido |
+| GET | `/api/recebiveis` | Saldo, atraso e encargos estimados; resumo de todo o conjunto filtrado |
+| GET / POST / GET :id / PUT / PATCH / DELETE | `/api/despesas` e `/api/despesas/:id` | CRUD por dono; financeiro pago protegido |
+| GET | `/api/dashboard` | Indicadores/projeção/fluxo mensal sem limite de primeira página |
+| GET | `/api/calendario` | Eventos com `de/ate` obrigatório; intervalo até 366 dias |
+| GET | `/api/alertas`, `/api/notificacoes` | Vencimento, atraso e término; derivados, sem envio externo |
+| GET | `/api/relatorios/:tipo` | JSON, CSV ou XLSX; financeiro/recebíveis/receitas/despesas/contratos |
+| GET | `/api/documentos` | Pesquisa `q`, contrato, tipo e data do upload, com paginação |
+| POST | `/api/calculadora/parcelas`, `/saldo`, `/projecao` | Simulações com os serviços do contrato/dashboard, sem gravar |
+| POST | `/api/contratos/:id/renovar` | Novo contrato/parcelas e históricos; anterior encerrado, financeiro preservado |
+
+Não há recuperação de senha sem login, push/e-mail, estorno ou cobrança automática
+dos juros estimados. Essas limitações e a integração das telas estão registradas
+na matriz de requisitos e na entrega do backend.
 
 ---
 
@@ -119,7 +133,10 @@ Todas as rotas de clientes exigem autenticação via `Bearer` token. Dados sempr
 
 - **Isolamento de dados (RNF04)**: todas as rotas protegidas filtram por `usuario_id`. Um usuário nunca acessa dados de outro.
 - **Senhas**: nunca em texto puro (bcrypt, custo 10).
-- **Token JWT**: expira em 8 horas, header `Authorization: Bearer <token>`.
-- **Uploads**: máx 10MB; formatos PDF, JPEG, PNG, WebP; nomes sanitizados com UUID.
+- **Token JWT**: expira em 8 horas; estado/perfil/versão da sessão lidos do banco a cada request; header `Authorization: Bearer <token>`.
+- **Uploads**: máx 10MB; PDF/JPEG/PNG/WebP; extensão/MIME/conteúdo validados e UUID no nome. OCR: até 10 páginas; modelo português instalado pelo npm.
 - **Situação de parcela**: calculada em runtime — CANCELADA > PAGA (soma pagamentos ≥ valor) > VENCIDA (vencimento < hoje e não pago) > PENDENTE.
 - **Saldo do contrato**: sempre derivado de `parcelas − pagamentos`. Nenhum campo `saldo` desnormalizado.
+
+Datas são civis `AAAA-MM-DD`; a data atual usada para atraso é `CURDATE()` do MySQL.
+Defina o fuso do servidor de banco na implantação; os testes usam UTC.
