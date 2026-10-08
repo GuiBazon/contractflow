@@ -20,6 +20,7 @@ router.use('/recebiveis', require('./recebivelRoutes'));
 router.use('/despesas', require('./expenseRoutes'));
 router.use('/dashboard', require('./dashboardRoutes'));
 router.use('/calendario', require('./calendarRoutes'));
+router.use('/calculadora', require('./calculatorRoutes'));
 router.use('/alertas', require('./alertRoutes'));
 router.use('/notificacoes', require('./alertRoutes'));
 router.use('/relatorios', require('./reportRoutes'));

@@ -94,6 +94,11 @@ function calcJurosMulta({ valor, diasAtraso, jurosPercentual = 0, multaPercentua
   return { multa, juros, total: Number((multa + juros).toFixed(2)) };
 }
 
+function calcularProjecao({ recebido, pendente, despesas_pagas, despesas_pendentes }) {
+  const saldo_realizado = Number((recebido - despesas_pagas).toFixed(2));
+  return { saldo_realizado, saldo_projetado: Number((saldo_realizado + pendente - despesas_pendentes).toFixed(2)) };
+}
+
 // Lista parcelas em atraso de um usuario (RF19/RF20)
 async function listarParcelasAtraso(db, usuarioId, { limite = 50 } = {}) {
   const [rows] = await db.execute(
@@ -126,5 +131,6 @@ module.exports = {
   getValorParcelas,
   recalcSituacaoParcela,
   calcJurosMulta,
+  calcularProjecao,
   listarParcelasAtraso,
 };

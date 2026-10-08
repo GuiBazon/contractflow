@@ -35,6 +35,7 @@ router.put('/:id', updateContrato);
 router.delete('/:id', deleteContrato);
 router.patch('/:id/status', updateContratoStatus);
 router.post('/:id/parcelas', generateParcelas);
+router.post('/:id/renovar', require('../controllers/renewalController').renew);
 router.get('/:id/historico', getHistorico);
 
 module.exports = router;

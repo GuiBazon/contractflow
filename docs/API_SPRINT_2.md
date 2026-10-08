@@ -110,8 +110,8 @@ geram vencimento aberto. RENOVACAO identifica término de contrato ativo/em reno
 Retorna parcelas com saldo vencido (`ATRASO`), próximas do vencimento
 (`VENCIMENTO`) e contratos próximos do término (`RENOVACAO`), com paginação.
 Dados são derivados no momento da consulta; não há envio de push/e-mail,
-marcação de leitura ou agendamento externo. Renovação efetiva pode ser registrada
-por novo contrato e histórico/status do contrato anterior, conforme fluxo da equipe.
+marcação de leitura ou agendamento externo. Renovação efetiva é registrada por
+`POST /api/contratos/:id/renovar`, descrito abaixo.
 
 ## Relatórios — RF37/38
 
@@ -246,3 +246,51 @@ contrato da URL, não somente à conta.
 pesquisa nome/descrição, com filtros e paginação, sem expor caminhos do disco.
 O período filtra a data do upload. Listagem e download por contrato continuam
 compatíveis com os caminhos planos do Mobile.
+
+## Calculadora financeira — RF28
+
+Os cálculos são simulações autenticadas e **não gravam dados**. Utilizam os mesmos
+serviços de criação do contrato, encargos dos recebíveis e projeção do dashboard.
+
+| POST | Body | Resposta |
+| --- | --- | --- |
+| `/api/calculadora/parcelas` | `valor_total`, `quantidade_parcelas`, `data_inicio` ou `vencimentos`; taxas e `dias_atraso` opcionais | `parcelas` com valores, datas, juros/multa estimados e `resumo` |
+| `/api/calculadora/saldo` | `valor`, `valor_pago` (padrão 0), taxas e `dias_atraso` | Principal pago/pendente, encargos estimados e total atualizado |
+| `/api/calculadora/projecao` | `recebido`, `pendente`, `despesas_pagas`, `despesas_pendentes` (padrão 0) | Valores informados e saldos realizado/projetado |
+
+Quantidade 1–120, taxas 0–100, dias de atraso inteiro 0–36500. Juros e multa
+somente quando há saldo e atraso maior que zero; não entram nos pagamentos do
+contrato automaticamente. Valor pago acima do principal recebe 400.
+
+Primeiro vencimento é `data_inicio`, inclusive dia 1. Datas mensais preservam o
+dia-base, limitado ao último dia de cada mês. Distribuição é feita em centavos:
+R$ 1000 / 6 = cinco parcelas de 166,66 e a última de 166,70. Valores muito pequenos
+podem produzir parcelas de zero; a última absorve o restante, sem valores negativos.
+
+A calculadora atual do Mobile arredonda a parcela base para o centavo mais
+próximo e avança o mês quando o início é dia 1. A equipe deve consumir esta rota
+ou alinhar essas regras no cliente; a correspondência entre tela e API está pendente.
+
+## Renovação registrada — RF42
+
+`POST /api/contratos/:id/renovar`
+
+```json
+{ "numero": "CT-2027-001", "valor_total": 1200,
+  "quantidade_parcelas": 3, "data_inicio": "2026-11-01", "data_fim": "2027-01-31" }
+```
+
+Política implementada: origem `ATIVO` ou `EM_RENOVACAO`; outro status recebe 409.
+Novo período começa a partir do fim anterior, quando informado. Cliente permanece
+o mesmo. Número e planejamento financeiro novos são obrigatórios; tipo, texto,
+forma de pagamento e taxas podem ser herdados/alterados. Contrato novo fica ATIVO
+e o anterior ENCERRADO. A decisão de executar a renovação é do usuário; não há job
+que a execute automaticamente quando chega a data de término.
+
+Criação de contrato/parcelas, encerramento e eventos `RENOVADO` e
+`ORIGEM_RENOVACAO` são uma transação. Os IDs dos contratos são relacionados nos
+históricos; não existe coluna nova de vínculo. Duas renovações concorrentes geram
+um contrato novo e 409 na outra operação. Erro de validação/número duplicado
+reverte todas as etapas. Retorno 201: `{ message, contrato_origem_id, contrato }`.
+Pagamentos e documentos anteriores ficam na origem, sem cópia para o novo contrato;
+o documento do novo acordo precisa ser anexado por seu próprio fluxo.
