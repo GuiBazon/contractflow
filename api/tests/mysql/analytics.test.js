@@ -40,6 +40,9 @@ test('calendário diferencia vencimento, pagamento, despesa e término e protege
   const outro = await user('outro@example.com');
   const { body: isolated } = await auth(outro.token).get('/api/calendario?de=2026-01-01&ate=2026-01-31').expect(200);
   expect(isolated.data).toEqual([]);
+  const empty = await auth(outro.token).get('/api/relatorios/contratos?formato=csv').expect(200);
+  expect(empty.text).toContain('"numero"');
+  expect(empty.text).not.toContain('"resultado"');
 });
 
 test('relatórios exportam todos os resultados em CSV/XLSX e neutralizam fórmulas no CSV', async () => {
