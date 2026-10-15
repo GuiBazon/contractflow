@@ -10,7 +10,7 @@ const {
   UPLOAD_ROOT, SUBDIRS, buildUploader, uploadSizeHandler, ensureUploadDirs,
 } = require('../config/uploads');
 const { extrairTextoDeArquivo, extrairDados } = require('../services/ocrService');
-const { criarContratoComParcelas } = require('../services/contratoService');
+const { criarContratoComParcelas, normalizarVencimentosImportados } = require('../services/contratoService');
 const { registrarHistorico } = require('../services/historicoService');
 const { onlyDigits, isValidCpfCnpj, str } = require('../utils/validators');
 
@@ -150,6 +150,7 @@ async function updateExtracao(req, res) {
 
 // Cria (ou resolve) o cliente com os dados revisados.
 // cliente_id usa um cliente existente; cliente_novo recebe nome + cpf/cnpj.
+// Retorna { id, criado } para permitir desfazer a criacao em caso de falha.
 async function resolverCliente({ usuarioId, dados }) {
   if (dados.cliente_id) {
     const [rows] = await db.execute(
@@ -159,7 +160,7 @@ async function resolverCliente({ usuarioId, dados }) {
     if (rows.length === 0) {
       throw Object.assign(new Error('Cliente selecionado não pertence a esta conta'), { status: 400 });
     }
-    return rows[0].id;
+    return { id: rows[0].id, criado: false };
   }
 
   if (dados.cliente_novo && str(dados.cliente_novo.nome_razao_social)) {
@@ -168,15 +169,39 @@ async function resolverCliente({ usuarioId, dados }) {
     if (cpfCnpj && !isValidCpfCnpj(cpfCnpj).ok) {
       throw Object.assign(new Error('CPF/CNPJ do novo cliente é inválido'), { status: 400 });
     }
+
+    // Se ja existe cliente com o mesmo CPF/CNPJ nesta conta, reaproveita
+    // (evita ER_DUP_ENTRY e importacoes duplicadas do mesmo cliente).
+    if (cpfCnpj) {
+      const [existentes] = await db.execute(
+        'SELECT id FROM clientes WHERE usuario_id = ? AND cpf_cnpj = ? LIMIT 1',
+        [usuarioId, cpfCnpj]
+      );
+      if (existentes.length > 0) {
+        return { id: existentes[0].id, criado: false };
+      }
+    }
+
     const [result] = await db.execute(
       `INSERT INTO clientes (usuario_id, nome_razao_social, cpf_cnpj, observacoes)
        VALUES (?, ?, ?, ?)`,
       [usuarioId, nome, cpfCnpj || null, 'Cadastrado via importação de contrato']
     );
-    return result.insertId;
+    return { id: result.insertId, criado: true };
   }
 
   throw Object.assign(new Error('Informe cliente_id ou cliente_novo para confirmar'), { status: 400 });
+}
+
+// Desfaz a criacao de um cliente feita nesta confirmacao quando o contrato nao
+// chega a ser criado (evita deixar cliente orfao na base).
+async function reverterClienteCriado(clienteId) {
+  if (!clienteId) return;
+  try {
+    await db.execute('DELETE FROM clientes WHERE id = ?', [clienteId]);
+  } catch (e) {
+    console.error('nao foi possivel reverter o cliente criado:', e.message);
+  }
 }
 
 // POST /api/ocr/:id/confirmar — valida, cria cliente (se novo) e contrato+parcelas (RN09/RN17)
@@ -188,6 +213,8 @@ async function confirmar(req, res) {
   }
 
   let extracao;
+  let clienteCriadoId = null;
+  let contratoCriado = false;
   try {
     extracao = await obterExtracao(id, req.user.id);
     if (!extracao) {
@@ -197,12 +224,25 @@ async function confirmar(req, res) {
       return res.status(400).json({ message: 'Extração já foi confirmada ou cancelada' });
     }
 
-    const clienteId = await resolverCliente({ usuarioId: req.user.id, dados });
+    const { id: clienteId, criado: clienteCriado } = await resolverCliente({
+      usuarioId: req.user.id,
+      dados,
+    });
+    if (clienteCriado) clienteCriadoId = clienteId;
 
     const valorTotal = dados.valor_total
       ?? (dados.valor_parcela && dados.quantidade_parcelas
         ? Number((Number(dados.valor_parcela) * Number(dados.quantidade_parcelas)).toFixed(2))
         : null);
+
+    // Reconcilia vencimentos x quantidade de parcelas (contratos reais listam
+    // apenas alguns vencimentos; gera a agenda completa a partir da data inicial).
+    const { vencimentos, data_inicio, data_fim } = normalizarVencimentosImportados({
+      quantidade_parcelas: dados.quantidade_parcelas,
+      vencimentos: dados.vencimentos,
+      data_inicio: dados.data_inicio,
+      data_fim: dados.data_fim,
+    });
 
     const payload = {
       cliente_id: clienteId,
@@ -210,9 +250,9 @@ async function confirmar(req, res) {
       tipo: dados.tipo || 'SERVIÇO',
       descricao: dados.descricao || 'Contrato importado por OCR',
       valor_total: valorTotal,
-      data_inicio: dados.data_inicio || (dados.vencimentos && dados.vencimentos[0]) || null,
-      data_fim: dados.data_fim || (dados.vencimentos && dados.vencimentos[dados.vencimentos.length - 1]) || null,
-      vencimentos: Array.isArray(dados.vencimentos) && dados.vencimentos.length > 0 ? dados.vencimentos : undefined,
+      data_inicio,
+      data_fim,
+      vencimentos,
       quantidade_parcelas: Number(dados.quantidade_parcelas) || undefined,
       valor_parcela: dados.valor_parcela ? Number(dados.valor_parcela) : undefined,
       forma_pagamento: dados.forma_pagamento || 'PIX',
@@ -230,9 +270,11 @@ async function confirmar(req, res) {
       dados: payload,
     });
     if (erro) {
+      await reverterClienteCriado(clienteCriadoId);
       const status = erro.status || 400;
       return res.status(status).json({ message: erro.message });
     }
+    contratoCriado = true;
 
     // move o arquivo de uploads/ocr para uploads/docs e associa como ORIGINAL (RN11)
     const origem = caminhoSeguro(SUBDIRS.OCR, extracao.nome_arquivo);
@@ -282,6 +324,9 @@ async function confirmar(req, res) {
       numero: contrato.numero,
     });
   } catch (error) {
+    if (clienteCriadoId && !contratoCriado) {
+      await reverterClienteCriado(clienteCriadoId);
+    }
     const status = error.status || 500;
     console.error('erro ao confirmar extração:', error);
     if (error.code === 'ER_DUP_ENTRY') {

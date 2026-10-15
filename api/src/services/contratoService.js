@@ -185,6 +185,33 @@ function podeGerarParcelas(status) {
   return status !== 'ENCERRADO' && status !== 'CANCELADO';
 }
 
+// Reconciliacao usada na IMPORTACAO por OCR (RF10/RF11): contratos reais
+// frequentemente listam apenas alguns vencimentos de amostra (ex.: "12 parcelas"
+// com 3-4 datas visiveis). Quando a lista nao corresponde a quantidade de
+// parcelas, gera a agenda mensal completa a partir da data de inicio e ajusta a
+// data final. Nao altera a validacao estrita do cadastro manual (validarDados).
+function normalizarVencimentosImportados({ quantidade_parcelas, vencimentos, data_inicio, data_fim }) {
+  const quantidade = Number(quantidade_parcelas) || 0;
+  const lista = Array.isArray(vencimentos) ? vencimentos.filter((v) => v && isDate(v)) : [];
+  const inicio = data_inicio && isDate(data_inicio) ? data_inicio : lista[0] || null;
+
+  if (quantidade > 0 && lista.length !== quantidade && inicio) {
+    const gerados = calcularVencimentos({ quantidade_parcelas: quantidade, data_inicio: inicio });
+    return {
+      vencimentos: gerados,
+      data_inicio: inicio,
+      data_fim: gerados[gerados.length - 1],
+    };
+  }
+
+  const fim = data_fim && isDate(data_fim) ? data_fim : lista.length ? lista[lista.length - 1] : null;
+  return {
+    vencimentos: lista.length ? lista : undefined,
+    data_inicio: inicio,
+    data_fim: fim,
+  };
+}
+
 module.exports = {
   VALID_STATUS,
   obterContratoDono,
@@ -193,4 +220,5 @@ module.exports = {
   calcularValoresParcelas,
   criarContratoComParcelas,
   podeGerarParcelas,
+  normalizarVencimentosImportados,
 };

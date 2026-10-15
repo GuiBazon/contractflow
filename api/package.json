@@ -24,9 +24,14 @@
     "multer": "^2.3.0",
     "mysql2": "^3.2.0",
     "pdf-parse": "^1.1.4",
+    "pdf-to-img": "^7.0.0",
+    "sharp": "^0.35.5",
     "tesseract.js": "^5.1.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.4"
+    "jest": "^30.5.2",
+    "nodemon": "^3.1.4",
+    "pdfkit": "^0.20.2",
+    "supertest": "^7.3.0"
   }
 }

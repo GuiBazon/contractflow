@@ -196,7 +196,7 @@ Precisamos de:
    GET   /api/ocr/:id          (listar extração pendente do usuário)
    PATCH /api/ocr/:id          (revisão/correção: atualiza dados_json; RF12)
    POST  /api/ocr/:id/confirmar
-        → exige `dados` revisados (ex.: numero, cliente_id ou nova_cliente, valor_total,
+         → exige `dados` revisados (ex.: numero, cliente_id ou cliente_novo, valor_total,
           quantidade_parcelas, vencimentos, forma_pagamento, data_inicio/fim, juros, multa);
           valida; cria cliente (se novo) e contrato+parcelas (reusar criarContratoComParcelas);
           muda status para CONFIRMADA; move arquivo de uploads/ocr para uploads/docs;
@@ -208,6 +208,21 @@ Precisamos de:
    - Cliente pode vir como `cliente_id` (existente do usuário) ou `cliente_novo` (nome + cpf/cnpj).
    - Se OCR não encontrou campo, o usuário preenche manualmente (RN18).
    - Campos OCR podem conter erro → usuário corrige antes de confirmar (RF12/RF13).
+
+   **STATUS (implementado e validado de ponta a ponta):** `ocrController.js` existe
+   e o fluxo real foi exercitado em banco de desenvolvimento — upload → extração
+   (Python OCR, confiança real) → revisão (GET/PATCH) → confirmação (contrato +
+   parcelas + documento ORIGINAL + histórico) → cancelamento. Comportamentos
+   reais observados e tratados:
+   - **Reconciliação de vencimentos × parcelas**: contratos reais listam só alguns
+     vencimentos; na confirmação a agenda mensal completa é gerada a partir de
+     `data_inicio` e a `data_fim` é recalculada
+     (`normalizarVencimentosImportados` em `contratoService.js`). Sem isso, a
+     confirmação de um PDF escaneado legítimo retornava 400.
+   - **Cliente não fica órfão**: se a criação do contrato falhar após criar um
+     cliente novo, ele é removido (rollback). Se já existir cliente com o mesmo
+     CPF/CNPJ na conta, ele é reaproveitado (não duplica, não dá `ER_DUP_ENTRY`).
+   - `PYTHON_OCR_ENABLED=false` (padrão) mantém o OCR Node atual intacto.
 
 7. **`api/src/controllers/dashboardController.js`** (P2 — RF32, RN14):
    ```
@@ -318,7 +333,7 @@ Dica caso queira reutilizar: existem bins em
 - RN06/RN13/RF18: saldo SEMPRE derivado de parcelas−pagamentos; recebido ≠ a receber. ✔
 - RN07/RF19/RF20: vencida sem pagamento = atraso (SQL `data_vencimento < CURDATE() AND pago < valor`). ✔
 - RN08/RF22/RF23: juros/multa por configuração do contrato. ✔ (uma regra documentada)
-- RN09/RF12/RF13/RN17/RN18: OCR gera sugestão; usuário revisa, corrige, confirma; nada é criado antes. ✔ (no controller de OCR a fazer)
+- RN09/RF12/RF13/RN17/RN18: OCR gera sugestão; usuário revisa, corrige, confirma; nada é criado antes. ✔ (`ocrController` implementado e validado no fluxo real)
 - RN10/RF09: documento original associado e guardado. ✔
 - RN11: não deletar financeiro importante (contrato com parcelas → 409; documento original → 400). ✔
 - RN12: contrato ENCERRADO/CANCELADO não gera parcelas. ✔
@@ -334,7 +349,7 @@ Legenda: ✔ implementado | 🕓 parcial | ✘ não implementado (a fazer)
 
 ### RF
 - RF01 cadastro ✔ | RF02 login ✔ | RF03 controle de acesso 🕓 (requireAdmin pronto, falta userController) | RF04 recuperação de senha ✘ (opcional)
-- RF05/06 clientes ✔ | RF07 cadastro contratos ✔ (manual) | RF08 upload 🕓 (multer pronto; falta rota+ocr) | RF09 armazenamento doc ✔ | RF10/11 OCR 🕓 (ocrService pronto; falta controller/rota) | RF12/13 revisão/confirmação ✘ (rota OCR falta) | RF14/15 parcelas/vencimentos ✔ | RF16 alteração parcelas ✔
+- RF05/06 clientes ✔ | RF07 cadastro contratos ✔ (manual) | RF08 upload ✔ (multer + rota OCR) | RF09 armazenamento doc ✔ | RF10/11 OCR ✔ (ocrService + ocrController + serviço Python) | RF12/13 revisão/confirmação ✔ (GET/PATCH/confirmar validados) | RF14/15 parcelas/vencimentos ✔ | RF16 alteração parcelas ✔
 - RF17 pagamento ✔ | RF18 saldo ✔ | RF19/20 atraso/inadimplência 🕓 (service pronto; falta endpoint) | RF21 histórico financeiro ✔ (pagamentos+parcelas) | RF22/23 juros/multa 🕓 (calc pronto; falta expor em endpoint/resumo) | RF24 recebíveis ✘ (falta endpoint) | RF25 despesas ✘ (falta controller) | RF26 receitas 🕓 (listAllPagamentos pronto; falta rota `/api/pagamentos`) | RF27 saldo projetado ✘ | RF28 calculadora ✘ (frontend)
 - RF29 calendário ✘ (endpoint de vencimentos por período — derivar de parcelas) | RF30/31 alertas ✘ | RF32 dashboard ✘ | RF33 pesquisa ✔ (clientes/contratos q=) falta documentos | RF34 filtros ✔ (clientes/contratos) | RF35 visualização ✔ (getContrato + download doc) | RF36 histórico ✔ | RF37/38 relatórios/exportação ✘ (CSV falta) | RF39 notificações ✘ (opcional) | RF40 status ✔ | RF41 anexos ✔ | RF42 renovação ✘ (status EM_RENOVACAO já existe; alerta de término falta)
 
@@ -350,7 +365,7 @@ Legenda: ✔ implementado | 🕓 parcial | ✘ não implementado (a fazer)
 - RNF14 erros claros: ✔ (mensagens tratadas; falta melhorar handler em app.js)
 - RNF15 validação: ✔ (validators em uso)
 - RNF16 arquivos: ✔ (multer MIME/ext/tamanho/UUID, hash SHA-256)
-- RNF17/18 OCR transparência: 🕓 (confiança + tabela extracao_ocr; falta expor em endpoint)
+- RNF17/18 OCR transparência: ✔ (confiança real, origem e avisos expostos no retorno de `/api/ocr/extract` e no status/dados de `GET /api/ocr/:id`)
 - RNF19/20 consistência/acessibilidade: front-end
 
 ---
@@ -366,13 +381,40 @@ npm run dev               # ou: npm start
 # health:  GET http://localhost:8080/api/health
 ```
 
+### OCR (Node ↔ Python) e como rodar os testes
+
+```bash
+# 1) serviço Python (opcional; padrão é PYTHON_OCR_ENABLED=false)
+cd ocr-service
+python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+.venv\Scripts\python.exe run.py             # ou: uvicorn app.main:app --host 127.0.0.1 --port 8000
+# health: GET http://127.0.0.1:8000/health
+
+# 2) testes Python (16 testes; sem servidor em execução)
+cd ocr-service
+.venv\Scripts\python.exe -m pytest -v
+
+# 3) testes de integração Node (14 testes; exigem o Python em 127.0.0.1:8000)
+cd api
+npx jest tests/__tests__/pythonOcr.integration.test.js tests/__tests__/contratoImport.test.js --runInBand
+```
+
+- Padrao: `PYTHON_OCR_ENABLED=false` → **nada muda**, o OCR Node
+  (`tesseract.js` + `sharp` + `pdf-parse`) continua usado; se `=true` e o Python
+  cair/estourar timeout/5xx/resposta inválida, o Node **faz fallback** para o
+  OCR Node atual sem quebrar o fluxo.
+- Limitações: PDF escaneado exige Tesseract (idioma `por`); confiança é a real
+  do Tesseract ou `null` (nunca fabricada); `pypdfium2` emite falso "access
+  violation" no `import` (desativado via `pytest.ini`).
+
 ---
 
 ## 9. PRÓXIMOS PASSOS (checklist p/ continuar)
 
 1. ✅ (feito) Schema, auth, clientes, services, controllers (contrato/parcela/pagamento/documento), middlewares, validators, upload config.
 2. ⬜ Criar as **rotas novas** (5.1) e atualizar `routes/index.js`.
-3. ⬜ Criar **ocrController** (o fluxo mais importante que falta).
+3. ✅ (feito) **ocrController** — fluxo completo implementado e validado de ponta a ponta (upload → extração → revisão → confirmação/cancelamento), com o serviço Python `ocr-service/`.
 4. ⬜ Criar **dashboardController**, **expenseController**, **reportController (CSV)**, **userController**.
 5. ⬜ Corrigir `app.js` (CORS config + error handler) e `server.js` (fail-fast env).
 6. ⬜ Corrigir **bugs conhecidos** (5.4).
