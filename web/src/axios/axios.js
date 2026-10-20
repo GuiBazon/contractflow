@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://10.89.240.66:8080/api",
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8080/api",
   headers: {
     accept: "application/json",
   },
@@ -59,8 +59,8 @@ const sheets = {
 
   // CLIENTES
 
-  getClientes: () =>
-    api.get("/clientes"),
+  getClientes: (params) =>
+    api.get("/clientes", { params }),
 
   createCliente: (data) =>
     api.post("/clientes", data),
@@ -73,8 +73,11 @@ const sheets = {
 
   //  CONTRATOS
 
-  getContratos: () =>
-    api.get("/contratos"),
+  getContratos: (params) =>
+    api.get("/contratos", { params }),
+
+  getContratoById: (id) =>
+    api.get("/contratos/" + id),
 
   createContrato: (data) =>
     api.post("/contratos", data),
@@ -85,13 +88,22 @@ const sheets = {
   deleteContrato: (id) =>
     api.delete("/contratos/" + id),
 
-  // PAGAMENTOS
+  // PARCELAS
 
-  getPagamentos: () =>
-    api.get("/pagamentos"),
+  getParcelas: (contratoId, params) =>
+    api.get(`/parcelas/${contratoId}/parcelas`, { params }),
+
+  // PAGAMENTOS / RECEITAS
+
+  getPagamentos: (params) =>
+    api.get("/receitas", { params }).catch(() => api.get("/pagamentos", { params })),
+
+  getReceitas: (params) =>
+    api.get("/receitas", { params }),
 
   createPagamento: (contratoId, data) =>
     api.post(`/contratos/${contratoId}/pagamentos`, data),
+
   getHealth: () =>
     api.get("/health"),
 };
