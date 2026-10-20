@@ -8,6 +8,10 @@ const { password } = require('../utils/password');
 const digest = token => crypto.createHash('sha256').update(token).digest('hex');
 const invalidToken = () => new HttpError(400, 'Link de recuperação inválido ou expirado');
 
+async function invalidatePending(connection, usuarioId) {
+  await connection.execute('UPDATE recuperacoes_senha SET usado_em=UTC_TIMESTAMP() WHERE usuario_id=? AND usado_em IS NULL', [usuarioId]);
+}
+
 async function requestReset(email) {
   // Verificar a configuração para todas as contas mantém a mesma resposta
   // de indisponibilidade sem revelar se o e-mail existe.
@@ -21,7 +25,7 @@ async function requestReset(email) {
     await conn.beginTransaction();
     const [[user]] = await conn.execute('SELECT id, ativo FROM usuarios WHERE email=? FOR UPDATE', [email]);
     if (!user?.ativo) { await conn.commit(); return; }
-    await conn.execute('UPDATE recuperacoes_senha SET usado_em=UTC_TIMESTAMP() WHERE usuario_id=? AND usado_em IS NULL', [user.id]);
+    await invalidatePending(conn, user.id);
     const [created] = await conn.execute(`INSERT INTO recuperacoes_senha (usuario_id, token_hash, expira_em)
       VALUES (?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? MINUTE))`, [user.id, digest(token), minutes]);
     recoveryId = created.insertId;
@@ -55,10 +59,10 @@ async function resetPassword(token, novaSenha) {
       WHERE token_hash=? AND usado_em IS NULL AND expira_em>UTC_TIMESTAMP() FOR UPDATE`, [hash]);
     if (!user?.ativo || !recovery) throw invalidToken();
     await conn.execute('UPDATE usuarios SET senha_hash=?, token_version=token_version+1 WHERE id=?', [newHash, preview.usuario_id]);
-    await conn.execute('UPDATE recuperacoes_senha SET usado_em=UTC_TIMESTAMP() WHERE usuario_id=? AND usado_em IS NULL', [preview.usuario_id]);
+    await invalidatePending(conn, preview.usuario_id);
     await conn.commit();
   } catch (error) { await conn.rollback(); throw error; }
   finally { conn.release(); }
 }
 
-module.exports = { requestReset, resetPassword };
+module.exports = { requestReset, resetPassword, invalidatePending };

@@ -32,7 +32,8 @@ async function reverse(usuarioId, paymentId, reason) {
     await registrarHistorico(conn, { contratoId: owned.contrato_id, usuarioId, acao: 'ESTORNO',
       descricao: `Pagamento ${id} de R$ ${Number(payment.valor).toFixed(2)} estornado. Motivo: ${motivo}` });
     const [[updated]] = await conn.execute(`SELECT id,parcela_id,valor,data_pagamento,forma_pagamento,observacoes,
-      estornado_em,estornado_por,motivo_estorno FROM pagamentos WHERE id=?`, [id]);
+      DATE_FORMAT(estornado_em,'%Y-%m-%dT%H:%i:%sZ') AS estornado_em,
+      estornado_por,motivo_estorno FROM pagamentos WHERE id=?`, [id]);
     const [[totals]] = await conn.execute('SELECT COALESCE(SUM(valor),0) AS pago FROM pagamentos WHERE parcela_id=? AND estornado_em IS NULL', [parcela.id]);
     await conn.commit();
     return {

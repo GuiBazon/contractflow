@@ -2,6 +2,7 @@ const db = require('../config/db');
 const { pagination, integer, choice } = require('../utils/query');
 const { str, isEmail } = require('../utils/validators');
 const { HttpError } = require('../utils/http');
+const { invalidatePending } = require('../services/passwordRecoveryService');
 const publicFields = 'id,nome,email,perfil,ativo,created_at,updated_at';
 
 async function list(req,res) {
@@ -52,6 +53,9 @@ async function update(req,res) {
     if (!before) throw new HttpError(404,'Usuário não encontrado');
     if (before.perfil === 'ADMIN' && before.ativo && admins.length === 1 && (fields.perfil === 'USUARIO' || fields.ativo === 0)) throw new HttpError(409,'Não é possível remover o último administrador ativo');
     await conn.execute(`UPDATE usuarios SET ${Object.keys(fields).map(k=>`${k}=?`).join(',')},token_version=token_version+1 WHERE id=?`,[...Object.values(fields),id]);
+    if (['email', 'perfil', 'ativo'].some(field => fields[field] !== undefined)) {
+      await invalidatePending(conn, id);
+    }
     const [[row]] = await conn.query(`SELECT ${publicFields} FROM usuarios WHERE id=?`,[id]);
     await conn.commit();
     res.json({ message: req.method === 'DELETE' ? 'Usuário desativado; dados preservados' : 'Usuário atualizado; sessões anteriores revogadas',usuario: row });

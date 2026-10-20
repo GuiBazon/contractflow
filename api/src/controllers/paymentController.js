@@ -52,7 +52,8 @@ async function listPagamentos(req, res) {
     const [rows] = await db.execute(
       `SELECT
          pg.id, pg.valor, pg.data_pagamento, pg.forma_pagamento, pg.observacoes,
-         pg.created_at, pg.estornado_em, pg.estornado_por, pg.motivo_estorno,
+         pg.created_at, DATE_FORMAT(pg.estornado_em,'%Y-%m-%dT%H:%i:%sZ') AS estornado_em,
+         pg.estornado_por, pg.motivo_estorno,
          CASE WHEN pg.estornado_em IS NULL THEN 'CONFIRMADO' ELSE 'ESTORNADO' END AS status,
          par.numero AS parcela_numero, par.id AS parcela_id,
          par.data_vencimento AS parcela_vencimento
@@ -189,7 +190,8 @@ async function listAllPagamentos(req, res) {
     const [rows] = await db.execute(
       `SELECT
          pg.id, pg.valor, pg.data_pagamento, pg.forma_pagamento, pg.observacoes,
-         pg.estornado_em, pg.estornado_por, pg.motivo_estorno,
+         DATE_FORMAT(pg.estornado_em,'%Y-%m-%dT%H:%i:%sZ') AS estornado_em,
+         pg.estornado_por, pg.motivo_estorno,
          CASE WHEN pg.estornado_em IS NULL THEN 'CONFIRMADO' ELSE 'ESTORNADO' END AS status,
          c.id AS contrato_id, c.numero AS contrato_numero,
          cl.id AS cliente_id, cl.nome_razao_social AS cliente_nome,

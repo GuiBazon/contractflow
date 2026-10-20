@@ -130,3 +130,43 @@ test('configuração indisponível produz a mesma resposta para conta conhecida 
     expect(unknown.body).toEqual(known.body);
   } finally { process.env.PASSWORD_RESET_URL = previous; }
 });
+
+test('trocar a senha autenticada também invalida o link de recuperação pendente', async () => {
+  const account = await owner();
+  const { token } = await requestLink(account.email);
+  await auth(account.token).patch('/api/auth/password')
+    .send({ senha_atual: 'senha123', nova_senha: 'senha-alterada-123' }).expect(200);
+  await request(app).post('/api/auth/reset-password').send({ token, nova_senha: 'senha-indevida-123' }).expect(400);
+  await request(app).post('/api/auth/login').send({ email: account.email, senha: 'senha-alterada-123' }).expect(200);
+});
+
+test('alterar e-mail revoga o link entregue ao endereço antigo e permite nova recuperação', async () => {
+  const admin = await owner();
+  const account = await owner();
+  const { token } = await requestLink(account.email);
+  const email = `novo-${sequence}@example.com`;
+  await auth(admin.token).patch(`/api/usuarios/${account.id}`).send({ email }).expect(200);
+  await request(app).post('/api/auth/reset-password').send({ token, nova_senha: 'senha-indevida-123' }).expect(400);
+  const next = await requestLink(email);
+  await request(app).post('/api/auth/reset-password').send({ token: next.token, nova_senha: 'senha-nova-123' }).expect(200);
+  await request(app).post('/api/auth/login').send({ email, senha: 'senha-nova-123' }).expect(200);
+});
+
+test('desativar e reativar a conta não restaura links de recuperação anteriores', async () => {
+  const admin = await owner();
+  const account = await owner();
+  const { token } = await requestLink(account.email);
+  await auth(admin.token).delete(`/api/usuarios/${account.id}`).expect(200);
+  await auth(admin.token).patch(`/api/usuarios/${account.id}`).send({ ativo: 1 }).expect(200);
+  await request(app).post('/api/auth/reset-password').send({ token, nova_senha: 'senha-indevida-123' }).expect(400);
+  await request(app).post('/api/auth/login').send({ email: account.email, senha: 'senha123' }).expect(200);
+});
+
+test('alterar o perfil invalida o link emitido com as permissões anteriores', async () => {
+  const admin = await owner();
+  const account = await owner();
+  const { token } = await requestLink(account.email);
+  await auth(admin.token).patch(`/api/usuarios/${account.id}`).send({ perfil: 'ADMIN' }).expect(200);
+  await request(app).post('/api/auth/reset-password').send({ token, nova_senha: 'senha-indevida-123' }).expect(400);
+  await request(app).post('/api/auth/login').send({ email: account.email, senha: 'senha123' }).expect(200);
+});

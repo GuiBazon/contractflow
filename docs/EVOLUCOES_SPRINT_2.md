@@ -29,12 +29,13 @@ Validação: `tests/integration/authRateLimit.test.js` verifica bloqueio por con
 - `POST /api/auth/reset-password`: `{ "token": "valor-do-link", "nova_senha": "nova-senha" }`. Não exige login. Links inválidos, expirados ou usados recebem 400.
 - O banco armazena apenas o SHA-256 de um token aleatório de 256 bits. Cada link expira em trinta minutos por padrão, vale uma única vez e é substituído por uma nova solicitação.
 - A redefinição troca a senha com bcrypt e incrementa `token_version`, encerrando as sessões anteriores na mesma transação. Dois usos simultâneos permitem uma única alteração.
+- Trocar a senha autenticada ou alterar e-mail, perfil ou estado ativo da conta também invalida os links pendentes na mesma transação. Reativar a conta não restaura esses links. As operações bloqueiam o usuário antes dos tokens, na mesma ordem da emissão/redefinição.
 - `PASSWORD_RESET_URL` define a tela do Web que receberá `?token=...`. O endereço vem da configuração do servidor, nunca do Host ou de um redirecionamento recebido do cliente. A equipe deve conectar a tela a `POST /auth/reset-password`.
 - Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, `SMTP_SECURE` e, quando necessário, `SMTP_USER`/`SMTP_PASSWORD`. SMTP remoto usa TLS; não imprimir senhas ou links nos logs.
 - Para desenvolvimento/testes, `docker compose -f compose.test.yaml up -d --wait` inicia MySQL e Mailpit, que captura mensagens localmente. A suíte usa SMTP real e consulta a caixa de teste para obter o link; não envia e-mail externo.
 - A migração `003-password-recovery.js` adiciona `recuperacoes_senha` preservando usuários e contratos.
 
-Validação: `tests/mysql/passwordRecovery.test.js` cobre envio SMTP, hash, uso único e concorrente, expiração, revogação, falha do provedor e manipulação do endereço do link. O workflow Backend inclui o servidor SMTP de teste.
+Validação: `tests/mysql/passwordRecovery.test.js` cobre envio SMTP, hash, uso único e concorrente, expiração, revogação, mudanças de credenciais/permissões, falha do provedor e manipulação do endereço do link. O workflow Backend inclui o servidor SMTP de teste.
 
 ## Notificações com leitura persistente (RF39)
 
@@ -67,3 +68,9 @@ Pagamentos estornados saem do saldo recebido, dashboard, calendário de pagament
 A migração `005-payment-reversals.js` adiciona os três campos com FK do responsável e restrição de metadados completos, preservando pagamentos existentes. Durante a integração, os filtros de tipo do calendário também foram corrigidos para nomear todas as colunas mesmo quando há apenas um tipo de evento.
 
 Validação: `tests/mysql/paymentReversals.test.js` cobre reflexos em todo o financeiro, exportações, concorrência, isolamento, rollback por falha de histórico e migração de uma tabela antiga. `calendarTypes.test.js` cobre os quatro filtros do calendário com dados e sem registros.
+
+## Contratos de resposta verificados
+
+`tests/mysql/openapiContracts.test.js` compara vinte respostas HTTP reais com os schemas publicados no OpenAPI, incluindo datas, campos opcionais nulos, valores decimais, histórico, documentos e cálculos. A validação usa AJV com formatos habilitados; as referências são resolvidas no próprio documento, sem acesso externo. Os schemas refletem o histórico como lista e os campos nulos/decimais efetivamente retornados pelo MySQL.
+
+As datas de leitura e estorno são gravadas em UTC e retornadas como ISO 8601 com `Z`, sem depender do fuso do driver MySQL. `tests/mysql/auditTimestamps.test.js` executa as operações e suas listagens com o driver em `-03:00` e confere o instante real, evitando um desvio de três horas na auditoria.

@@ -27,7 +27,7 @@ async function list(usuarioId, query, pages) {
   const resumo = await summary(usuarioId, source.dias);
   const condition = query.lida === 'true' ? 'WHERE n.lida_em IS NOT NULL'
     : query.lida === 'false' ? 'WHERE n.lida_em IS NULL' : '';
-  const [rows] = await db.query(`SELECT a.*, n.lida_em ${source.sql} ${condition}
+  const [rows] = await db.query(`SELECT a.*, DATE_FORMAT(n.lida_em,'%Y-%m-%dT%H:%i:%sZ') AS lida_em ${source.sql} ${condition}
     ORDER BY a.data,a.id LIMIT ? OFFSET ?`, [...source.params, pages.limit, pages.offset]);
   const total = query.lida === 'true' ? resumo.lidas : query.lida === 'false' ? resumo.nao_lidas : resumo.total;
   return {
@@ -50,7 +50,8 @@ async function markRead(usuarioId, id) {
   const key = alerts.eventKey(row);
   await db.execute(`INSERT INTO notificacoes_leituras (usuario_id,chave_evento,lida_em)
     VALUES (?,?,UTC_TIMESTAMP()) ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id)`, [usuarioId, key]);
-  const [[reading]] = await db.execute('SELECT lida_em FROM notificacoes_leituras WHERE usuario_id=? AND chave_evento=?', [usuarioId, key]);
+  const [[reading]] = await db.execute(`SELECT DATE_FORMAT(lida_em,'%Y-%m-%dT%H:%i:%sZ') AS lida_em
+    FROM notificacoes_leituras WHERE usuario_id=? AND chave_evento=?`, [usuarioId, key]);
   return { id: row.id, lida: true, lida_em: reading.lida_em };
 }
 

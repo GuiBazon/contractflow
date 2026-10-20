@@ -4,6 +4,7 @@ const db = require('../config/db');
 const { isEmail, str } = require('../utils/validators');
 const { HttpError } = require('../utils/http');
 const { password } = require('../utils/password');
+const { invalidatePending } = require('../services/passwordRecoveryService');
 
 async function register(req, res) {
   const nome = str(req.body.nome); const email = str(req.body.email).toLowerCase();
@@ -61,6 +62,7 @@ async function changePassword(req, res) {
     if (!(await bcrypt.compare(req.body.senha_atual,user.senha_hash))) throw new HttpError(400, 'Senha atual incorreta');
     const hash = await bcrypt.hash(nova,10);
     await conn.execute('UPDATE usuarios SET senha_hash=?,token_version=token_version+1 WHERE id=?', [hash,req.user.id]);
+    await invalidatePending(conn, req.user.id);
     await conn.commit();
     res.json({ message: 'Senha alterada; entre novamente' });
   } catch (err) { await conn.rollback(); throw err; }
