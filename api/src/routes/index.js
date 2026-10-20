@@ -22,7 +22,7 @@ router.use('/dashboard', require('./dashboardRoutes'));
 router.use('/calendario', require('./calendarRoutes'));
 router.use('/calculadora', require('./calculatorRoutes'));
 router.use('/alertas', require('./alertRoutes'));
-router.use('/notificacoes', require('./alertRoutes'));
+router.use('/notificacoes', require('./notificationRoutes'));
 router.use('/relatorios', require('./reportRoutes'));
 router.use('/documentos', documentRoutes);
 router.use('/ocr', ocrRoutes);

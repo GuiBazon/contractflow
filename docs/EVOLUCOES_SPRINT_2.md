@@ -35,3 +35,15 @@ Validação: `tests/integration/authRateLimit.test.js` verifica bloqueio por con
 - A migração `003-password-recovery.js` adiciona `recuperacoes_senha` preservando usuários e contratos.
 
 Validação: `tests/mysql/passwordRecovery.test.js` cobre envio SMTP, hash, uso único e concorrente, expiração, revogação, falha do provedor e manipulação do endereço do link. O workflow Backend inclui o servidor SMTP de teste.
+
+## Notificações com leitura persistente (RF39)
+
+`GET /api/notificacoes` mantém os alertas derivados de parcelas/renovações e acrescenta `lida`, `lida_em` e `resumo: { total, nao_lidas, lidas }`. Aceita `dias` (1–90), `lida=true|false` e paginação. O contador considera todo o período, sem depender do tamanho da página. `GET /api/notificacoes/resumo` retorna só os contadores.
+
+- `PATCH /api/notificacoes/:id/leitura` marca como lida; repetir mantém a data de leitura original.
+- `DELETE /api/notificacoes/:id/leitura` marca como não lida.
+- `PATCH /api/notificacoes/ler-todas?dias=7` marca apenas os eventos atuais do intervalo informado.
+- A chave de leitura combina origem, tipo e data do evento. Alterar o vencimento ou transformar um vencimento em atraso produz um evento novo. Parcelas pagas/canceladas deixam de aparecer e não inflam contadores.
+- A migração `004-notification-reading.js` cria `notificacoes_leituras`, isolada por usuário. A consulta `/alertas` conserva seu formato anterior.
+
+Validação: `tests/mysql/notifications.test.js` cobre persistência, repetição, filtros, isolamento, quitação, alteração do vencimento e leitura em lote por período.
