@@ -22,3 +22,16 @@ O login aceita até cinco falhas por conta e trinta por IP em quinze minutos. Lo
 E-mails são normalizados e convertidos em hash para a chave do limitador. Os contadores são locais a cada processo Node. Uma implantação com várias instâncias precisa de armazenamento compartilhado para manter um limite global. `TRUSTED_PROXIES` aceita os IPs/CIDRs reais do proxy; não configure confiança irrestrita em cabeçalhos enviados pelo cliente.
 
 Validação: `tests/integration/authRateLimit.test.js` verifica bloqueio por conta e por IP, normalização, login bem-sucedido, isolamento entre contas e disponibilidade do health.
+
+## Recuperação de senha por e-mail (RF04)
+
+- `POST /api/auth/forgot-password`: `{ "email": "usuario@example.com" }`. Contas conhecidas, desconhecidas e desativadas recebem a mesma mensagem. Falhas de envio são registradas sem dados sensíveis, e o token não entregue é invalidado.
+- `POST /api/auth/reset-password`: `{ "token": "valor-do-link", "nova_senha": "nova-senha" }`. Não exige login. Links inválidos, expirados ou usados recebem 400.
+- O banco armazena apenas o SHA-256 de um token aleatório de 256 bits. Cada link expira em trinta minutos por padrão, vale uma única vez e é substituído por uma nova solicitação.
+- A redefinição troca a senha com bcrypt e incrementa `token_version`, encerrando as sessões anteriores na mesma transação. Dois usos simultâneos permitem uma única alteração.
+- `PASSWORD_RESET_URL` define a tela do Web que receberá `?token=...`. O endereço vem da configuração do servidor, nunca do Host ou de um redirecionamento recebido do cliente. A equipe deve conectar a tela a `POST /auth/reset-password`.
+- Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, `SMTP_SECURE` e, quando necessário, `SMTP_USER`/`SMTP_PASSWORD`. SMTP remoto usa TLS; não imprimir senhas ou links nos logs.
+- Para desenvolvimento/testes, `docker compose -f compose.test.yaml up -d --wait` inicia MySQL e Mailpit, que captura mensagens localmente. A suíte usa SMTP real e consulta a caixa de teste para obter o link; não envia e-mail externo.
+- A migração `003-password-recovery.js` adiciona `recuperacoes_senha` preservando usuários e contratos.
+
+Validação: `tests/mysql/passwordRecovery.test.js` cobre envio SMTP, hash, uso único e concorrente, expiração, revogação, falha do provedor e manipulação do endereço do link. O workflow Backend inclui o servidor SMTP de teste.

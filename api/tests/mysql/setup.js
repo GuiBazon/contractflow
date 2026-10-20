@@ -15,3 +15,7 @@ process.env.JWT_SECRET = 'segredo-exclusivo-dos-testes-mysql-contractflow';
 process.env.UPLOAD_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'contractflow-test-uploads-'));
 process.env.CORS_ORIGINS = '';
 process.env.TZ = 'UTC';
+process.env.SMTP_HOST = process.env.CF_TEST_SMTP_HOST || '127.0.0.1';
+process.env.SMTP_PORT = process.env.CF_TEST_SMTP_PORT || '1025';
+process.env.SMTP_FROM = 'ContractFlow <nao-responda@contractflow.test>';
+process.env.PASSWORD_RESET_URL = 'http://localhost:5173/redefinir-senha';

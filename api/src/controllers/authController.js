@@ -3,11 +3,7 @@ const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 const { isEmail, str } = require('../utils/validators');
 const { HttpError } = require('../utils/http');
-
-function password(value) {
-  if (typeof value !== 'string' || value.length < 6 || Buffer.byteLength(value,'utf8') > 72) throw new HttpError(400, 'Senha deve ter ao menos 6 caracteres e até 72 bytes');
-  return value;
-}
+const { password } = require('../utils/password');
 
 async function register(req, res) {
   const nome = str(req.body.nome); const email = str(req.body.email).toLowerCase();

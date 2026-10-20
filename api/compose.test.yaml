@@ -14,3 +14,13 @@ services:
       interval: 2s
       timeout: 5s
       retries: 60
+  mailpit:
+    image: axllent/mailpit@sha256:23fe39e81bde596a918000b3135c0f85dc8bb4c9ea6be274b051143f3e300387
+    ports:
+      - '127.0.0.1:${CF_TEST_SMTP_PORT:-1025}:1025'
+      - '127.0.0.1:${CF_TEST_MAILPIT_PORT:-8025}:8025'
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 2s
+      timeout: 5s
+      retries: 30
