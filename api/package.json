@@ -12,6 +12,7 @@
     "test:mysql": "jest --config jest.mysql.config.js --runInBand",
     "db:migrate": "node scripts/migrate.js",
     "coverage:merge": "node scripts/coverage.js",
+    "docs:validate": "node scripts/validate-openapi.js",
     "test:coverage": "npm test -- --ci --runInBand --coverage && npm run test:mysql -- --ci --coverage && npm run coverage:merge"
   },
   "keywords": [
@@ -35,9 +36,11 @@
     "mysql2": "^3.2.0",
     "nodemailer": "10.1.7",
     "pdf-parse": "^1.1.4",
+    "swagger-ui-express": "5.0.1",
     "tesseract.js": "^5.1.1"
   },
   "devDependencies": {
+    "@apidevtools/swagger-parser": "13.1.0",
     "istanbul-lib-coverage": "^3.2.2",
     "istanbul-lib-report": "^3.0.1",
     "istanbul-reports": "^3.2.0",

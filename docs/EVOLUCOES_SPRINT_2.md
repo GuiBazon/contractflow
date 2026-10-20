@@ -47,3 +47,11 @@ Validação: `tests/mysql/passwordRecovery.test.js` cobre envio SMTP, hash, uso 
 - A migração `004-notification-reading.js` cria `notificacoes_leituras`, isolada por usuário. A consulta `/alertas` conserva seu formato anterior.
 
 Validação: `tests/mysql/notifications.test.js` cobre persistência, repetição, filtros, isolamento, quitação, alteração do vencimento e leitura em lote por período.
+
+## Documentação interativa OpenAPI
+
+`GET /api/docs/` abre o Swagger UI e `GET /api/openapi.json` fornece a especificação OpenAPI 3.0.3. O documento usa `/api` no próprio servidor, sem IP fixo. Execute login e informe o JWT em **Authorize** para experimentar as operações protegidas.
+
+Os grupos cobrem autenticação, usuários, clientes, contratos, parcelas, pagamentos, recebíveis, despesas, dashboard, calendário, notificações, documentos, OCR, calculadora e relatórios. Incluem corpos de requisição, filtros, upload multipart, exportação binária, erros, chave de idempotência e aliases antigos. Tokens digitados não são persistidos pelo Swagger entre sessões.
+
+Validação: `tests/integration/openapi.test.js` valida o documento com Swagger Parser, referências e identificadores de operação, além de carregar HTML/JavaScript do Swagger e confirmar que as rotas de dados continuam exigindo autenticação.

@@ -19,6 +19,14 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '1mb' }));
 
+const openapi = require('./docs/openapi');
+const swaggerUi = require('swagger-ui-express');
+app.get('/api/openapi.json', (req, res) => res.json(openapi));
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(openapi, {
+  customSiteTitle: 'ContractFlow — API',
+  swaggerOptions: { persistAuthorization: false, displayRequestDuration: true },
+}));
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'ContractFlow API funcionando' });
 });

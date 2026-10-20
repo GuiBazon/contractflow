@@ -29,6 +29,7 @@ jobs:
           cache: npm
           cache-dependency-path: api/package-lock.json
       - run: npm ci
+      - run: npm run docs:validate
       - run: npm test -- --ci --runInBand --coverage
       - uses: actions/upload-artifact@v4
         if: always()
