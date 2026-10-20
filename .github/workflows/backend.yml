@@ -34,7 +34,7 @@ jobs:
         if: always()
         with:
           name: backend-coverage
-          path: api/coverage
+          path: api/coverage/unit
           if-no-files-found: ignore
 
   mysql:
@@ -69,4 +69,39 @@ jobs:
       - run: npm ci
       - name: Instalar conversor de PDF
         run: sudo apt-get update && sudo apt-get install -y poppler-utils
-      - run: npm run test:mysql -- --ci
+      - run: npm run test:mysql -- --ci --coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-mysql-coverage
+          path: api/coverage/mysql
+          if-no-files-found: ignore
+
+  coverage:
+    needs: [unit-api, mysql]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+          path: api/coverage/unit
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend-mysql-coverage
+          path: api/coverage/mysql
+      - run: npm run coverage:merge
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-combined-coverage
+          path: api/coverage/combined

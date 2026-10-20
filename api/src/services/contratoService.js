@@ -23,6 +23,7 @@ async function obterContratoDono(contratoId, usuarioId, connection = db) {
 // As escritas financeiras bloqueiam primeiro o contrato e depois suas parcelas.
 // A ordem comum evita o ciclo pagamento -> histórico -> edição do contrato.
 async function bloquearContratoDono(connection, contratoId, usuarioId) {
+  integer(contratoId,'Contrato');
   const [[contrato]] = await connection.query(
     'SELECT * FROM contratos WHERE id=? AND usuario_id=? FOR UPDATE',
     [contratoId, usuarioId]

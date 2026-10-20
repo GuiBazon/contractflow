@@ -18,6 +18,8 @@ test('clientes têm CRUD, pesquisa, validações e proteção de vínculos', asy
   expect(edited).toMatchObject({ nome_razao_social: 'Nome Editado', email: 'novo@example.com', estado: 'RJ', cpf_cnpj: '11144477735' });
   const { body: search } = await api.get('/api/clientes?q=Editado').expect(200);
   expect(search.data).toHaveLength(1);
+  await api.get('/api/clientes?limit=1.5').expect(400);
+  await api.get('/api/clientes/1abc').expect(400);
   const outro = await user('outro@example.com');
   await auth(outro.token).put(`/api/clientes/${id}`).send({ nome_razao_social: 'Ataque' }).expect(404);
   await api.delete(`/api/clientes/${id}`).expect(200);
@@ -46,6 +48,10 @@ test('editar valor redistribui parcelas, preserva datas e protege pagamentos exi
   await api.put(`/api/contratos/${c.id}`).send({ quantidade_parcelas: 3 }).expect(400);
   const { body: detail } = await api.get(`/api/contratos/${c.id}`).expect(200);
   expect(detail.financeiro).toMatchObject({ valor_total: 1200, recebido: 100, pendente: 1100 });
+  await api.get('/api/contratos?inicio=2026-02-30').expect(400);
+  await api.get('/api/contratos?status=INVALIDO').expect(400);
+  await api.get(`/api/receitas?contrato=${c.id}&limit=1`).expect(200);
+  await api.get('/api/receitas?de=2026-02-30').expect(400);
   const { body: history } = await api.get(`/api/contratos/${c.id}/historico`).expect(200);
   expect(history.some(h=>h.acao==='ALTERADO')).toBe(true);
   const outro = await user('outro@example.com');
@@ -139,6 +145,7 @@ test('uploads inválidos não deixam arquivos nem documentos e negam acesso ante
   const c = await contract(dono.token);
   const files = () => fs.readdirSync(path.join(process.env.UPLOAD_DIR,'docs')).sort();
   const before = files();
+  await api.post(`/api/contratos/${c.id}/documentos`).attach('campo_errado',pdf).expect(400);
   await api.post(`/api/contratos/${c.id}/documentos`).field('tipo','INVALIDO').attach('arquivo',pdf).expect(400);
   await api.post(`/api/contratos/${c.id}/documentos`).attach('arquivo',Buffer.from('Texto não é PDF'),{ filename: 'falso.pdf',contentType: 'application/pdf' }).expect(400);
   await api.post(`/api/contratos/${c.id}/documentos`).attach('arquivo',fs.readFileSync(pdf),{ filename: 'errado.png',contentType: 'application/pdf' }).expect(400);

@@ -49,4 +49,11 @@ function csv(rows, columns) {
   return '\uFEFF' + [columns.map(csvCell).join(';'), ...rows.map(row => columns.map(key => csvCell(row[key])).join(';'))].join('\r\n') + '\r\n';
 }
 
-module.exports = { count, list, csv };
+const columns = {
+  RECEBIVEIS: ['id','numero','contrato_id','valor','data_vencimento','contrato_numero','cliente_id','cliente_nome','juros_percentual','multa_percentual','pago','situacao','dias_atraso','pendente','juros','multa','total_atualizado'],
+  RECEITAS: ['id','contrato_id','contrato_numero','cliente_nome','parcela_numero','valor','data_pagamento','forma_pagamento'],
+  DESPESAS: ['id','descricao','categoria','valor','data','status','observacoes'],
+  CONTRATOS: ['id','numero','cliente_nome','tipo','valor_total','data_inicio','data_fim','status'],
+};
+
+module.exports = { count, list, csv, columns };

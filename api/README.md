@@ -13,7 +13,7 @@ Backend Node.js + Express + MySQL do ContractFlow.
 1. Instale as dependências:
 
 ```bash
-npm install
+npm ci
 ```
 
 2. Crie o arquivo `.env` a partir do exemplo e preencha com os dados do seu MySQL:
@@ -94,10 +94,10 @@ docker compose up --build
 - API: `http://localhost:8080/api/health`
 - MySQL: `localhost:3306` (usuário conforme `DB_USER`)
 
-4. Pare com `Ctrl+C`; para remover os volumes (apagar dados):
+4. Pare com `Ctrl+C` ou encerre preservando os dados:
 
 ```bash
-docker compose down -v
+docker compose down
 ```
 
 > Os arquivos de upload persistem no volume `uploads_data`; o banco em `db_data`.
@@ -117,8 +117,9 @@ npm run test:api    # apenas integração/API
 
 ### Testes com MySQL real (Sprint 2)
 
-Além da suíte rápida, o fluxo cliente → contrato → parcelas → pagamento → saldo
-é executado contra MySQL 8, incluindo isolamento e constraints reais:
+Além dos 84 testes rápidos, 33 cenários de API são executados contra MySQL 8:
+financeiro, isolamento, concorrência, CRUDs, dashboard, calendário, relatórios,
+OCR de PDF/imagem/scan, permissões, migrações e renovação.
 
 ```bash
 # A partir de api/. Banco separado, porta 3307; não usa o .env da aplicação.
@@ -133,8 +134,18 @@ de teste existente, configure `CF_TEST_DB_HOST`, `CF_TEST_DB_PORT`,
 `CF_TEST_DB_USER`, `CF_TEST_DB_PASSWORD` e `CF_TEST_DB_NAME`. O nome só aceita
 `contractflow_test` ou `contractflow_test_<sufixo>`; uploads são temporários.
 
-O workflow `.github/workflows/backend.yml` executa a suíte rápida com relatório
-de cobertura e a suíte MySQL em jobs separados, em push/PR que alterem a API.
+Para produzir também a cobertura combinada:
+
+```bash
+npm run test:coverage
+```
+
+Relatório em `coverage/combined/index.html`; organização dos casos em
+[tests/mysql/README.md](tests/mysql/README.md). Cobertura local: 91,09% das linhas
+de controllers/services/utils/middlewares, sem medir telas ou implantação.
+
+O workflow `.github/workflows/backend.yml` executa as suítes rápida e MySQL em
+jobs separados e combina a cobertura em um terceiro job, em push/PR da API.
 Resultados locais e execução do GitHub Actions são evidências distintas.
 
 ### Dependências de produção

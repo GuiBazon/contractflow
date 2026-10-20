@@ -2,12 +2,15 @@ const db = require('../config/db');
 const { SITUACAO_SQL, recalcSituacaoParcela } = require('../services/financeiroService');
 const { registrarHistorico } = require('../services/historicoService');
 const { obterContratoDono, bloquearContratoDono } = require('../services/contratoService');
-const { isDate, str } = require('../utils/validators');
+const { isDate } = require('../utils/validators');
+const { integer,choice } = require('../utils/query');
+const { asyncHandler } = require('../utils/http');
 
 // listagem sempre restrita ao dono do contrato (RNF04)
 async function listParcelas(req, res) {
   const { contratoId } = req.params;
-  const filtro = str(req.query.filtro).toUpperCase(); // PENDENTE | PAGA | VENCIDA | CANCELADA
+  integer(contratoId,'Contrato');
+  const filtro = req.query.filtro === undefined ? null : choice(req.query.filtro,['PENDENTE','PAGA','VENCIDA','CANCELADA'],'Situação');
 
   try {
     const contrato = await obterContratoDono(contratoId, req.user.id);
@@ -98,4 +101,4 @@ async function updateParcela(req, res) {
   } finally { if (conn) conn.release(); }
 }
 
-module.exports = { listParcelas, updateParcela, recalcSituacaoParcela };
+module.exports = { listParcelas: asyncHandler(listParcelas),updateParcela: asyncHandler(updateParcela),recalcSituacaoParcela };

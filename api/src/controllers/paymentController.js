@@ -3,16 +3,16 @@ const { recalcSituacaoParcela } = require('../services/financeiroService');
 const { registrarHistorico } = require('../services/historicoService');
 const { obterContratoDono, bloquearContratoDono } = require('../services/contratoService');
 const { isDate, str } = require('../utils/validators');
+const { integer,pagination,period } = require('../utils/query');
+const { asyncHandler } = require('../utils/http');
 
 async function listPagamentos(req, res) {
   const { contratoId } = req.params;
-  const page = Math.max(1, Number(req.query.page) || 1);
-  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
-  const offset = (page - 1) * limit;
-  const de = str(req.query.de);
-  const ate = str(req.query.ate);
+  integer(contratoId,'Contrato');
+  const { page,limit,offset } = pagination({ ...req.query,limit: req.query.limit ?? 50 });
+  const { de,ate } = period(req.query);
 
-const where = ['par.contrato_id = ?', 'cl.usuario_id = ?'];
+  const where = ['par.contrato_id = ?', 'cl.usuario_id = ?'];
   const params = [contratoId, req.user.id];
 
   if (de && isDate(de)) {
@@ -124,15 +124,18 @@ async function createPagamento(req, res) {
 
 // TODOS os pagamentos do usuario (RF26 receitas / RF24 recebiveis) com filtros
 async function listAllPagamentos(req, res) {
-  const page = Math.max(1, Number(req.query.page) || 1);
-  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
-  const offset = (page - 1) * limit;
-  const de = str(req.query.de);
-  const ate = str(req.query.ate);
-  const clienteId = Number(req.query.cliente);
+  const { page,limit,offset } = pagination({ ...req.query,limit: req.query.limit ?? 50 });
+  const { de,ate } = period(req.query);
+  const clienteId = integer(req.query.cliente,'Cliente',{ optional: true });
+  const contratoId = integer(req.query.contrato,'Contrato',{ optional: true });
 
   const where = ['cl.usuario_id = ?'];
   const params = [req.user.id];
+
+  if (contratoId) {
+    where.push('c.id = ?');
+    params.push(contratoId);
+  }
 
   if (de && isDate(de)) {
     where.push('pg.data_pagamento >= ?');
@@ -186,4 +189,4 @@ async function listAllPagamentos(req, res) {
   }
 }
 
-module.exports = { listPagamentos, createPagamento, listAllPagamentos };
+module.exports = { listPagamentos: asyncHandler(listPagamentos),createPagamento: asyncHandler(createPagamento),listAllPagamentos: asyncHandler(listAllPagamentos) };
