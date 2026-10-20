@@ -4,6 +4,11 @@ const routes = require('./routes');
 
 const app = express();
 
+// Só confie nos endereços dos proxies realmente usados na implantação.
+if (process.env.TRUSTED_PROXIES) {
+  app.set('trust proxy', process.env.TRUSTED_PROXIES.split(',').map(value => value.trim()).filter(Boolean));
+}
+
 const corsOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
   : undefined;
