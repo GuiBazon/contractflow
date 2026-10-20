@@ -24,7 +24,7 @@ async function initialize() {
 
 async function clean() {
   if (!/^contractflow_test(?:_[a-z0-9]+)?$/.test(process.env.DB_NAME)) throw new Error('Banco inseguro');
-  for (const table of ['historico_contratos', 'documentos', 'extracao_ocr', 'pagamentos', 'parcelas', 'contratos', 'clientes', 'despesas', 'usuarios']) {
+  for (const table of ['chaves_idempotencia', 'historico_contratos', 'documentos', 'extracao_ocr', 'pagamentos', 'parcelas', 'contratos', 'clientes', 'despesas', 'usuarios']) {
     await db.query(`DELETE FROM ${table}`);
   }
 }

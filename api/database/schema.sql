@@ -29,6 +29,20 @@ CREATE TABLE IF NOT EXISTS usuarios (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- Reenvios da mesma operação financeira usam a resposta já confirmada.
+CREATE TABLE IF NOT EXISTS chaves_idempotencia (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  usuario_id INT NOT NULL,
+  chave VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  request_hash CHAR(64) NOT NULL,
+  response_status SMALLINT UNSIGNED NULL,
+  response_json JSON NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_idempotencia_usuario_chave (usuario_id, chave),
+  CONSTRAINT fk_idempotencia_usuario FOREIGN KEY (usuario_id)
+    REFERENCES usuarios(id) ON DELETE RESTRICT
+);
+
 -- RF05 / RF06: clientes (pertencentes a um usuário)
 CREATE TABLE IF NOT EXISTS clientes (
   id INT PRIMARY KEY AUTO_INCREMENT,

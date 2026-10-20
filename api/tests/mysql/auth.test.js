@@ -56,7 +56,8 @@ test('migração aditiva preserva usuários e pode ser repetida',async () => {
     const [[row]] = await conn.query('SELECT id,email,token_version FROM usuarios WHERE id=?',[dono.id]);
     expect(row).toMatchObject({ id: dono.id,email: dono.email,token_version: 0 });
     const [[{ total }]] = await conn.query('SELECT COUNT(*) AS total FROM schema_migrations');
-    expect(total).toBe(1);
+    const versions = require('fs').readdirSync(require('path').join(__dirname, '../../database/migrations')).filter(name => name.endsWith('.js'));
+    expect(total).toBe(versions.length);
   } finally { conn.release(); }
   await auth(dono.token).get('/api/auth/me').expect(200);
 });

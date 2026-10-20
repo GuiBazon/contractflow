@@ -5,6 +5,7 @@ const { obterContratoDono, bloquearContratoDono } = require('../services/contrat
 const { isDate, str } = require('../utils/validators');
 const { integer,pagination,period } = require('../utils/query');
 const { asyncHandler } = require('../utils/http');
+const idempotency = require('../services/idempotencyService');
 
 async function listPagamentos(req, res) {
   const { contratoId } = req.params;
@@ -75,13 +76,24 @@ async function createPagamento(req, res) {
   const forma_pagamento = str(req.body.forma_pagamento) || null;
   let conn;
   try {
+    const contractId = integer(contratoId, 'Contrato');
     const parcelaId = integer(req.body.parcela_id, 'Parcela');
     const valor = money(req.body.valor, 'Valor do pagamento');
+    const observacoes = req.body.observacoes ? String(req.body.observacoes) : null;
+    const key = idempotency.validateKey(req.get('Idempotency-Key'));
     if (!isDate(data_pagamento)) throw new HttpError(400, 'Data do pagamento inválida');
     const contrato = await obterContratoDono(contratoId, req.user.id);
     if (!contrato) throw new HttpError(404, 'Contrato não encontrado');
     conn = await db.getConnection();
     await conn.beginTransaction();
+    const operation = await idempotency.begin(conn, req.user.id, key, {
+      operacao: 'PAGAMENTO', contrato_id: contractId, parcela_id: parcelaId,
+      valor_centavos: Math.round(valor * 100), data_pagamento, forma_pagamento, observacoes,
+    });
+    if (operation?.replay) {
+      await conn.commit();
+      return res.set('Idempotency-Replayed', 'true').status(operation.status).json(operation.body);
+    }
     await bloquearContratoDono(conn, contratoId, req.user.id);
     // O contrato vem primeiro; o lock da parcela protege seu saldo.
     const [parcelas] = await conn.execute(
@@ -98,7 +110,7 @@ async function createPagamento(req, res) {
     if (Math.round(valor * 100) > restante) throw new HttpError(400, `Pagamento excede o valor da parcela (restam R$ ${(restante / 100).toFixed(2)})`);
     const [result] = await conn.execute(
       `INSERT INTO pagamentos (parcela_id, valor, data_pagamento, forma_pagamento, observacoes) VALUES (?, ?, ?, ?, ?)`,
-      [parcelaId, valor, data_pagamento, forma_pagamento, req.body.observacoes ? String(req.body.observacoes) : null]
+      [parcelaId, valor, data_pagamento, forma_pagamento, observacoes]
     );
     await recalcSituacaoParcela(conn, parcelaId);
     await registrarHistorico(conn, {
@@ -106,12 +118,14 @@ async function createPagamento(req, res) {
       descricao: `Pagamento de R$ ${valor.toFixed(2)} registrado na parcela ${parcela.numero} em ${data_pagamento}`,
     });
     const [[novoTotal]] = await conn.query('SELECT COALESCE(SUM(valor),0) AS pago FROM pagamentos WHERE parcela_id = ?', [parcelaId]);
-    await conn.commit();
-    return res.status(201).json({
+    const body = {
       message: 'Pagamento registrado com sucesso',
       pagamento: { id: result.insertId, parcela_id: parcelaId, valor, data_pagamento, forma_pagamento },
       parcela: { id: parcelaId, pago: Number(novoTotal.pago), valor: Number(parcela.valor), quitada: Number(novoTotal.pago) >= Number(parcela.valor) },
-    });
+    };
+    await idempotency.complete(conn, operation, 201, body);
+    await conn.commit();
+    return res.status(201).json(body);
   } catch (error) {
     if (conn) await conn.rollback();
     const status = error.status || 500;

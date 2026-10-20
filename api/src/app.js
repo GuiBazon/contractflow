@@ -8,7 +8,10 @@ const corsOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
   : undefined;
 
-app.use(cors(corsOrigins ? { origin: corsOrigins } : {}));
+app.use(cors({
+  ...(corsOrigins ? { origin: corsOrigins } : {}),
+  exposedHeaders: ['Idempotency-Replayed', 'Retry-After', 'RateLimit'],
+}));
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/api/health', (req, res) => {
