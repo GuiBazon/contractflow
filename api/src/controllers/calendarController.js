@@ -21,16 +21,19 @@ async function list(req, res) {
    CONCAT('Parcela ',p.numero) AS titulo, GREATEST(p.valor-COALESCE(pg.pago,0),0) AS valor,
    ${SITUACAO} AS situacao, p.id AS parcela_id
    FROM parcelas p JOIN contratos c ON c.id=p.contrato_id JOIN clientes cl ON cl.id=c.cliente_id
-   LEFT JOIN (SELECT parcela_id,SUM(valor) AS pago FROM pagamentos GROUP BY parcela_id) pg ON pg.parcela_id=p.id
+   LEFT JOIN (SELECT parcela_id,SUM(valor) AS pago FROM pagamentos WHERE estornado_em IS NULL GROUP BY parcela_id) pg ON pg.parcela_id=p.id
    WHERE c.usuario_id=? AND p.data_vencimento BETWEEN ? AND ? AND p.status<>'CANCELADA' AND COALESCE(pg.pago,0)<p.valor`);
-  add('PAGAMENTO', `SELECT CONCAT('pagamento-',pg.id), 'PAGAMENTO',pg.data_pagamento,c.id,c.numero,cl.nome_razao_social,
-   CONCAT('Pagamento parcela ',p.numero),pg.valor,'PAGA',p.id
+  add('PAGAMENTO', `SELECT CONCAT('pagamento-',pg.id) AS id, 'PAGAMENTO' AS tipo,pg.data_pagamento AS data,
+   c.id AS contrato_id,c.numero AS contrato_numero,cl.nome_razao_social AS cliente_nome,
+   CONCAT('Pagamento parcela ',p.numero) AS titulo,pg.valor AS valor,'PAGA' AS situacao,p.id AS parcela_id
    FROM pagamentos pg JOIN parcelas p ON p.id=pg.parcela_id JOIN contratos c ON c.id=p.contrato_id JOIN clientes cl ON cl.id=c.cliente_id
-   WHERE c.usuario_id=? AND pg.data_pagamento BETWEEN ? AND ?`);
-  add('DESPESA', `SELECT CONCAT('despesa-',id),'DESPESA',data,NULL,NULL,NULL,descricao,valor,status,NULL
+   WHERE c.usuario_id=? AND pg.data_pagamento BETWEEN ? AND ? AND pg.estornado_em IS NULL`);
+  add('DESPESA', `SELECT CONCAT('despesa-',id) AS id,'DESPESA' AS tipo,data,
+   NULL AS contrato_id,NULL AS contrato_numero,NULL AS cliente_nome,descricao AS titulo,valor,status AS situacao,NULL AS parcela_id
    FROM despesas WHERE usuario_id=? AND data BETWEEN ? AND ? AND status<>'CANCELADA'`);
-  add('RENOVACAO', `SELECT CONCAT('contrato-',c.id),'RENOVACAO',c.data_fim,c.id,c.numero,cl.nome_razao_social,
-   'Término do contrato',0,c.status,NULL FROM contratos c JOIN clientes cl ON cl.id=c.cliente_id
+  add('RENOVACAO', `SELECT CONCAT('contrato-',c.id) AS id,'RENOVACAO' AS tipo,c.data_fim AS data,
+   c.id AS contrato_id,c.numero AS contrato_numero,cl.nome_razao_social AS cliente_nome,
+   'Término do contrato' AS titulo,0 AS valor,c.status AS situacao,NULL AS parcela_id FROM contratos c JOIN clientes cl ON cl.id=c.cliente_id
    WHERE c.usuario_id=? AND c.data_fim BETWEEN ? AND ? AND c.status IN ('ATIVO','EM_RENOVACAO')`);
   const union = pieces.join(' UNION ALL ');
   const [[{ total }]] = await db.query(`SELECT COUNT(*) AS total FROM (${union}) eventos`, params);

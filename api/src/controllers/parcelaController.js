@@ -35,7 +35,7 @@ async function listParcelas(req, res) {
        FROM parcelas p
        LEFT JOIN (
          SELECT parcela_id, COALESCE(SUM(valor),0) AS valor
-         FROM pagamentos
+         FROM pagamentos WHERE estornado_em IS NULL
          GROUP BY parcela_id
        ) pg_sum ON pg_sum.parcela_id = p.id
        WHERE ${where.join(' AND ')}
@@ -65,7 +65,7 @@ async function updateParcela(req, res) {
     const [parcelas] = await conn.execute('SELECT * FROM parcelas WHERE id = ? AND contrato_id = ? FOR UPDATE', [parcelaId, contratoId]);
     if (!parcelas.length) throw new HttpError(404, 'Parcela não encontrada');
     const parcela = parcelas[0];
-    const [[{ pago }]] = await conn.query('SELECT COALESCE(SUM(valor),0) AS pago FROM pagamentos WHERE parcela_id = ?', [parcelaId]);
+    const [[{ pago }]] = await conn.query('SELECT COALESCE(SUM(valor),0) AS pago FROM pagamentos WHERE parcela_id = ? AND estornado_em IS NULL', [parcelaId]);
     const updates = [];
     const values = [];
     if (Object.hasOwn(req.body, 'data_vencimento')) {

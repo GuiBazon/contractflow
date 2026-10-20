@@ -47,7 +47,7 @@ const schemas = {
   Installment: object({ id, numero: id, valor: amount, data_vencimento: date, status: enumText(installmentStatuses), situacao: enumText(installmentStatuses), pago: amount, dias_atraso: { type: 'integer' } }, ['id', 'numero', 'valor', 'data_vencimento']),
   SimulatedInstallment: object({ numero: id, valor: amount, data_vencimento: date, juros: amount, multa: amount, total_atualizado: amount }, ['numero', 'valor', 'data_vencimento']),
   InstallmentChange: { ...object({ valor: number(100), data_vencimento: date, status: enumText(installmentStatuses) }), minProperties: 1 },
-  Payment: object({ id, parcela_id: id, valor: amount, data_pagamento: date, forma_pagamento: { ...text('PIX'), nullable: true }, observacoes: { type: 'string', nullable: true }, created_at: dateTime }, ['id', 'valor', 'data_pagamento']),
+  Payment: object({ id, parcela_id: id, valor: amount, data_pagamento: date, forma_pagamento: { ...text('PIX'), nullable: true }, observacoes: { type: 'string', nullable: true }, created_at: dateTime, status: enumText(['CONFIRMADO', 'ESTORNADO']), estornado_em: dateTime, estornado_por: { ...id, nullable: true }, motivo_estorno: { type: 'string', nullable: true } }, ['id', 'valor', 'data_pagamento']),
   PaymentCreate: object({ parcela_id: id, valor: { type: 'number', exclusiveMinimum: true, minimum: 0, example: 100 }, data_pagamento: date, forma_pagamento: text('PIX'), observacoes: text('Pagamento parcial') }, ['parcela_id', 'valor', 'data_pagamento']),
   PaymentCreated: object({ message: text('Pagamento registrado com sucesso'), pagamento: ref('Payment'), parcela: object({ id, pago: amount, valor: amount, quitada: { type: 'boolean' } }) }, ['message', 'pagamento', 'parcela']),
   Expense: object({ id, usuario_id: id, descricao: text('Aluguel'), categoria: { ...text('FIXAS'), nullable: true }, valor: amount, data: date, status: enumText(['PENDENTE', 'PAGA', 'CANCELADA']), observacoes: { type: 'string', nullable: true } }, ['id', 'descricao', 'valor', 'data', 'status']),
@@ -122,10 +122,16 @@ route('get', '/contratos/{contratoId}/parcelas', 'Listar parcelas e seus saldos'
 route('post', '/contratos/{contratoId}/parcelas', 'Adicionar parcelas ao contrato', 'Parcelas', { status: 201, requestBody: jsonBody(object({ quantidade_parcelas: { type: 'integer', minimum: 1, maximum: 120 }, valor_parcela: number(100), vencimentos: array(date) }, ['quantidade_parcelas', 'valor_parcela'])), description: 'Atualiza o valor e a quantidade total. Contratos encerrados/cancelados não recebem novas parcelas.' });
 route('patch', '/contratos/{contratoId}/parcelas/{parcelaId}', 'Alterar parcela com validações financeiras', 'Parcelas', { requestBody: jsonBody(ref('InstallmentChange')) });
 
-const paymentQueries = [...pages, ...period, ...ids];
+route('post', '/pagamentos/{pagamentoId}/estorno', 'Estornar lançamento preservando registro e histórico', 'Pagamentos', {
+  requestBody: jsonBody(object({ motivo: text('Pagamento lançado na parcela errada', { minLength: 5, maxLength: 500 }) }, ['motivo'])),
+  schema: object({ message: text(), pagamento: ref('Payment'), parcela: object({ id, valor: amount, pago: amount, quitada: { type: 'boolean' } }) }),
+  description: 'Somente o dono pode estornar. Registra motivo, autor e data, recalcula os saldos e reabre a parcela. Um segundo estorno retorna 409. Consultas financeiras e relatórios excluem o lançamento estornado; use status=TODOS ou ESTORNADO para auditoria.',
+});
+const paymentStatus = parameter('status', { type: 'string', enum: ['CONFIRMADO', 'ESTORNADO', 'TODOS'], default: 'CONFIRMADO' });
+const paymentQueries = [...pages, ...period, ...ids, paymentStatus];
 route('get', '/pagamentos', 'Consultar pagamentos do usuário', 'Pagamentos', { parameters: paymentQueries, schema: paginated(ref('Payment')) });
 route('get', '/receitas', 'Consultar receitas de pagamentos', 'Pagamentos', { parameters: paymentQueries, schema: paginated(ref('Payment')) });
-route('get', '/contratos/{contratoId}/pagamentos', 'Consultar pagamentos de um contrato', 'Pagamentos', { parameters: [...pages, ...period], schema: paginated(ref('Payment')) });
+route('get', '/contratos/{contratoId}/pagamentos', 'Consultar pagamentos de um contrato', 'Pagamentos', { parameters: [...pages, ...period, paymentStatus], schema: paginated(ref('Payment')) });
 route('post', '/contratos/{contratoId}/pagamentos', 'Registrar pagamento com proteção de reenvio', 'Pagamentos', {
   status: 201, requestBody: jsonBody(ref('PaymentCreate')), schema: ref('PaymentCreated'),
   parameters: [{ name: 'Idempotency-Key', in: 'header', required: false, schema: text('550e8400-e29b-41d4-a716-446655440000', { minLength: 8, maxLength: 128 }) }],

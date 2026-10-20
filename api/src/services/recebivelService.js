@@ -6,7 +6,7 @@ const SITUACAO = `CASE WHEN p.status = 'CANCELADA' THEN 'CANCELADA'
  WHEN p.data_vencimento < CURDATE() THEN 'VENCIDA' ELSE 'PENDENTE' END`;
 const JOINS = `FROM parcelas p JOIN contratos c ON c.id = p.contrato_id
  JOIN clientes cl ON cl.id = c.cliente_id
- LEFT JOIN (SELECT parcela_id, SUM(valor) AS pago FROM pagamentos GROUP BY parcela_id) pg ON pg.parcela_id = p.id`;
+ LEFT JOIN (SELECT parcela_id, SUM(valor) AS pago FROM pagamentos WHERE estornado_em IS NULL GROUP BY parcela_id) pg ON pg.parcela_id = p.id`;
 
 function filters(usuarioId, query = {}) {
   const where = ['c.usuario_id = ?'];

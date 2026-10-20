@@ -3,9 +3,14 @@ const { recalcSituacaoParcela } = require('../services/financeiroService');
 const { registrarHistorico } = require('../services/historicoService');
 const { obterContratoDono, bloquearContratoDono } = require('../services/contratoService');
 const { isDate, str } = require('../utils/validators');
-const { integer,pagination,period } = require('../utils/query');
+const { integer,pagination,period,choice } = require('../utils/query');
 const { asyncHandler } = require('../utils/http');
 const idempotency = require('../services/idempotencyService');
+
+function filterStatus(where, value) {
+  const status = choice(value ?? 'CONFIRMADO', ['CONFIRMADO', 'ESTORNADO', 'TODOS'], 'Situação do pagamento');
+  if (status !== 'TODOS') where.push(`pg.estornado_em IS ${status === 'ESTORNADO' ? 'NOT ' : ''}NULL`);
+}
 
 async function listPagamentos(req, res) {
   const { contratoId } = req.params;
@@ -15,6 +20,7 @@ async function listPagamentos(req, res) {
 
   const where = ['par.contrato_id = ?', 'cl.usuario_id = ?'];
   const params = [contratoId, req.user.id];
+  filterStatus(where, req.query.status);
 
   if (de && isDate(de)) {
     where.push('pg.data_pagamento >= ?');
@@ -46,7 +52,9 @@ async function listPagamentos(req, res) {
     const [rows] = await db.execute(
       `SELECT
          pg.id, pg.valor, pg.data_pagamento, pg.forma_pagamento, pg.observacoes,
-         pg.created_at, par.numero AS parcela_numero, par.id AS parcela_id,
+         pg.created_at, pg.estornado_em, pg.estornado_por, pg.motivo_estorno,
+         CASE WHEN pg.estornado_em IS NULL THEN 'CONFIRMADO' ELSE 'ESTORNADO' END AS status,
+         par.numero AS parcela_numero, par.id AS parcela_id,
          par.data_vencimento AS parcela_vencimento
        FROM pagamentos pg
        JOIN parcelas par ON par.id = pg.parcela_id
@@ -104,7 +112,7 @@ async function createPagamento(req, res) {
     const parcela = parcelas[0];
     if (parcela.status === 'CANCELADA') throw new HttpError(400, 'Parcela cancelada não aceita pagamentos');
     const [[{ totalPago }]] = await conn.query(
-      'SELECT COALESCE(SUM(valor),0) AS totalPago FROM pagamentos WHERE parcela_id = ?', [parcelaId]
+      'SELECT COALESCE(SUM(valor),0) AS totalPago FROM pagamentos WHERE parcela_id = ? AND estornado_em IS NULL', [parcelaId]
     );
     const restante = Math.round(Number(parcela.valor) * 100) - Math.round(Number(totalPago) * 100);
     if (Math.round(valor * 100) > restante) throw new HttpError(400, `Pagamento excede o valor da parcela (restam R$ ${(restante / 100).toFixed(2)})`);
@@ -117,7 +125,7 @@ async function createPagamento(req, res) {
       contratoId: Number(contratoId), usuarioId: req.user.id, acao: 'PAGAMENTO',
       descricao: `Pagamento de R$ ${valor.toFixed(2)} registrado na parcela ${parcela.numero} em ${data_pagamento}`,
     });
-    const [[novoTotal]] = await conn.query('SELECT COALESCE(SUM(valor),0) AS pago FROM pagamentos WHERE parcela_id = ?', [parcelaId]);
+    const [[novoTotal]] = await conn.query('SELECT COALESCE(SUM(valor),0) AS pago FROM pagamentos WHERE parcela_id = ? AND estornado_em IS NULL', [parcelaId]);
     const body = {
       message: 'Pagamento registrado com sucesso',
       pagamento: { id: result.insertId, parcela_id: parcelaId, valor, data_pagamento, forma_pagamento },
@@ -145,6 +153,7 @@ async function listAllPagamentos(req, res) {
 
   const where = ['cl.usuario_id = ?'];
   const params = [req.user.id];
+  filterStatus(where, req.query.status);
 
   if (contratoId) {
     where.push('c.id = ?');
@@ -180,6 +189,8 @@ async function listAllPagamentos(req, res) {
     const [rows] = await db.execute(
       `SELECT
          pg.id, pg.valor, pg.data_pagamento, pg.forma_pagamento, pg.observacoes,
+         pg.estornado_em, pg.estornado_por, pg.motivo_estorno,
+         CASE WHEN pg.estornado_em IS NULL THEN 'CONFIRMADO' ELSE 'ESTORNADO' END AS status,
          c.id AS contrato_id, c.numero AS contrato_numero,
          cl.id AS cliente_id, cl.nome_razao_social AS cliente_nome,
          par.numero AS parcela_numero

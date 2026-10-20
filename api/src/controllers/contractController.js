@@ -61,7 +61,7 @@ async function listContratos(req, res) {
          (SELECT COUNT(*) FROM parcelas p2 WHERE p2.contrato_id = c.id) AS total_parcelas,
          (SELECT COUNT(*) FROM parcelas p3 WHERE p3.contrato_id = c.id AND p3.status = 'PAGA') AS parcelas_pagas,
          (SELECT COALESCE(SUM(p4.valor),0) FROM parcelas p4 WHERE p4.contrato_id = c.id AND p4.status <> 'CANCELADA') AS valor_parcelas,
-         (SELECT COALESCE(SUM(pg.valor),0) FROM parcelas p5 JOIN pagamentos pg ON pg.parcela_id = p5.id WHERE p5.contrato_id = c.id) AS recebido
+         (SELECT COALESCE(SUM(pg.valor),0) FROM parcelas p5 JOIN pagamentos pg ON pg.parcela_id = p5.id WHERE p5.contrato_id = c.id AND pg.estornado_em IS NULL) AS recebido
        FROM contratos c
        JOIN clientes cl ON cl.id = c.cliente_id
        WHERE ${whereSql}

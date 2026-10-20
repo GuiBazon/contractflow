@@ -22,7 +22,7 @@ async function getResumoContrato(db, contratoId, usuarioId) {
      LEFT JOIN parcelas p ON p.contrato_id = c.id
      LEFT JOIN (
        SELECT parcela_id, SUM(valor) AS valor
-       FROM pagamentos
+       FROM pagamentos WHERE estornado_em IS NULL
        GROUP BY parcela_id
      ) pg_sum ON pg_sum.parcela_id = p.id
      WHERE c.id = ? AND cl.usuario_id = ?
@@ -62,7 +62,7 @@ async function recalcSituacaoParcela(db, parcelaId) {
   const [rows] = await db.execute(
     `SELECT p.valor, COALESCE(SUM(pg.valor), 0) AS pago, p.status
      FROM parcelas p
-     LEFT JOIN pagamentos pg ON pg.parcela_id = p.id
+     LEFT JOIN pagamentos pg ON pg.parcela_id = p.id AND pg.estornado_em IS NULL
      WHERE p.id = ?
      GROUP BY p.id, p.valor, p.status`,
     [parcelaId]
@@ -111,7 +111,7 @@ async function listarParcelasAtraso(db, usuarioId, { limite = 50 } = {}) {
      JOIN clientes cl ON cl.id = c.cliente_id
      LEFT JOIN (
        SELECT parcela_id, SUM(valor) AS valor
-       FROM pagamentos
+       FROM pagamentos WHERE estornado_em IS NULL
        GROUP BY parcela_id
      ) pg_sum ON pg_sum.parcela_id = p.id
      WHERE cl.usuario_id = ?

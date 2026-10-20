@@ -5,7 +5,7 @@ const { calcularProjecao } = require('./financeiroService');
 
 async function summary(usuarioId, query = {}) {
   const dates = period(query);
-  const rw = ['c.usuario_id = ?']; const rp = [usuarioId];
+  const rw = ['c.usuario_id = ?', 'pg.estornado_em IS NULL']; const rp = [usuarioId];
   dateWhere('pg.data_pagamento', dates, rw, rp);
   const ew = ['usuario_id = ?']; const ep = [usuarioId];
   dateWhere('data', dates, ew, ep);
@@ -29,7 +29,7 @@ async function summary(usuarioId, query = {}) {
 
 async function monthly(usuarioId, query) {
   const dates = period(query);
-  const rw = ['c.usuario_id = ?']; const rp = [usuarioId];
+  const rw = ['c.usuario_id = ?', 'pg.estornado_em IS NULL']; const rp = [usuarioId];
   const ew = ['usuario_id = ?', "status = 'PAGA'"]; const ep = [usuarioId];
   dateWhere('pg.data_pagamento', dates, rw, rp);
   dateWhere('data', dates, ew, ep);

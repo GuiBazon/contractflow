@@ -68,4 +68,9 @@ async function markAllRead(usuarioId, days = 7) {
   return summary(usuarioId, source.dias);
 }
 
-module.exports = { list, summary, markRead, markUnread, markAllRead };
+async function resetForInstallment(connection, usuarioId, parcela) {
+  const keys = ['ATRASO', 'VENCIMENTO'].map(tipo => alerts.eventKey({ tipo, id: `parcela-${parcela.id}`, data: parcela.data_vencimento }));
+  await connection.execute('DELETE FROM notificacoes_leituras WHERE usuario_id=? AND chave_evento IN (?,?)', [usuarioId, ...keys]);
+}
+
+module.exports = { list, summary, markRead, markUnread, markAllRead, resetForInstallment };

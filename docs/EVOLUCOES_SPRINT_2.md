@@ -55,3 +55,15 @@ Validação: `tests/mysql/notifications.test.js` cobre persistência, repetiçã
 Os grupos cobrem autenticação, usuários, clientes, contratos, parcelas, pagamentos, recebíveis, despesas, dashboard, calendário, notificações, documentos, OCR, calculadora e relatórios. Incluem corpos de requisição, filtros, upload multipart, exportação binária, erros, chave de idempotência e aliases antigos. Tokens digitados não são persistidos pelo Swagger entre sessões.
 
 Validação: `tests/integration/openapi.test.js` valida o documento com Swagger Parser, referências e identificadores de operação, além de carregar HTML/JavaScript do Swagger e confirmar que as rotas de dados continuam exigindo autenticação.
+
+## Estorno auditável de pagamentos
+
+`POST /api/pagamentos/:pagamentoId/estorno` recebe `{ "motivo": "Pagamento lançado na parcela errada" }`, com 5–500 caracteres. Somente o dono do pagamento pode executar. O valor, data, forma e registro original são preservados; acrescentam-se `estornado_em`, `estornado_por`, `motivo_estorno` e o evento `ESTORNO` no histórico do contrato. Uma repetição retorna 409.
+
+A operação usa os mesmos bloqueios de contrato/parcela dos pagamentos. Atualização do lançamento, recálculo da parcela, reabertura da notificação e histórico pertencem à mesma transação. Uma falha desfaz tudo. Contratos com histórico de pagamentos continuam protegidos contra replanejamento que removeria parcelas vinculadas.
+
+Pagamentos estornados saem do saldo recebido, dashboard, calendário de pagamentos, recebíveis e relatórios JSON/CSV/XLSX. A listagem de pagamentos retorna `CONFIRMADO` por padrão; `?status=ESTORNADO` e `?status=TODOS` permitem auditoria. O saldo reaberto aceita um novo pagamento legítimo. Reenviar a chave do pagamento antigo devolve a resposta original sem recriá-lo; recarregue a consulta para obter seu estado atual.
+
+A migração `005-payment-reversals.js` adiciona os três campos com FK do responsável e restrição de metadados completos, preservando pagamentos existentes. Durante a integração, os filtros de tipo do calendário também foram corrigidos para nomear todas as colunas mesmo quando há apenas um tipo de evento.
+
+Validação: `tests/mysql/paymentReversals.test.js` cobre reflexos em todo o financeiro, exportações, concorrência, isolamento, rollback por falha de histórico e migração de uma tabela antiga. `calendarTypes.test.js` cobre os quatro filtros do calendário com dados e sem registros.

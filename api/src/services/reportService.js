@@ -15,6 +15,7 @@ function definition(usuarioId, tipo, query) {
   if (cliente) { where.push('c.cliente_id = ?'); params.push(cliente); }
   if (contrato) { where.push('c.id = ?'); params.push(contrato); }
   if (tipo === 'RECEITAS') {
+    where.push('pg.estornado_em IS NULL');
     dateWhere('pg.data_pagamento', period(query), where, params);
     return { sql: `FROM pagamentos pg JOIN parcelas p ON p.id=pg.parcela_id JOIN contratos c ON c.id=p.contrato_id JOIN clientes cl ON cl.id=c.cliente_id WHERE ${where.join(' AND ')}`, params,
       select: 'pg.id,c.id AS contrato_id,c.numero AS contrato_numero,cl.nome_razao_social AS cliente_nome,p.numero AS parcela_numero,pg.valor,pg.data_pagamento,pg.forma_pagamento', numbers: ['valor'] };

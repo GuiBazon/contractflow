@@ -14,6 +14,7 @@ allRouter.use(authMiddleware);
 
 // Compatibilidade com o cliente Web da Sprint 1.
 router.get('/', listAllPagamentos);
+router.post('/:pagamentoId/estorno', require('../utils/http').asyncHandler(require('../controllers/paymentReversalController').reverse));
 router.get('/:contratoId/pagamentos', listPagamentos);
 router.post('/:contratoId/pagamentos', createPagamento);
 

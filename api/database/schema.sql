@@ -146,11 +146,20 @@ CREATE TABLE IF NOT EXISTS pagamentos (
   data_pagamento DATE NOT NULL,
   forma_pagamento VARCHAR(50),
   observacoes TEXT,
+  estornado_em DATETIME NULL,
+  estornado_por INT NULL,
+  motivo_estorno VARCHAR(500) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_pagamentos_parcela_id (parcela_id),
   KEY idx_pagamentos_data (data_pagamento),
   CONSTRAINT chk_pagamentos_valor CHECK (valor >= 0),
+  CONSTRAINT chk_pagamento_estorno CHECK (
+    (estornado_em IS NULL AND estornado_por IS NULL AND motivo_estorno IS NULL) OR
+    (estornado_em IS NOT NULL AND estornado_por IS NOT NULL AND motivo_estorno IS NOT NULL AND CHAR_LENGTH(TRIM(motivo_estorno)) >= 5)
+  ),
+  CONSTRAINT fk_pagamento_estornado_por FOREIGN KEY (estornado_por)
+    REFERENCES usuarios(id) ON DELETE RESTRICT,
   CONSTRAINT fk_pagamentos_parcela
     FOREIGN KEY (parcela_id) REFERENCES parcelas(id) ON DELETE RESTRICT
 );
