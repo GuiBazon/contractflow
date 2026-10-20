@@ -1,7 +1,9 @@
 # CONTRACTFLOW — INSTRUÇÕES / RELATÓRIO DE ESTADO (para retomar em casa)
 
-> Este arquivo contém o prompt/escopo da missão (Sprint 1) e o relatório fiel do que
-> já foi feito e do que falta, para você retomar rapidamente sem re-auditar tudo.
+> Registro histórico da Sprint 1. As pendências/resultados abaixo pertencem
+> àquela etapa e não descrevem a branch atual da Sprint 2. Para retomar agora, use
+> [entrega do backend](../docs/ENTREGA_SPRINT_2.md), [API](../docs/API_SPRINT_2.md)
+> e [instalação/testes](README.md).
 
 ---
 
