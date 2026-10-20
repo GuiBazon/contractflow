@@ -123,9 +123,22 @@ inclusive para ADMIN. Detalhes em [API_SPRINT_2.md](API_SPRINT_2.md).
 | POST | `/api/calculadora/parcelas`, `/saldo`, `/projecao` | Simulações com os serviços do contrato/dashboard, sem gravar |
 | POST | `/api/contratos/:id/renovar` | Novo contrato/parcelas e históricos; anterior encerrado, financeiro preservado |
 
-Não há recuperação de senha sem login, push/e-mail, estorno ou cobrança automática
-dos juros estimados. Essas limitações e a integração das telas estão registradas
-na matriz de requisitos e na entrega do backend.
+As evoluções adicionais estão em [EVOLUCOES_SPRINT_2.md](EVOLUCOES_SPRINT_2.md)
+e no Swagger `/api/docs/`. Recuperação sem login usa link SMTP temporário; estorno
+de pagamentos preserva o lançamento. Alertas continuam em tela, e juros são
+estimados. A integração final das telas e o provedor SMTP de produção precisam
+ser configurados pela equipe.
+
+| Método | Rota | Entrega adicional |
+| --- | --- | --- |
+| POST | `/api/auth/forgot-password` | Solicita link sem revelar se a conta existe |
+| POST | `/api/auth/reset-password` | Token de uso único; troca senha e revoga sessões |
+| POST | `/api/contratos/:contratoId/pagamentos` | `Idempotency-Key` para repetir sem duplicar |
+| POST | `/api/pagamentos/:pagamentoId/estorno` | Motivo obrigatório; auditoria e recálculo |
+| GET | `/api/notificacoes/resumo` | Total, lidas e não lidas |
+| PATCH / DELETE | `/api/notificacoes/:id/leitura` | Marcar como lida ou não lida |
+| PATCH | `/api/notificacoes/ler-todas` | Leitura em lote do período |
+| GET | `/api/docs/`, `/api/openapi.json` | Swagger e especificação OpenAPI validada |
 
 ---
 

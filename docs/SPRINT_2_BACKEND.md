@@ -5,6 +5,9 @@ Referência técnica: checkout no commit `e753de5`, última entrega registrada e
 Este plano foi atualizado após a execução do backend. A seção 2 preserva o
 diagnóstico inicial; o estado atual e os commits estão na seção 9 e em
 [ENTREGA_SPRINT_2.md](ENTREGA_SPRINT_2.md).
+As seis evoluções adicionais autorizadas em 20/10 estão descritas em
+[EVOLUCOES_SPRINT_2.md](EVOLUCOES_SPRINT_2.md), com regras, migrações e testes.
+O [roteiro técnico](ROTEIRO_EVOLUCOES_BACKEND.md) organiza a demonstração individual.
 Responsabilidade confirmada pelo usuário: todo o backend, incluindo OCR, financeiro
 e testes. Execução autorizada ao assistente; a disponibilidade do usuário não
 limita a implementação. Revisão e ensaio seguem necessários para a apresentação.

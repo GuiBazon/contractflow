@@ -5,6 +5,7 @@ npm-debug.log
 !.env.example
 tests
 coverage
+.cache
 uploads
 instrucoes.md
 README.md

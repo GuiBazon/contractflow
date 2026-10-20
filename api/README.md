@@ -117,9 +117,11 @@ npm run test:api    # apenas integração/API
 
 ### Testes com MySQL real (Sprint 2)
 
-Além dos 84 testes rápidos, 33 cenários de API são executados contra MySQL 8:
+Além dos 92 testes rápidos, 89 cenários de API são executados contra MySQL 8:
 financeiro, isolamento, concorrência, CRUDs, dashboard, calendário, relatórios,
-OCR de PDF/imagem/scan, permissões, migrações e renovação.
+OCR de PDF/imagem/scan, permissões, migrações, renovação, idempotência, estorno,
+notificações e contratos de resposta OpenAPI. Recuperação de senha usa SMTP real
+capturado localmente no Mailpit iniciado pelo Compose de teste.
 
 ```bash
 # A partir de api/. Banco separado, porta 3307; não usa o .env da aplicação.
@@ -141,12 +143,29 @@ npm run test:coverage
 ```
 
 Relatório em `coverage/combined/index.html`; organização dos casos em
-[tests/mysql/README.md](tests/mysql/README.md). Cobertura local: 91,09% das linhas
+[tests/mysql/README.md](tests/mysql/README.md). Cobertura local: 93,65% das linhas
 de controllers/services/utils/middlewares, sem medir telas ou implantação.
 
 O workflow `.github/workflows/backend.yml` executa as suítes rápida e MySQL em
 jobs separados e combina a cobertura em um terceiro job, em push/PR da API.
 Resultados locais e execução do GitHub Actions são evidências distintas.
+
+### Swagger e recuperação de senha
+
+A documentação interativa fica em `/api/docs/`; o JSON OpenAPI em
+`/api/openapi.json`. Faça login e use **Authorize** com o JWT. Para validar a
+especificação no desenvolvimento, execute `npm run docs:validate`.
+
+Copie as variáveis de SMTP de `.env.example`. Para desenvolvimento local,
+o serviço Mailpit do `compose.test.yaml` captura mensagens na porta SMTP 1025,
+com caixa HTTP na porta 8025. Ele não encaminha e-mails para destinatários externos.
+`PASSWORD_RESET_URL` define a tela Web que recebe o token e chama
+`POST /api/auth/reset-password`. Em um provedor de e-mail real, configure host,
+porta, remetente e credenciais no ambiente, mantendo TLS.
+
+Os novos contratos, exemplos de reenvio e regras de estorno estão em
+[EVOLUCOES_SPRINT_2.md](../docs/EVOLUCOES_SPRINT_2.md). Clientes Web/Mobile devem
+reutilizar `Idempotency-Key` ao reenviar a mesma operação e tratar 409/429.
 
 ### Dependências de produção
 

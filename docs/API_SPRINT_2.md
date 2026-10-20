@@ -61,7 +61,7 @@ Obrigatórios na criação: descrição (1–200 caracteres), valor positivo, da
 Categoria até 100 caracteres; status `PENDENTE` (padrão), `PAGA`, `CANCELADA`.
 Data representa vencimento de pendentes ou lançamento do desembolso quando pago.
 Despesa paga preserva valor, data e status e só permite ajuste descritivo; não há
-estorno financeiro nesta entrega. Campos financeiros recebem 409 ao tentar alterá-los.
+estorno de despesas nesta entrega. Campos financeiros recebem 409 ao tentar alterá-los.
 
 ## Compatibilidade do núcleo
 
@@ -105,12 +105,13 @@ geram vencimento aberto. RENOVACAO identifica término de contrato ativo/em reno
 ## Alertas em tela — RF30/31/39/42
 
 `GET /api/alertas?dias=7&page=1&limit=20` (`dias`: 1–90).
-`/api/notificacoes` é alias da mesma consulta.
+`/api/notificacoes` acrescenta estado de leitura persistente e contadores à consulta.
 
 Retorna parcelas com saldo vencido (`ATRASO`), próximas do vencimento
 (`VENCIMENTO`) e contratos próximos do término (`RENOVACAO`), com paginação.
-Dados são derivados no momento da consulta; não há envio de push/e-mail,
-marcação de leitura ou agendamento externo. Renovação efetiva é registrada por
+Dados são derivados no momento da consulta. A leitura é gravada por usuário em
+`PATCH /api/notificacoes/:id/leitura`, e o contador vem de `/notificacoes/resumo`.
+Alertas não enviam push/e-mail automaticamente. Renovação efetiva é registrada por
 `POST /api/contratos/:id/renovar`, descrito abaixo.
 
 ## Relatórios — RF37/38

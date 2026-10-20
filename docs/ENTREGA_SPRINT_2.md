@@ -52,9 +52,11 @@ Os oito primeiros commits foram preservados até `ad30989`. As entregas de teste
 
 | Verificação | Resultado local |
 | --- | --- |
-| `npm test -- --ci --runInBand --coverage` | 84 testes passaram, seis suítes |
-| `npm run test:mysql -- --ci --coverage` | 33 cenários passaram, sete suítes |
-| `npm run coverage:merge` | 91,09% linhas; 85,68% instruções; 71,13% ramificações; 92,90% funções |
+| `npm test -- --ci --runInBand --coverage` | 92 testes passaram, oito suítes |
+| `npm run test:mysql -- --ci --coverage` | 89 cenários passaram, quatorze suítes |
+| `npm run coverage:merge` | 93,65% linhas; 88,60% instruções; 74,88% ramificações; 94,79% funções |
+| OpenAPI e navegador | 71 operações; JWT e GET/POST executados no Swagger; sem erro de página ou pedido externo |
+| SMTP local | Recuperação, uso único e revogação validados em Node e na imagem Docker em rede interna |
 | `npm ci` | Instalação reproduzível com o lockfile atual |
 | `npm audit --omit=dev` | Zero vulnerabilidades reportadas |
 | Docker build/runtime | Node 24, UID 1000; migração, login, financeiro, CSV/XLSX e OCR textual/PNG/scan passaram |
@@ -116,9 +118,10 @@ separadamente. Não registrar movimentações/participação em dias que não oc
    o acesso local; não prova que a rede/equipamento da apresentação funcionará.
 
 Formatos completos, erros, limites e regras: [API_SPRINT_2.md](API_SPRINT_2.md).
-Recuperação sem login, push/e-mail, estorno e cobrança automática de encargos não
-foram entregues. Oportunidades opcionais devem ter escopo final registrado com a
-equipe; não apagar requisitos prometidos para apresentar uma matriz toda verde.
+Recuperação por e-mail, leitura de notificações e estorno de pagamentos foram
+implementados nas [evoluções adicionais](EVOLUCOES_SPRINT_2.md). O SMTP de produção
+e as telas correspondentes devem ser integrados pela equipe. Alertas push/e-mail
+e cobrança automática de encargos continuam fora das operações entregues.
 
 ## Percurso técnico individual
 

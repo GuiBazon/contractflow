@@ -44,7 +44,7 @@ validação do produto completo continuam sob responsabilidade conjunta da equip
 | RF01 | Cadastro de usuários (nome, e-mail, senha; 1º vira ADMIN) | ALTA | ✅ | `authController.register`; bootstrap concorrente verificado em `tests/mysql/auth.test.js` |
 | RF02 | Login com e-mail e senha (JWT 8h; 403 se desativado) | ALTA | ✅ | `authController.login` + JWT/estado atual da sessão; `tests/mysql/auth.test.js` |
 | RF03 | Controle de acesso por permissões | ALTA | ✅ | `requireAdmin`, `userController`, revogação de sessão e proteção do último ADMIN |
-| RF04 | Recuperação de senha | MÉDIA | 🕓 | Redefinição autenticada em `PATCH /auth/password`; recuperação sem login/e-mail não entregue (opcional) |
+| RF04 | Recuperação de senha | MÉDIA | ✅ | `/auth/forgot-password` e `/auth/reset-password`; SMTP real no Mailpit, token com hash/expiração/uso único, revogação e limite de solicitações; tela final sob integração da equipe |
 | RF05 | Cadastro de clientes (nome/razão, CPF/CNPJ, e-mail, telefone, endereço, obs.) | ALTA | ✅ | `clientController.createCliente`; CPF/CNPJ, e-mail e limites de campos |
 | RF06 | Consulta de clientes (pesquisar, visualizar, editar) | ALTA | ✅ | CRUD/pesquisa de clientes; `tests/mysql/crud.test.js` |
 | RF07 | Cadastro de contratos (cliente, número, tipo, valor, datas, pagamento, parcelas, vencimentos, obs.) | ALTA | ✅ | Criação/edição transacional; redistribuição antes de pagamentos; `crud.test.js` |
@@ -79,7 +79,7 @@ validação do produto completo continuam sob responsabilidade conjunta da equip
 | RF36 | Histórico do contrato | MÉDIA | ✅ | `GET /contratos/:id/historico`; eventos de criação, edição, pagamento, documentos e renovação |
 | RF37 | Relatórios | MÉDIA | ✅ | `GET /relatorios/:tipo`; financeiro, recebíveis, receitas, despesas e contratos |
 | RF38 | Exportação (XLSX e CSV) | MÉDIA | ✅ | CSV/XLSX com todos os resultados filtrados até 10000; round-trip XLSX e proteção de fórmulas |
-| RF39 | Notificações | MÉDIA | ✅ | `/notificacoes` alias de alertas derivados; sem push/e-mail/estado de leitura |
+| RF39 | Notificações | MÉDIA | ✅ | `/notificacoes`, `/resumo`, leitura individual/em lote e não lida persistente por usuário; alertas derivados, sem push/e-mail automático |
 | RF40 | Status de contrato (Ativo, Encerrado, Cancelado, Pendente, Em Renovação) | ALTA | ✅ | Status validado e histórico atômico; `updateContratoStatus` |
 | RF41 | Anexos ao contrato | MÉDIA | ✅ | Upload/busca/download/exclusão de anexos; conteúdo/10 MB/vínculo testados |
 | RF42 | Renovação de contrato (alerta + registro) | BAIXA | ✅ | Alerta de término + `POST /contratos/:id/renovar`; registro atômico e históricos relacionados |
@@ -145,9 +145,11 @@ validação do produto completo continuam sob responsabilidade conjunta da equip
 - Dashboard/Financeiro/Agenda do Mobile ainda derivam dados de páginas limitadas;
   devem passar a usar os endpoints agregados/paginados. Calculadora diverge em
   arredondamento e início do mês: usar a simulação da API ou alinhar as regras.
-- Recuperação de senha sem login não foi implementada; existe troca autenticada.
-  Push/e-mail e renovação automática não fazem parte das operações entregues.
-- Juros/multas são estimativas; efetivação de encargos/estornos exige fluxo específico.
+- Recuperação de senha e notificações com leitura estão implementadas na API;
+  conectar as telas e configurar o provedor SMTP real. SMTP local foi validado no Mailpit.
+  Alertas push/e-mail e renovação automática continuam fora das operações entregues.
+- Juros/multas são estimativas. Estorno de pagamentos usa motivo, autor, data e
+  histórico, preservando os lançamentos e recalculando as consultas financeiras.
 - Notion/Trello/Figma externos não foram alterados. Cards e evidências precisam ser
   vinculados pela equipe; [entrega](ENTREGA_SPRINT_2.md) contém os IDs locais e os commits.
 - Execução local e resultado do GitHub Actions são distintos. Não declarar CI remoto
@@ -155,11 +157,12 @@ validação do produto completo continuam sob responsabilidade conjunta da equip
 
 ## 6. Validação verificável
 
-- **84 testes rápidos**, seis suítes: validadores/cálculos/parser OCR e API com DB simulado.
-- **33 cenários MySQL**, sete suítes: schema, migrations, constraints, isolamento,
-  concorrência, CRUDs, financeiro, analytics, PDF/imagem/scan, permissões e renovação.
-- Cobertura combinada local (controllers/services/utils/middlewares): **91,09% das
-  linhas**, 85,68% das instruções, 71,13% das ramificações e 92,90% das funções.
+- **92 testes rápidos**, oito suítes: validadores/cálculos/parser OCR, API, limites de autenticação e OpenAPI.
+- **89 cenários MySQL**, quatorze suítes: schema, migrations, constraints, isolamento,
+  concorrência, CRUDs, financeiro, OCR, permissões, renovação, SMTP, idempotência,
+  estorno, notificações e vinte contratos de resposta OpenAPI.
+- Cobertura combinada local (controllers/services/utils/middlewares): **93,65% das
+  linhas**, 88,60% das instruções, 74,88% das ramificações e 94,79% das funções.
   Não inclui validação visual, testes de carga ou todas as falhas possíveis do host.
 - Workflow [Backend](../.github/workflows/backend.yml): testes rápidos, MySQL real
   e combinação dos relatórios de cobertura em artifacts; aciona em push/PR da API.
