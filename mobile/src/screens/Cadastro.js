@@ -3,12 +3,13 @@ import {
   View, Text, StyleSheet, SafeAreaView, KeyboardAvoidingView,
   Platform, ScrollView, ActivityIndicator, TouchableOpacity,
 } from 'react-native';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 import { Input, PrimaryButton, ContractFlowLogo } from '../components';
 import { api, normalizarErro } from '../services/api';
 import { salvarSessao } from '../services/storage';
 
 export function Cadastro({ navigation }) {
+  const { colors, styles } = useThemeStyles(createStyles);
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -98,7 +99,7 @@ export function Cadastro({ navigation }) {
             />
             {erro ? <Text style={styles.erro}>{erro}</Text> : null}
             {carregando ? (
-              <ActivityIndicator size="large" color={colors.primary} />
+              <ActivityIndicator size="large" color={colors.accent} />
             ) : (
               <PrimaryButton title="Criar conta" onPress={handleCadastro} />
             )}
@@ -118,10 +119,10 @@ export function Cadastro({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
   },
   flex: {
     flex: 1,
@@ -168,7 +169,7 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
   },
   loginLink: {
-    color: colors.primary,
+    color: colors.accent,
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.semibold,
   },

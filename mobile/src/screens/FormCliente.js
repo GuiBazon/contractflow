@@ -4,11 +4,12 @@ import {
   Platform, ActivityIndicator, Alert,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 import { Header, Input, PrimaryButton, SecondaryButton, LoadingState, ErrorState } from '../components';
 import { api, normalizarErro } from '../services/api';
 
 export function FormCliente() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const route = useRoute();
   const navigation = useNavigation();
   const clienteId = route.params?.clienteId;
@@ -270,7 +271,7 @@ export function FormCliente() {
           />
 
           {salvando ? (
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={colors.accent} />
           ) : (
             <>
               <PrimaryButton title={clienteId ? 'Salvar alterações' : 'Cadastrar cliente'} onPress={handleSalvar} />
@@ -288,7 +289,7 @@ export function FormCliente() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,

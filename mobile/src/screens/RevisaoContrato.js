@@ -5,20 +5,25 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../theme';
-import { Header, Input, PrimaryButton, SecondaryButton, ErrorState, LoadingState } from '../components';
+import { spacing, typography, useThemeStyles } from '../theme';
+import { Header, Input, PrimaryButton, SecondaryButton, ErrorState, LoadingState, DocumentViewer, DocumentoAcao } from '../components';
 import { api, normalizarErro } from '../services/api';
 
 const FORMAS = ['PIX', 'BOLETO', 'CARTAO_CREDITO', 'TRANSFERENCIA', 'DINHEIRO'];
 
 export function RevisaoContrato() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const navigation = useNavigation();
   const route = useRoute();
   const extracaoId = route.params?.extracaoId;
+  const arquivoUri = route.params?.arquivoUri;
+  const arquivoNome = route.params?.arquivoNome;
+  const arquivoMime = route.params?.arquivoMime;
 
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [confirmando, setConfirmando] = useState(false);
+  const [documentoVisualizado, setDocumentoVisualizado] = useState(null);
 
   const [clientes, setClientes] = useState([]);
   const [modoCliente, setModoCliente] = useState('novo');
@@ -189,15 +194,28 @@ export function RevisaoContrato() {
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.docHeader}>
           <View style={styles.docIcon}>
-            <Ionicons name="document-text-outline" size={22} color={colors.primary} />
+            <Ionicons name="document-text-outline" size={22} color={colors.accent} />
           </View>
           <View style={styles.docInfo}>
-            <Text style={styles.docName}>{nomeArquivo}</Text>
+            <Text style={styles.docName} numberOfLines={2}>{nomeArquivo}</Text>
             <Text style={styles.docSize}>
               {confianca > 0 ? `Confiança da leitura: ${confianca}%` : 'Preencha os dados manualmente'}
             </Text>
           </View>
         </View>
+        {arquivoUri ? (
+          <DocumentoAcao
+            documento={{ uri: arquivoUri, nome: arquivoNome || nomeArquivo, mime: arquivoMime }}
+            onPress={() =>
+              setDocumentoVisualizado({
+                uri: arquivoUri,
+                nome: arquivoNome || nomeArquivo,
+                mime: arquivoMime,
+              })
+            }
+            style={styles.docButton}
+          />
+        ) : null}
 
         <Text style={styles.sectionTitle}>Cliente</Text>
         <View style={styles.card}>
@@ -239,7 +257,7 @@ export function RevisaoContrato() {
                     <Ionicons
                       name={clienteId === c.id ? 'radio-button-on' : 'radio-button-off'}
                       size={20}
-                      color={clienteId === c.id ? colors.primary : colors.textMuted}
+                      color={clienteId === c.id ? colors.accent : colors.textMuted}
                     />
                   </TouchableOpacity>
                 ))
@@ -290,18 +308,23 @@ export function RevisaoContrato() {
         {erro ? <Text style={styles.erro}>{erro}</Text> : null}
 
         {confirmando ? (
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.accent} />
         ) : (
           <PrimaryButton title="Confirmar importação" onPress={confirmar} />
         )}
         <View style={styles.spacer} />
         <SecondaryButton title="Voltar" onPress={() => navigation.goBack()} />
       </ScrollView>
+      <DocumentViewer
+        visible={Boolean(documentoVisualizado)}
+        documento={documentoVisualizado}
+        onClose={() => setDocumentoVisualizado(null)}
+      />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,
@@ -316,12 +339,12 @@ const styles = StyleSheet.create({
   docHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 14,
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
     gap: spacing.md,
   },
   docIcon: {
@@ -345,6 +368,9 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 2,
   },
+  docButton: {
+    marginBottom: spacing.lg,
+  },
   sectionTitle: {
     fontSize: typography.sizes.lg,
     fontWeight: typography.weights.semibold,
@@ -352,7 +378,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
@@ -380,7 +406,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.semibold,
   },
   tabTextActive: {
-    color: colors.white,
+    color: colors.onPrimary,
   },
   clienteRow: {
     flexDirection: 'row',
@@ -437,7 +463,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   formaTextActive: {
-    color: colors.white,
+    color: colors.onPrimary,
     fontWeight: typography.weights.semibold,
   },
   campoDetectado: {

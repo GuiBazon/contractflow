@@ -1,10 +1,11 @@
 ﻿import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 import { formatCurrency } from '../utils/format';
 import { StatusBadge } from './StatusBadge';
 
 export function ContractCard({ contrato, onPress }) {
+  const { styles } = useThemeStyles(createStyles);
   const progress = contrato.total_parcelas > 0
     ? contrato.parcelas_pagas / contrato.total_parcelas
     : 0;
@@ -43,9 +44,9 @@ export function ContractCard({ contrato, onPress }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: spacing.lg,
     marginBottom: spacing.md,
@@ -84,7 +85,7 @@ const styles = StyleSheet.create({
   valor: {
     fontSize: typography.sizes.lg,
     fontWeight: typography.weights.bold,
-    color: colors.primary,
+    color: colors.accent,
   },
   parcelas: {
     fontSize: typography.sizes.sm,

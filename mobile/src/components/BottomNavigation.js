@@ -2,9 +2,10 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 
 export function BottomNavigation({ state, navigation }) {
+  const { colors, styles } = useThemeStyles(createStyles);
   const insets = useSafeAreaInsets();
   const tabs = [
     { name: 'Inicio', label: 'Inicio', icon: 'home-outline', activeIcon: 'home' },
@@ -30,7 +31,7 @@ export function BottomNavigation({ state, navigation }) {
                 <Ionicons
                   name={isActive ? tab.activeIcon : tab.icon}
                   size={22}
-                  color={isActive ? colors.primary : colors.inactive}
+                  color={isActive ? colors.accent : colors.inactive}
                 />
               </View>
               <Text style={[styles.label, isActive && styles.labelActive]}>
@@ -44,9 +45,11 @@ export function BottomNavigation({ state, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.tabBar,
+    borderTopWidth: 1,
+    borderTopColor: colors.tabBarBorder,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.05,
@@ -81,7 +84,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   labelActive: {
-    color: colors.primary,
+    color: colors.accent,
     fontWeight: '600',
   },
 });

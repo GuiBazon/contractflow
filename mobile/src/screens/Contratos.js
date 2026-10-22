@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useState, useCallback } from 'react';
 import { View, FlatList, StyleSheet, SafeAreaView, Text, RefreshControl } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 import { api, normalizarErro } from '../services/api';
 import { Header, SearchInput, FilterChip, ContractCard, EmptyState, LoadingState, ErrorState } from '../components';
 
@@ -20,6 +20,7 @@ function estaVencido(contrato, hojeISO) {
 }
 
 export function Contratos() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const navigation = useNavigation();
   const [filtro, setFiltro] = useState('Todos');
   const [busca, setBusca] = useState('');
@@ -130,7 +131,7 @@ export function Contratos() {
             />
           }
           refreshControl={
-            <RefreshControl refreshing={false} onRefresh={carregarContratos} tintColor={colors.primary} />
+            <RefreshControl refreshing={false} onRefresh={carregarContratos} tintColor={colors.accent} />
           }
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
@@ -140,7 +141,7 @@ export function Contratos() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,

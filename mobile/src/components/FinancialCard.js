@@ -1,10 +1,11 @@
 ﻿import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 import { formatCurrency, formatDate } from '../utils/format';
 
 export function FinancialCard({ transacao }) {
+  const { colors, styles } = useThemeStyles(createStyles);
   const isEntrada = transacao.tipo === 'ENTRADA';
 
   return (
@@ -27,11 +28,11 @@ export function FinancialCard({ transacao }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 10,
     padding: spacing.md,
     marginBottom: spacing.sm,

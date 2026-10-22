@@ -3,12 +3,13 @@ import {
   View, Text, StyleSheet, SafeAreaView, KeyboardAvoidingView,
   Platform, ScrollView, ActivityIndicator, TouchableOpacity, Alert,
 } from 'react-native';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 import { Input, PrimaryButton, ContractFlowLogo } from '../components';
 import { api, normalizarErro } from '../services/api';
 import { salvarSessao } from '../services/storage';
 
 export function Login({ navigation }) {
+  const { colors, styles } = useThemeStyles(createStyles);
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [carregando, setCarregando] = useState(false);
@@ -64,7 +65,7 @@ export function Login({ navigation }) {
             />
             {erro ? <Text style={styles.erro}>{erro}</Text> : null}
             {carregando ? (
-              <ActivityIndicator size="large" color={colors.primary} />
+              <ActivityIndicator size="large" color={colors.accent} />
             ) : (
               <PrimaryButton title="Entrar" onPress={handleLogin} />
             )}
@@ -96,10 +97,10 @@ export function Login({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
   },
   flex: {
     flex: 1,
@@ -139,7 +140,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
   },
   linkText: {
-    color: colors.primary,
+    color: colors.accent,
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.medium,
   },
@@ -154,7 +155,7 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
   },
   createAccountLink: {
-    color: colors.primary,
+    color: colors.accent,
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.semibold,
   },
