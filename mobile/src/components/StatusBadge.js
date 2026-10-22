@@ -1,11 +1,12 @@
 ﻿import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme';
+import { useThemeStyles } from '../theme';
 
 export function StatusBadge({ status, size = 'small' }) {
+  const { colors, styles } = useThemeStyles(createStyles);
   const scheme = {
-    ATIVO: { bg: colors.primaryLight, text: colors.primary },
+    ATIVO: { bg: colors.primaryLight, text: colors.accent },
     VENCIDO: { bg: colors.dangerLight, text: colors.danger },
     ENCERRADO: { bg: colors.surface, text: colors.textSecondary },
     PAGO: { bg: colors.successLight, text: colors.success },
@@ -15,7 +16,7 @@ export function StatusBadge({ status, size = 'small' }) {
     CONFIRMADO: { bg: colors.successLight, text: colors.success },
     PENDENTE: { bg: colors.warningLight, text: colors.warning },
     CANCELADO: { bg: colors.dangerLight, text: colors.danger },
-    EM_RENOVACAO: { bg: colors.primaryLight, text: colors.primary },
+    EM_RENOVACAO: { bg: colors.primaryLight, text: colors.accent },
     ALTA: { bg: colors.successLight, text: colors.success },
     MEDIA: { bg: colors.warningLight, text: colors.warning },
     BAIXA: { bg: colors.dangerLight, text: colors.danger },
@@ -30,7 +31,7 @@ export function StatusBadge({ status, size = 'small' }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 3,

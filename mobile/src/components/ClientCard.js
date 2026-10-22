@@ -1,9 +1,10 @@
 ﻿import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 
 export function ClientCard({ cliente, onPress }) {
+  const { colors, styles } = useThemeStyles(createStyles);
   const initials = cliente.nome_razao_social
     .split(' ')
     .slice(0, 2)
@@ -40,11 +41,11 @@ export function ClientCard({ cliente, onPress }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: spacing.lg,
     marginBottom: spacing.md,
@@ -63,7 +64,7 @@ const styles = StyleSheet.create({
   initials: {
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.bold,
-    color: colors.primary,
+    color: colors.accent,
   },
   info: {
     flex: 1,
@@ -81,7 +82,7 @@ const styles = StyleSheet.create({
   },
   contratos: {
     fontSize: typography.sizes.sm,
-    color: colors.primary,
+    color: colors.accent,
     fontWeight: typography.weights.medium,
   },
 });

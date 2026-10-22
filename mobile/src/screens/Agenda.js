@@ -2,7 +2,7 @@
 import { View, ScrollView, StyleSheet, SafeAreaView, Text, TouchableOpacity } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 import { api, normalizarErro } from '../services/api';
 import { Header, CalendarEvent, ErrorState, LoadingState } from '../components';
 
@@ -15,6 +15,7 @@ function situacaoParaStatus(situacao) {
 }
 
 export function Agenda() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const navigation = useNavigation();
   const hoje = new Date();
   const [ano, setAno] = useState(hoje.getFullYear());
@@ -159,7 +160,7 @@ export function Agenda() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,
@@ -172,7 +173,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   calendarCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 14,
     padding: spacing.lg,
     borderWidth: 1,
@@ -220,7 +221,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   dayTextSelected: {
-    color: colors.white,
+    color: colors.onPrimary,
     fontWeight: typography.weights.bold,
   },
   sectionTitle: {

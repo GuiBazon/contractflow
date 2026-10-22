@@ -2,13 +2,14 @@
 import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 import { formatCurrency } from '../utils/format';
 import { api, normalizarErro } from '../services/api';
 import { getUsuario } from '../services/storage';
 import { ContractFlowLogo, ErrorState, LoadingState } from '../components';
 
 export function Dashboard() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const navigation = useNavigation();
   const [usuario, setUsuario] = useState(null);
   const [carregando, setCarregando] = useState(true);
@@ -123,7 +124,7 @@ export function Dashboard() {
         <View style={styles.cardsRow}>
           <TouchableOpacity style={[styles.card, styles.cardReceber]} activeOpacity={0.8}>
             <View style={styles.cardIconWrap}>
-              <Ionicons name="trending-up" size={18} color={colors.primary} />
+              <Ionicons name="trending-up" size={18} color={colors.accent} />
             </View>
             <Text style={styles.cardLabel}>Valor a receber</Text>
             <Text style={styles.cardValue}>{formatCurrency(totalReceber)}</Text>
@@ -140,19 +141,19 @@ export function Dashboard() {
         <View style={styles.actionsRow}>
           <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('ContratoForm')}>
             <View style={[styles.actionIcon, { backgroundColor: colors.primaryLight }]}>
-              <Ionicons name="add" size={20} color={colors.primary} />
+              <Ionicons name="add" size={20} color={colors.accent} />
             </View>
             <Text style={styles.actionText}>Novo</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('ImportarContrato')}>
             <View style={[styles.actionIcon, { backgroundColor: colors.primaryLight }]}>
-              <Ionicons name="cloud-upload-outline" size={20} color={colors.primary} />
+              <Ionicons name="cloud-upload-outline" size={20} color={colors.accent} />
             </View>
             <Text style={styles.actionText}>Importar</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7} onPress={() => navigation.navigate('Contratos')}>
             <View style={[styles.actionIcon, { backgroundColor: colors.primaryLight }]}>
-              <Ionicons name="list" size={20} color={colors.primary} />
+              <Ionicons name="list" size={20} color={colors.accent} />
             </View>
             <Text style={styles.actionText}>Ver todos</Text>
           </TouchableOpacity>
@@ -205,7 +206,7 @@ export function Dashboard() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,
@@ -243,7 +244,7 @@ const styles = StyleSheet.create({
     marginLeft: spacing.xs,
   },
   avatarText: {
-    color: colors.white,
+    color: colors.onPrimary,
     fontWeight: '700',
     fontSize: typography.sizes.md,
   },
@@ -280,7 +281,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.sm,
@@ -293,7 +294,7 @@ const styles = StyleSheet.create({
   cardValue: {
     fontSize: typography.sizes.xl,
     fontWeight: typography.weights.bold,
-    color: colors.primary,
+    color: colors.accent,
   },
   actionsRow: {
     flexDirection: 'row',
@@ -339,7 +340,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 24,
     gap: spacing.sm,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.border,
@@ -351,7 +352,7 @@ const styles = StyleSheet.create({
   vencItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 10,
     padding: spacing.md,
     marginBottom: spacing.sm,
@@ -383,7 +384,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.medium,
   },
   chartCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: spacing.lg,
     borderWidth: 1,

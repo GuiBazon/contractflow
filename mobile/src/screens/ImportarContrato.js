@@ -3,9 +3,10 @@ import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, Act
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import { colors, spacing, typography } from '../theme';
-import { Header, PrimaryButton, SecondaryButton } from '../components';
+import { spacing, typography, useThemeStyles } from '../theme';
+import { Header, PrimaryButton, SecondaryButton, DocumentViewer, DocumentoAcao } from '../components';
 import { api, normalizarErro } from '../services/api';
+import { tipoDeDocumento } from '../services/documentos';
 
 const ETAPAS = ['Upload', 'Processo', 'Revisão', 'Confirmação'];
 
@@ -14,10 +15,56 @@ const ORIGENS = [
   { key: 'galeria', icon: 'images-outline', title: 'Galeria / Arquivos', sub: 'Imagem ou arquivo salvo' },
 ];
 
+const MIME_POR_EXTENSAO = {
+  pdf: 'application/pdf',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+};
+
+function resolverArquivo(asset) {
+  const nomeOriginal = asset.name || '';
+  const extensaoOriginal = (nomeOriginal.split('.').pop() || '').toLowerCase();
+  const extensaoValida = MIME_POR_EXTENSAO[extensaoOriginal] ? extensaoOriginal : '';
+  const mime = asset.mimeType || MIME_POR_EXTENSAO[extensaoValida] || 'image/jpeg';
+  const extensaoDoMime = Object.keys(MIME_POR_EXTENSAO).find((ext) => MIME_POR_EXTENSAO[ext] === mime);
+  const extensao = extensaoValida || extensaoDoMime || 'jpg';
+  return {
+    nome: nomeOriginal && extensaoValida ? nomeOriginal : `documento.${extensao}`,
+    mime,
+  };
+}
+
+function ArquivoSelecionado({ arquivo, onPress }) {
+  const { colors, styles } = useThemeStyles(createStyles);
+  if (!arquivo) return null;
+
+  const tipo = tipoDeDocumento(arquivo.mime, arquivo.nome);
+  const descricao = tipo === 'pdf' ? 'PDF selecionado' : tipo === 'imagem' ? 'Imagem selecionada' : 'Arquivo selecionado';
+  const icone = tipo === 'pdf' ? 'document-text' : tipo === 'imagem' ? 'image' : 'document-attach';
+
+  return (
+    <View style={styles.fileCard}>
+      <View style={styles.fileRow}>
+        <Ionicons name={`${icone}-outline`} size={20} color={colors.accent} />
+        <View style={styles.fileInfo}>
+          <Text style={styles.fileName} numberOfLines={2}>{arquivo.nome}</Text>
+          <Text style={styles.fileAction}>{descricao}</Text>
+        </View>
+      </View>
+      <DocumentoAcao documento={arquivo} onPress={onPress} compact style={styles.fileButton} />
+    </View>
+  );
+}
+
 export function ImportarContrato() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const navigation = useNavigation();
   const route = useRoute();
   const [origem, setOrigem] = useState(null);
+  const [arquivoSelecionado, setArquivoSelecionado] = useState(null);
+  const [documentoVisualizado, setDocumentoVisualizado] = useState(null);
   const [processando, setProcessando] = useState(false);
   const [salvo, setSalvo] = useState(null);
   const [erro, setErro] = useState('');
@@ -43,19 +90,30 @@ export function ImportarContrato() {
 
       if (picked.canceled || !picked.assets || picked.assets.length === 0) {
         setOrigem(null);
+        setArquivoSelecionado(null);
         setProcessando(false);
         return;
       }
 
       const asset = picked.assets[0];
-      const resultado = await api.ocrExtract({
+      const dadosDoArquivo = resolverArquivo(asset);
+      const arquivo = {
         uri: asset.uri,
-        nome: asset.name || 'documento.pdf',
-        mime: asset.mimeType || 'application/pdf',
+        nome: dadosDoArquivo.nome,
+        mime: dadosDoArquivo.mime,
+        tamanho: asset.size,
+      };
+      setArquivoSelecionado(arquivo);
+
+      const resultado = await api.ocrExtract({
+        uri: arquivo.uri,
+        nome: arquivo.nome,
+        mime: arquivo.mime,
       });
 
       setSalvo({
-        nomeArquivo: asset.name || 'documento.pdf',
+        nomeArquivo: arquivo.nome,
+        arquivo,
         extracaoId: resultado.extracao_id,
         dados: resultado.dados || {},
         campos: resultado.campos || [],
@@ -70,6 +128,14 @@ export function ImportarContrato() {
     }
   }
 
+  function reiniciar() {
+    setOrigem(null);
+    setArquivoSelecionado(null);
+    setDocumentoVisualizado(null);
+    setSalvo(null);
+    setErro('');
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       <Header title="Importação Inteligente IA" leftIcon="arrow-back" onLeftPress={() => navigation.goBack()} />
@@ -82,7 +148,7 @@ export function ImportarContrato() {
                   style={[styles.stepCircle, (i <= etapaAtual || salvo) && styles.stepCircleActive]}
                 >
                   {i < etapaAtual || (salvo && i < 3)
-                    ? <Ionicons name="checkmark" size={14} color={colors.white} />
+                    ? <Ionicons name="checkmark" size={14} color={colors.onPrimary} />
                     : <Text style={[styles.stepNum, (i <= etapaAtual) && styles.stepNumActive]}>{i + 1}</Text>}
                 </View>
                 <Text style={[styles.stepLabel, (i <= etapaAtual) && styles.stepLabelActive]}>{e}</Text>
@@ -98,7 +164,7 @@ export function ImportarContrato() {
             {ORIGENS.map((o) => (
               <TouchableOpacity key={o.key} style={styles.origemCard} onPress={() => escolher(o)} activeOpacity={0.7}>
                 <View style={styles.origemIcon}>
-                  <Ionicons name={o.icon} size={22} color={colors.primary} />
+                  <Ionicons name={o.icon} size={22} color={colors.accent} />
                 </View>
                 <View style={styles.origemInfo}>
                   <Text style={styles.origemTitle}>{o.title}</Text>
@@ -110,11 +176,15 @@ export function ImportarContrato() {
           </>
         ) : processando ? (
           <View style={styles.processingCard}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={colors.accent} />
             <Text style={styles.processingTitle}>Processando documento</Text>
             <Text style={styles.processingSub}>
               Enviando ao servidor e lendo os dados com OCR... isso pode levar alguns segundos.
             </Text>
+            <ArquivoSelecionado
+              arquivo={arquivoSelecionado}
+              onPress={() => setDocumentoVisualizado(arquivoSelecionado)}
+            />
           </View>
         ) : salvo ? (
           <View style={styles.doneCard}>
@@ -128,20 +198,23 @@ export function ImportarContrato() {
                 : 'Nenhum dado foi detectado automaticamente. Preencha manualmente na revisão.'}
             </Text>
             {salvo.aviso ? <Text style={styles.aviso}>{salvo.aviso}</Text> : null}
-            <View style={styles.fileRow}>
-              <Ionicons name="document-attach-outline" size={18} color={colors.primary} />
-              <Text style={styles.fileName}>{salvo.nomeArquivo}</Text>
-            </View>
+            <ArquivoSelecionado
+              arquivo={salvo.arquivo}
+              onPress={() => setDocumentoVisualizado(salvo.arquivo)}
+            />
             <PrimaryButton
               title="Revisar dados"
               onPress={() =>
                 navigation.navigate('RevisaoContrato', {
                   extracaoId: salvo.extracaoId,
+                  arquivoUri: salvo.arquivo.uri,
+                  arquivoNome: salvo.arquivo.nome,
+                  arquivoMime: salvo.arquivo.mime,
                 })
               }
             />
             <View style={styles.spacer} />
-            <SecondaryButton title="Refazer" onPress={() => setOrigem(null)} />
+            <SecondaryButton title="Refazer" onPress={reiniciar} />
           </View>
         ) : (
           <View style={styles.doneCard}>
@@ -150,16 +223,25 @@ export function ImportarContrato() {
             </View>
             <Text style={styles.doneTitle}>Não foi possível processar</Text>
             <Text style={styles.doneSub}>{erro}</Text>
+            <ArquivoSelecionado
+              arquivo={arquivoSelecionado}
+              onPress={() => setDocumentoVisualizado(arquivoSelecionado)}
+            />
             <View style={styles.spacer} />
-            <SecondaryButton title="Tentar novamente" onPress={() => setOrigem(null)} />
+            <SecondaryButton title="Tentar novamente" onPress={reiniciar} />
           </View>
         )}
       </ScrollView>
+      <DocumentViewer
+        visible={Boolean(documentoVisualizado)}
+        documento={documentoVisualizado}
+        onClose={() => setDocumentoVisualizado(null)}
+      />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,
@@ -200,7 +282,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   stepNumActive: {
-    color: colors.white,
+    color: colors.onPrimary,
   },
   stepLabel: {
     fontSize: typography.sizes.xs,
@@ -229,7 +311,7 @@ const styles = StyleSheet.create({
   origemCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 14,
     padding: spacing.lg,
     borderWidth: 1,
@@ -260,7 +342,7 @@ const styles = StyleSheet.create({
   },
   processingCard: {
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 14,
     padding: spacing.xxl,
     borderWidth: 1,
@@ -280,7 +362,7 @@ const styles = StyleSheet.create({
   },
   doneCard: {
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 14,
     padding: spacing.xl,
     borderWidth: 1,
@@ -309,24 +391,38 @@ const styles = StyleSheet.create({
   },
   aviso: {
     fontSize: typography.sizes.sm,
-    color: colors.warning || '#B45309',
+    color: colors.warning,
     textAlign: 'center',
     marginBottom: spacing.md,
+  },
+  fileCard: {
+    alignSelf: 'stretch',
+    backgroundColor: colors.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
   },
   fileRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: 10,
-    padding: spacing.md,
-    marginBottom: spacing.lg,
-    alignSelf: 'stretch',
+  },
+  fileInfo: {
+    flex: 1,
   },
   fileName: {
     fontSize: typography.sizes.sm,
     color: colors.textPrimary,
-    flex: 1,
+  },
+  fileAction: {
+    fontSize: typography.sizes.xs,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  fileButton: {
+    marginTop: spacing.md,
   },
   spacer: {
     marginVertical: spacing.xs,

@@ -1,8 +1,9 @@
 ﻿import React from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 
 export function SecondaryButton({ title, onPress, style, danger }) {
+  const { styles } = useThemeStyles(createStyles);
   return (
     <TouchableOpacity
       style={[styles.btn, danger && styles.btnDanger, style]}
@@ -14,9 +15,9 @@ export function SecondaryButton({ title, onPress, style, danger }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   btn: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 10,
     paddingVertical: spacing.md,
     alignItems: 'center',
@@ -24,7 +25,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   text: {
-    color: colors.primary,
+    color: colors.accent,
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.semibold,
   },

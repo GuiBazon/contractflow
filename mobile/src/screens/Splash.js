@@ -1,10 +1,11 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 import { ContractFlowLogo } from '../components';
 import { api } from '../services/api';
 
 export function Splash({ navigation }) {
+  const { colors, styles } = useThemeStyles(createStyles);
   useEffect(() => {
     const timer = setTimeout(async () => {
       const logado = await api.verificarSessao();
@@ -18,7 +19,7 @@ export function Splash({ navigation }) {
       <View style={styles.container}>
         <ContractFlowLogo
           size={88}
-          color={colors.primary}
+          color={colors.accent}
           fontSize={typography.sizes.title}
           direction="column"
           showSubtitle
@@ -31,10 +32,10 @@ export function Splash({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
   },
   container: {
     flex: 1,

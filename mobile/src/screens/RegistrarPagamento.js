@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 import { formatCurrency } from '../utils/format';
 import { api, normalizarErro } from '../services/api';
 import { Header, Input, PrimaryButton, StatusBadge, LoadingState, ErrorState } from '../components';
@@ -24,6 +24,7 @@ function hojeISO() {
 }
 
 export function RegistrarPagamento() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const route = useRoute();
   const navigation = useNavigation();
   const contratoId = route.params?.contratoId;
@@ -207,7 +208,7 @@ export function RegistrarPagamento() {
               <Ionicons
                 name={metodo === m ? 'radio-button-on' : 'radio-button-off'}
                 size={18}
-                color={metodo === m ? colors.primary : colors.textMuted}
+                color={metodo === m ? colors.accent : colors.textMuted}
               />
               <Text style={[styles.metodoText, metodo === m && styles.metodoTextActive]}>{m}</Text>
             </TouchableOpacity>
@@ -215,14 +216,14 @@ export function RegistrarPagamento() {
         </View>
 
         <View style={styles.infoRow}>
-          <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
+          <Ionicons name="information-circle-outline" size={18} color={colors.accent} />
           <Text style={styles.infoText}>
             Valor do pagamento não pode exceder o que falta da parcela. Juros/multa são calculados pelas taxas do contrato.
           </Text>
         </View>
 
         {salvando ? (
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.accent} />
         ) : (
           <PrimaryButton title="Confirmar pagamento" onPress={handleConfirmar} />
         )}
@@ -231,7 +232,7 @@ export function RegistrarPagamento() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,
@@ -244,7 +245,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   contratoCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 14,
     padding: spacing.xl,
     borderWidth: 1,
@@ -271,7 +272,7 @@ const styles = StyleSheet.create({
   parcelaResumo: {
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.semibold,
-    color: colors.primary,
+    color: colors.accent,
   },
   divider: {
     height: 1,
@@ -281,7 +282,7 @@ const styles = StyleSheet.create({
   parcelaValor: {
     fontSize: typography.sizes.xxl,
     fontWeight: typography.weights.bold,
-    color: colors.primary,
+    color: colors.accent,
   },
   parcelaData: {
     fontSize: typography.sizes.sm,
@@ -329,7 +330,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: spacing.lg,
     borderWidth: 1,
@@ -387,7 +388,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   successCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: spacing.lg,
     borderWidth: 1,

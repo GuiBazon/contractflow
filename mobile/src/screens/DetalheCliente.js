@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity, Alert } from 'react-native';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 import { formatCurrency } from '../utils/format';
 import { api, normalizarErro } from '../services/api';
 import { Header, PrimaryButton, ContractCard, LoadingState, ErrorState } from '../components';
@@ -20,6 +20,7 @@ function formatDoc(doc) {
 }
 
 export function DetalheCliente() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const route = useRoute();
   const navigation = useNavigation();
   const clienteId = route.params?.clienteId;
@@ -130,13 +131,13 @@ export function DetalheCliente() {
         <View style={styles.infoCard}>
           {cliente.email ? (
             <View style={styles.infoRow}>
-              <Ionicons name="mail-outline" size={18} color={colors.primary} />
+              <Ionicons name="mail-outline" size={18} color={colors.accent} />
               <Text style={styles.infoValue}>{cliente.email}</Text>
             </View>
           ) : null}
           {cliente.telefone ? (
             <View style={styles.infoRow}>
-              <Ionicons name="call-outline" size={18} color={colors.primary} />
+              <Ionicons name="call-outline" size={18} color={colors.accent} />
               <Text style={styles.infoValue}>{cliente.telefone}</Text>
             </View>
           ) : null}
@@ -148,7 +149,7 @@ export function DetalheCliente() {
         <Text style={styles.sectionTitle}>Endereço</Text>
         <View style={styles.infoCard}>
           <View style={styles.infoRow}>
-            <Ionicons name="location-outline" size={18} color={colors.primary} />
+            <Ionicons name="location-outline" size={18} color={colors.accent} />
             <Text style={styles.infoValue}>
               {endereco || (cliente.cep ? `CEP ${cliente.cep}` : 'Endereço não informado')}
             </Text>
@@ -199,7 +200,7 @@ export function DetalheCliente() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,
@@ -219,7 +220,7 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 14,
     padding: spacing.xl,
     borderWidth: 1,
@@ -238,7 +239,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: typography.sizes.lg,
     fontWeight: typography.weights.bold,
-    color: colors.primary,
+    color: colors.accent,
   },
   cardInfo: {
     flex: 1,
@@ -266,7 +267,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   infoCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
@@ -292,7 +293,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 32,
     gap: spacing.sm,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.border,
@@ -312,7 +313,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 10,
     paddingVertical: spacing.md,
     borderWidth: 1,

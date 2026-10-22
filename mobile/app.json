@@ -5,6 +5,14 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0B1120"
+    },
+    "androidStatusBar": {
+      "backgroundColor": "#0B1120",
+      "barStyle": "light-content"
+    },
     "ios": {
       "supportsTablet": true
     },
@@ -25,7 +33,8 @@
           "visible": "leanback",
           "behavior": "overlay-swipe"
         }
-      ]
+      ],
+      "expo-sharing"
     ]
   }
 }

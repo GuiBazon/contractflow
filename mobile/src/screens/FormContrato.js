@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 import { Header, Input, PrimaryButton, LoadingState, ErrorState } from '../components';
 import { api, normalizarErro } from '../services/api';
 
@@ -16,6 +16,7 @@ function formatValueInput(valor) {
 }
 
 export function FormContrato() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const route = useRoute();
   const navigation = useNavigation();
   const contratoId = route.params?.contratoId;
@@ -178,7 +179,7 @@ export function FormContrato() {
             onPress={() => setMostrarClientes((v) => !v)}
             activeOpacity={0.7}
           >
-            <Ionicons name="person-outline" size={18} color={colors.primary} />
+            <Ionicons name="person-outline" size={18} color={colors.accent} />
             {clienteSelecionado ? (
               <Text style={styles.selectorText}>{clienteSelecionado.nome}</Text>
             ) : (
@@ -284,7 +285,7 @@ export function FormContrato() {
                 <Ionicons
                   name={form.forma_pagamento === m ? 'radio-button-on' : 'radio-button-off'}
                   size={18}
-                  color={form.forma_pagamento === m ? colors.primary : colors.textMuted}
+                  color={form.forma_pagamento === m ? colors.accent : colors.textMuted}
                 />
                 <Text
                   style={[
@@ -328,7 +329,7 @@ export function FormContrato() {
           />
 
           {salvando ? (
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={colors.accent} />
           ) : (
             <PrimaryButton
               title={contratoId ? 'Salvar alterações' : 'Criar contrato'}
@@ -341,7 +342,7 @@ export function FormContrato() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,
@@ -372,7 +373,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 10,
@@ -391,7 +392,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   listaClientes: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 10,

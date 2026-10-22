@@ -1,20 +1,20 @@
 ﻿import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 import { formatCurrency } from '../utils/format';
 import { StatusBadge } from './StatusBadge';
 
-const statusColor = {
-  PAGO: '#16A34A',
-  'EM ABERTO': '#F59E0B',
-  FUTURO: '#2563EB',
-  ATRASADO: '#DC2626',
-  CONFIRMADO: '#16A34A',
-  PENDENTE: '#F59E0B',
-};
-
 export function CalendarEvent({ evento, onPress }) {
-  const cor = statusColor[evento.status] || colors.textMuted;
+  const { colors, styles } = useThemeStyles(createStyles);
+  const coresStatus = {
+    PAGO: colors.success,
+    'EM ABERTO': colors.warning,
+    FUTURO: colors.accent,
+    ATRASADO: colors.danger,
+    CONFIRMADO: colors.success,
+    PENDENTE: colors.warning,
+  };
+  const cor = coresStatus[evento.status] || colors.textMuted;
 
   return (
     <TouchableOpacity
@@ -38,10 +38,10 @@ export function CalendarEvent({ evento, onPress }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   card: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 10,
     padding: spacing.md,
     marginBottom: spacing.sm,
@@ -84,6 +84,6 @@ const styles = StyleSheet.create({
   valor: {
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.semibold,
-    color: colors.primary,
+    color: colors.accent,
   },
 });
