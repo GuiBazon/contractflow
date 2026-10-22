@@ -2,7 +2,14 @@ import axios from 'axios';
 import * as FileSystem from 'expo-file-system/legacy';
 import { getToken, limparSessao } from './storage';
 
-const API_URL = 'http://10.89.240.66:8080/api';
+const API_URL = (process.env.EXPO_PUBLIC_API_URL || '').replace(/\/+$/, '');
+
+const MENSAGEM_API_NAO_CONFIGURADA =
+  'EXPO_PUBLIC_API_URL não configurada. Crie mobile/.env com EXPO_PUBLIC_API_URL=http://IP_DO_COMPUTADOR:3000/api e reinicie o Expo com "npx expo start --lan --clear".';
+
+if (!API_URL) {
+  console.warn(`[api] ${MENSAGEM_API_NAO_CONFIGURADA}`);
+}
 
 export { API_URL };
 
@@ -36,6 +43,9 @@ apiClient.interceptors.response.use(
 );
 
 function extrairMensagem(error, fallback) {
+  if (!API_URL) {
+    return MENSAGEM_API_NAO_CONFIGURADA;
+  }
   if (error.response) {
     if (error.response.data && error.response.data.message) {
       return error.response.data.message;
