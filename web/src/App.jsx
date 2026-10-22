@@ -3,6 +3,7 @@ import Login from "./pages/login/login";
 import Register from "./pages/register/register";
 import Home from "./pages/home/home";
 import Dashboard from "./pages/dashboard/dashboard";
+import Clientes from "./pages/clientes/clientes";
 
 import { CssBaseline } from "@mui/material";
 
@@ -34,9 +35,14 @@ function App() {
           <Route
             path="/dashboard"
             element={
-             
-                <Dashboard />
-              
+              <Dashboard />
+            }
+          />
+
+          <Route
+            path="/clientes"
+            element={
+              <Clientes />
             }
           />
         </Routes>
