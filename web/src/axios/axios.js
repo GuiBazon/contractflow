@@ -129,6 +129,25 @@ const sheets = {
   createPagamento: (contratoId, data) =>
     api.post(`/contratos/${contratoId}/pagamentos`, data),
 
+  // OCR / IMPORTAÇÃO INTELIGENTE COM IA
+
+  extractOcr: (formData) =>
+    api.post("/ocr/extract", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+
+  getOcr: (id) =>
+    api.get(`/ocr/${id}`),
+
+  updateOcr: (id, dados) =>
+    api.patch(`/ocr/${id}`, { dados }),
+
+  confirmarOcr: (id, dados) =>
+    api.post(`/ocr/${id}/confirmar`, { dados }),
+
+  cancelarOcr: (id) =>
+    api.delete(`/ocr/${id}`),
+
   getHealth: () =>
     api.get("/health"),
 };

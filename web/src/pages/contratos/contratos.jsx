@@ -881,6 +881,7 @@ export default function Contratos() {
                 <Button
                   variant="outlined"
                   startIcon={<FileUploadRoundedIcon />}
+                  onClick={() => navigate("/contratos/importar")}
                   sx={sx.btnImportar}
                 >
                   Importar
@@ -889,7 +890,7 @@ export default function Contratos() {
                   variant="contained"
                   disableElevation
                   startIcon={<AddRoundedIcon />}
-                  onClick={() => setModalNovoAberto(true)}
+                  onClick={() => navigate("/contratos/novo")}
                   sx={sx.btnNovoContrato}
                 >
                   Novo Contrato

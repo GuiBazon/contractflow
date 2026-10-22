@@ -4,6 +4,8 @@ import Register from "./pages/register/register";
 import Dashboard from "./pages/dashboard/dashboard";
 import Clientes from "./pages/clientes/clientes";
 import Contratos from "./pages/contratos/contratos";
+import NovoContrato from "./pages/contratos/novo_contrato";
+import ImportarContrato from "./pages/contratos/importar_contrato";
 
 import { CssBaseline } from "@mui/material";
 
@@ -45,6 +47,26 @@ function App() {
             element={
               <ProtectedRoute>
                 <Contratos />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Novo Contrato */}
+          <Route
+            path="/contratos/novo"
+            element={
+              <ProtectedRoute>
+                <NovoContrato />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Importação Inteligente com IA */}
+          <Route
+            path="/contratos/importar"
+            element={
+              <ProtectedRoute>
+                <ImportarContrato />
               </ProtectedRoute>
             }
           />
