@@ -106,6 +106,14 @@ const sheets = {
 
   getHealth: () =>
     api.get("/health"),
+
+  // CALCULADORA
+
+  getHistoricoSimulacoes: () =>
+    api.get("/calculadora/historico"),
+
+  postSimulacao: (data) =>
+    api.post("/calculadora/simular", data),
 };
 
 export default sheets;
