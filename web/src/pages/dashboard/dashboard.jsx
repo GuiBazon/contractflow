@@ -51,7 +51,7 @@ const ICON_MAP = {
 const NAV_ITEMS = [
   { label: "Dashboard", iconKey: "dashboard", active: true, path: "/dashboard" },
   { label: "Clientes", iconKey: "people", path: "/clientes" },
-  { label: "Contratos", iconKey: "description", path: "/home" },
+  { label: "Contratos", iconKey: "description", path: "/contratos" },
   { label: "Calendário", iconKey: "calendar" },
   { label: "Financeiro", iconKey: "money" },
   { label: "Calculadora", iconKey: "calculate" },
