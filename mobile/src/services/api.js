@@ -2,7 +2,14 @@ import axios from 'axios';
 import { getToken, limparSessao } from './storage';
 
 
-const API_URL = 'http://10.89.240.46:3000/api';
+const API_URL = (process.env.EXPO_PUBLIC_API_URL || '').replace(/\/+$/, '');
+
+const MENSAGEM_API_NAO_CONFIGURADA =
+  'EXPO_PUBLIC_API_URL não configurada. Crie mobile/.env com EXPO_PUBLIC_API_URL=http://IP_DO_COMPUTADOR:3000/api e reinicie o Expo com "npx expo start --lan --clear".';
+
+if (!API_URL) {
+  console.warn(`[api] ${MENSAGEM_API_NAO_CONFIGURADA}`);
+}
 
 export { API_URL };
 
@@ -36,6 +43,9 @@ apiClient.interceptors.response.use(
 );
 
 function extrairMensagem(error, fallback) {
+  if (!API_URL) {
+    return MENSAGEM_API_NAO_CONFIGURADA;
+  }
   if (error.response) {
     if (error.response.data && error.response.data.message) {
       return error.response.data.message;
@@ -133,7 +143,9 @@ const api = {
     return apiClient
       .post('/ocr/extract', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 60000,
+        // O primeiro OCR pode baixar o modelo do Tesseract (~7MB); o servidor
+        // interrompe em 90s e responde com erro claro.
+        timeout: 120000,
       })
       .then((res) => res.data);
   },

@@ -28,13 +28,29 @@ const JPEG = { quality: 92 };
 async function preProcessarImagem(buffer) {
   const { preprocess } = OCR_CONFIG;
 
-  let pipeline = sharp(buffer, { failOn: 'none' });
+  const criarPipeline = () =>
+    sharp(buffer, { failOn: 'none' })
+      // Correcao de rotacao pela orientacao EXIF (celular em retrato/esquerda).
+      .rotate()
+      // Sem fundo: PNG transparente ficaria preto no Tesseract.
+      .flatten({ background: '#ffffff' });
 
-  // Correcao de rotacao pela orientacao EXIF (celular em retrato/esquerda).
-  pipeline = pipeline.rotate();
+  let pipeline = criarPipeline();
 
-  // Sem fundo: PNG transparente ficaria preto no Tesseract.
-  pipeline = pipeline.flatten({ background: '#ffffff' });
+  if (preprocess.trim) {
+    try {
+      // PDF escaneado costuma ter margem branca ao redor do conteudo. O
+      // normalize precisa enxergar so o conteudo para nao apagar o texto.
+      const semMargem = await pipeline.trim({ threshold: 10 }).toBuffer();
+      const metaRecorte = await sharp(semMargem, { failOn: 'none' }).metadata();
+      if ((metaRecorte.width || 0) >= 80 && (metaRecorte.height || 0) >= 80) {
+        pipeline = sharp(semMargem, { failOn: 'none' });
+      }
+    } catch (error) {
+      // imagem sem margem uniforme: segue com a original
+      pipeline = criarPipeline();
+    }
+  }
 
   // Escala: fotos pequenas nao tem pixels suficientes para o Tesseract.
   const meta = await pipeline.metadata();
@@ -52,9 +68,11 @@ async function preProcessarImagem(buffer) {
   if (preprocess.normalize) {
     // Estica o contraste usando os percentis da propria imagem.
     pipeline = pipeline.normalize();
+  } else {
+    // Normalize + sharpen juntos amplificam o ruido de fotos desfocadas e
+    // destroem a leitura. O sharpen fica so como alternativa ao normalize.
+    pipeline = pipeline.sharpen({ sigma: 0.8 });
   }
-
-  pipeline = pipeline.sharpen({ sigma: 0.8 });
 
   if (preprocess.threshold > 0) {
     pipeline = pipeline.threshold(preprocess.threshold);
@@ -121,6 +139,41 @@ async function criarWorker() {
   return { worker, ocupado: true, ultimoUso: Date.now() };
 }
 
+// A criacao do worker inclui o download do traineddata na primeira execucao.
+// Sem timeout, uma URL/rede com problema deixa a requisicao pendurada para
+// sempre (o timeout de reconhecimento so comeca depois do worker pronto).
+function criarWorkerComTimeout() {
+  const criacao = criarWorker();
+  let timer = null;
+
+  const timeout = new Promise((resolve, reject) => {
+    timer = setTimeout(() => {
+      reject(
+        Object.assign(
+          new Error(
+            `Não foi possível iniciar o motor de OCR em ${Math.round(OCR_CONFIG.timeoutMs / 1000)}s. ` +
+              'Verifique a conexão com a internet (o modelo de português é baixado na primeira execução) e tente novamente.'
+          ),
+          { status: 503 }
+        )
+      );
+    }, OCR_CONFIG.timeoutMs);
+    if (timer.unref) timer.unref();
+  });
+
+  return Promise.race([criacao, timeout])
+    .finally(() => {
+      if (timer) clearTimeout(timer);
+    })
+    .catch((error) => {
+      // Se o timeout venceu, encerra o worker que terminar de criar depois.
+      criacao
+        .then((entrada) => entrada.worker.terminate().catch(() => {}))
+        .catch(() => {});
+      throw error;
+    });
+}
+
 function descartarWorker(entrada) {
   const i = workers.indexOf(entrada);
   if (i >= 0) workers.splice(i, 1);
@@ -164,18 +217,20 @@ function adquirirWorker() {
       // 2. ainda cabe mais um worker no limite de concorrencia?
       if (workers.length < OCR_CONFIG.maxConcurrency) {
         try {
-          const nova = await criarWorker();
+          const nova = await criarWorkerComTimeout();
           workers.push(nova);
           return resolve(nova);
         } catch (error) {
           console.error('[ocr] falha ao criar worker:', error.message);
           return reject(
-            Object.assign(
-              new Error(
-                'Não foi possível iniciar o motor de OCR. Na primeira execução é necessária internet para baixar o modelo de português; depois disso ele fica em cache.'
-              ),
-              { status: 503 }
-            )
+            error.status
+              ? error
+              : Object.assign(
+                new Error(
+                  'Não foi possível iniciar o motor de OCR. Na primeira execução é necessária internet para baixar o modelo de português; depois disso ele fica em cache.'
+                ),
+                { status: 503 }
+              )
           );
         }
       }
@@ -655,17 +710,24 @@ async function extrairTextoDeArquivo({ caminho, tipoArquivo }) {
         avisos,
       };
     }
-    // Sem camada de texto util: rasteriza e manda para o Tesseract.
+    // Sem camada de texto util: rasteriza, pre-processa e manda para o Tesseract.
     const paginas = await rasterizarPdf(caminho);
     avisos.push(
       'Este PDF não possui texto selecionável. As páginas foram convertidas em imagem e lidas por OCR, o que pode reduzir um pouco a precisão.'
     );
-    return { ...(await ocrSobrePaginas(paginas)), avisos };
+    const preparadas = [];
+    for (const pagina of paginas) {
+      const { buffer } = await preProcessarImagem(pagina);
+      preparadas.push(buffer);
+    }
+    const resultado = await ocrSobrePaginas(preparadas);
+    return { ...resultado, avisos: [...avisos, ...(resultado.avisos || [])] };
   }
 
   if (tipoArquivo && tipoArquivo.startsWith('image/')) {
     const preprocessado = await preProcessarImagem(fs.readFileSync(caminho));
-    return { ...(await ocrSobrePaginas([preprocessado.buffer])), avisos };
+    const resultado = await ocrSobrePaginas([preprocessado.buffer]);
+    return { ...resultado, avisos: [...avisos, ...(resultado.avisos || [])] };
   }
 
   throw Object.assign(new Error('Formato de arquivo não suportado para OCR'), { status: 400 });
@@ -740,7 +802,7 @@ async function processarArquivo({ caminho, tipoArquivo }) {
     origem: leitura.origem,
   });
 
-  const avisos = [...leitura.avisos, ...alertas];
+  const avisos = [...(leitura.avisos || []), ...alertas];
   if (confianca < OCR_CONFIG.minConfianca) {
     avisos.push('Alguns dados podem estar incorretos. Revise antes de confirmar.');
   }

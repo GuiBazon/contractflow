@@ -24,9 +24,11 @@ const OCR_CONFIG = {
   // Idioma do Tesseract. "por" = portugues (Brasil).
   lang: process.env.OCR_LANG || 'por',
   // Origem do traineddata quando ele ainda nao esta em cache.
+  // O CDN precisa do idioma e da versao no caminho; sem isso o download da 404
+  // e a criacao do worker fica pendurada (o OCR nunca inicia).
   langPath:
     process.env.OCR_LANG_PATH ||
-    'https://cdn.jsdelivr.net/npm/@tesseract.js-data',
+    `https://cdn.jsdelivr.net/npm/@tesseract.js-data/${process.env.OCR_LANG || 'por'}/4.0.0_best_int`,
   cachePath: TESSDATA_DIR,
   // "write" = usa o cache e so baixa se o arquivo nao existir.
   cacheMethod: process.env.OCR_CACHE_METHOD || 'write',
@@ -66,6 +68,10 @@ const OCR_CONFIG = {
     threshold: Number(process.env.OCR_THRESHOLD) || 0,
     // 0 = desliga realce de contraste automatico.
     normalize: process.env.OCR_NORMALIZE === '0' ? false : true,
+    // Recorta a margem uniforme (comum em PDF escaneado). Sem isso, o
+    // normalize usa a pagina branca inteira como referencia e escurece o
+    // conteudo, fazendo o Tesseract nao enxergar o texto.
+    trim: process.env.OCR_TRIM === '0' ? false : true,
   },
 
   // Segundos para o worker ocioso ser encerrado (libera memoria/CPU).

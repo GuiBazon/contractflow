@@ -9,7 +9,7 @@ const db = require('../config/db');
 const {
   UPLOAD_ROOT, SUBDIRS, buildUploader, uploadSizeHandler, ensureUploadDirs,
 } = require('../config/uploads');
-const { extrairTextoDeArquivo, extrairDados } = require('../services/ocrService');
+const { processarArquivo } = require('../services/ocrService');
 const { criarContratoComParcelas, normalizarVencimentosImportados } = require('../services/contratoService');
 const { registrarHistorico } = require('../services/historicoService');
 const { onlyDigits, isValidCpfCnpj, str } = require('../utils/validators');
@@ -71,25 +71,24 @@ const extract = [
     }
     try {
       const caminho = caminhoSeguro(SUBDIRS.OCR, req.file.filename);
-      const leitura = await extrairTextoDeArquivo({
+      const leitura = await processarArquivo({
         caminho,
         tipoArquivo: req.file.mimetype,
       });
-      const sugestao = extrairDados(leitura.text);
 
       const [result] = await persistirNoBanco({
         usuarioId: req.user.id,
         arquivo: req.file,
-        textoExtraido: leitura.text,
-        dados: sugestao,
+        textoExtraido: leitura.texto,
+        dados: leitura,
       });
 
       return res.status(201).json({
         extracao_id: result.insertId,
-        dados: sugestao.dados,
-        campos: sugestao.campos,
-        confianca: sugestao.confianca,
-        aviso: leitura.aviso || null,
+        dados: leitura.dados,
+        campos: leitura.campos,
+        confianca: leitura.confianca,
+        aviso: (leitura.avisos || []).join(' ') || null,
       });
     } catch (error) {
       fs.unlink(caminhoSeguro(SUBDIRS.OCR, req.file.filename), () => {});
@@ -166,7 +165,10 @@ async function resolverCliente({ usuarioId, dados }) {
   if (dados.cliente_novo && str(dados.cliente_novo.nome_razao_social)) {
     const nome = str(dados.cliente_novo.nome_razao_social);
     const cpfCnpj = onlyDigits(dados.cliente_novo.cpf_cnpj || '');
-    if (cpfCnpj && !isValidCpfCnpj(cpfCnpj).ok) {
+    if (!cpfCnpj) {
+      throw Object.assign(new Error('Informe o CPF/CNPJ do novo cliente'), { status: 400 });
+    }
+    if (!isValidCpfCnpj(cpfCnpj).ok) {
       throw Object.assign(new Error('CPF/CNPJ do novo cliente é inválido'), { status: 400 });
     }
 
@@ -185,7 +187,7 @@ async function resolverCliente({ usuarioId, dados }) {
     const [result] = await db.execute(
       `INSERT INTO clientes (usuario_id, nome_razao_social, cpf_cnpj, observacoes)
        VALUES (?, ?, ?, ?)`,
-      [usuarioId, nome, cpfCnpj || null, 'Cadastrado via importação de contrato']
+      [usuarioId, nome, cpfCnpj, 'Cadastrado via importação de contrato']
     );
     return { id: result.insertId, criado: true };
   }

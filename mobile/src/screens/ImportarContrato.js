@@ -14,6 +14,27 @@ const ORIGENS = [
   { key: 'galeria', icon: 'images-outline', title: 'Galeria / Arquivos', sub: 'Imagem ou arquivo salvo' },
 ];
 
+const MIME_POR_EXTENSAO = {
+  pdf: 'application/pdf',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+};
+
+function resolverArquivo(asset) {
+  const nomeOriginal = asset.name || '';
+  const extensaoOriginal = (nomeOriginal.split('.').pop() || '').toLowerCase();
+  const extensaoValida = MIME_POR_EXTENSAO[extensaoOriginal] ? extensaoOriginal : '';
+  const mime = asset.mimeType || MIME_POR_EXTENSAO[extensaoValida] || 'image/jpeg';
+  const extensaoDoMime = Object.keys(MIME_POR_EXTENSAO).find((ext) => MIME_POR_EXTENSAO[ext] === mime);
+  const extensao = extensaoValida || extensaoDoMime || 'jpg';
+  return {
+    nome: nomeOriginal && extensaoValida ? nomeOriginal : `documento.${extensao}`,
+    mime,
+  };
+}
+
 export function ImportarContrato() {
   const navigation = useNavigation();
   const route = useRoute();
@@ -48,14 +69,15 @@ export function ImportarContrato() {
       }
 
       const asset = picked.assets[0];
+      const arquivo = resolverArquivo(asset);
       const resultado = await api.ocrExtract({
         uri: asset.uri,
-        nome: asset.name || 'documento.pdf',
-        mime: asset.mimeType || 'application/pdf',
+        nome: arquivo.nome,
+        mime: arquivo.mime,
       });
 
       setSalvo({
-        nomeArquivo: asset.name || 'documento.pdf',
+        nomeArquivo: arquivo.nome,
         extracaoId: resultado.extracao_id,
         dados: resultado.dados || {},
         campos: resultado.campos || [],

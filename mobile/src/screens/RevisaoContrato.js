@@ -142,6 +142,10 @@ export function RevisaoContrato() {
       setErro('Informe o nome do cliente (ou selecione um existente).');
       return;
     }
+    if (modoCliente === 'novo' && !payload.cliente_novo.cpf_cnpj) {
+      setErro('Informe o CPF/CNPJ do cliente (ou selecione um existente).');
+      return;
+    }
     if (!payload.valor_total || payload.valor_total <= 0) {
       setErro('Valor total do contrato é obrigatório.');
       return;

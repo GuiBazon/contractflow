@@ -65,13 +65,20 @@ UPLOAD_DIR=uploads
 O celular acessa a API pelo **IP do PC na rede Wi-Fi**.
 
 1. Descubra o IP novo: no terminal rode `ipconfig` e procure a placa Wi-Fi.
-2. Edite **`mobile/src/services/api.js`** (linha 4) e troque a URL:
+2. Crie **`mobile/.env`** a partir de `mobile/.env.example` e troque a URL:
 
-   ```js
-   const API_URL = 'http://NOVO_IP:3000/api';
+   ```env
+   EXPO_PUBLIC_API_URL=http://NOVO_IP:3000/api
    ```
 
-3. Confirme que:
+3. Reinicie o Expo limpando o cache (variáveis `EXPO_PUBLIC_*` são lidas na inicialização):
+
+   ```bash
+   cd mobile
+   npx expo start --lan --clear
+   ```
+
+4. Confirme que:
    - PC e celular estão na **mesma rede Wi-Fi**;
    - o **firewall** libera a porta `3000`.
 
@@ -96,7 +103,7 @@ npm run dev
 
 # terminal 2 — mobile
 cd mobile
-npx expo start
+npx expo start --lan --clear
 ```
 
 - Abra o QR Code no Expo Go (ou pressione `a` para emulador Android).
@@ -109,6 +116,7 @@ npx expo start
 - `mobile/src/services/storage.js` — sessão é local do celular.
 - Código dos services/controllers/routes, schema, componentes — tudo versionado no repo.
 - Credenciais cadastradas — ficam no MySQL; ao rodar `seed.sql` ganha o usuário demo.
+- Configuração local fica em `mobile/.env` (ignorado pelo git); o código lê `EXPO_PUBLIC_API_URL`.
 
 ---
 
@@ -119,7 +127,7 @@ npx expo start
 - [ ] `git clone` do repositório
 - [ ] `schema.sql` (+ `seed.sql`) aplicados no MySQL
 - [ ] `api/.env` com `DB_PASSWORD`/`DB_PORT` corretos
-- [ ] `mobile/src/services/api.js` com o IP novo do PC
+- [ ] `mobile/.env` com `EXPO_PUBLIC_API_URL` apontando para o IP novo do PC
 - [ ] `npm install` em `api` e `mobile`
 - [ ] API rodando (`npm run dev` em `api`)
 - [ ] Expo rodando (`npx expo start` em `mobile`)
