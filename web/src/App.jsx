@@ -6,6 +6,7 @@ import Clientes from "./pages/clientes/clientes";
 import Contratos from "./pages/contratos/contratos";
 import NovoContrato from "./pages/contratos/novo_contrato";
 import ImportarContrato from "./pages/contratos/importar_contrato";
+import Calendario from "./pages/calendario/calendario";
 
 import { CssBaseline } from "@mui/material";
 
@@ -38,6 +39,16 @@ function App() {
             path="/clientes"
             element={
               <Clientes />
+            }
+          />
+
+          {/* Calendário de Obrigações */}
+          <Route
+            path="/calendario"
+            element={
+              <ProtectedRoute>
+                <Calendario />
+              </ProtectedRoute>
             }
           />
 

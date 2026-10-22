@@ -73,7 +73,7 @@ const NAV_ITEMS = [
   { label: "Dashboard", iconKey: "dashboard", path: "/dashboard" },
   { label: "Clientes", iconKey: "people", path: "/clientes" },
   { label: "Contratos", iconKey: "description", active: true, path: "/contratos" },
-  { label: "Calendário", iconKey: "calendar" },
+  { label: "Calendário", iconKey: "calendar", path: "/calendario" },
   { label: "Financeiro", iconKey: "money" },
   { label: "Calculadora", iconKey: "calculate" },
   { label: "Relatórios", iconKey: "bar_chart" },
