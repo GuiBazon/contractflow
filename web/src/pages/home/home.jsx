@@ -33,9 +33,14 @@ function Home() {
         <Typography variant="h5">
           Olá, {usuario.nome || "usuário"} ({usuario.perfil || "-"})
         </Typography>
-        <Button variant="outlined" onClick={logout}>
-          Sair
-        </Button>
+        <Box sx={{ display: "flex", gap: 1 }}>
+          <Button variant="outlined" onClick={() => navigate("/calendar")}>
+            Calendário
+          </Button>
+          <Button variant="outlined" onClick={logout}>
+            Sair
+          </Button>
+        </Box>
       </Box>
 
       <Typography variant="h6" sx={{ mb: 2 }}>

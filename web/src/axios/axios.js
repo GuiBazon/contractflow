@@ -73,8 +73,8 @@ const sheets = {
 
   //  CONTRATOS
 
-  getContratos: () =>
-    api.get("/contratos"),
+  getContratos: (params) =>
+    api.get("/contratos", { params }),
 
   createContrato: (data) =>
     api.post("/contratos", data),
@@ -92,6 +92,12 @@ const sheets = {
 
   createPagamento: (contratoId, data) =>
     api.post(`/contratos/${contratoId}/pagamentos`, data),
+
+  // PARCELAS
+
+  getParcelas: (contratoId) =>
+    api.get(`/parcelas/${contratoId}/parcelas`),
+
   getHealth: () =>
     api.get("/health"),
 };

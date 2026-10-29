@@ -2,6 +2,7 @@
 import Login from "./pages/login/login";
 import Register from "./pages/register/register";
 import Home from "./pages/home/home";
+import Calendar from "./pages/home/calendar";
 
 import { CssBaseline } from "@mui/material";
 
@@ -29,6 +30,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <Home />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/calendar"
+            element={
+              <ProtectedRoute>
+                <Calendar />
               </ProtectedRoute>
             }
           />
