@@ -7,6 +7,8 @@ import Contratos from "./pages/contratos/contratos";
 import NovoContrato from "./pages/contratos/novo_contrato";
 import ImportarContrato from "./pages/contratos/importar_contrato";
 import Calendario from "./pages/calendario/calendario";
+import Relatorios from "./pages/relatorios/relatorios";
+import Financeiro from "./pages/financeiro/financeiro";
 
 import { CssBaseline } from "@mui/material";
 
@@ -31,14 +33,18 @@ function App() {
           <Route
             path="/dashboard"
             element={
-              <Dashboard />
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
             }
           />
 
           <Route
             path="/clientes"
             element={
-              <Clientes />
+              <ProtectedRoute>
+                <Clientes />
+              </ProtectedRoute>
             }
           />
 
@@ -88,6 +94,26 @@ function App() {
             element={
               <ProtectedRoute>
                 <Contratos />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Relatórios e Inteligência */}
+          <Route
+            path="/relatorios"
+            element={
+              <ProtectedRoute>
+                <Relatorios />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Fluxo Financeiro */}
+          <Route
+            path="/financeiro"
+            element={
+              <ProtectedRoute>
+                <Financeiro />
               </ProtectedRoute>
             }
           />
