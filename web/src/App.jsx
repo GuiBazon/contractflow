@@ -1,6 +1,10 @@
 // Imports de Páginas
 import Login from "./pages/login/login";
 import Register from "./pages/register/register";
+import Home from "./pages/home/home";
+import ConfigPerfil from "./pages/config_perfil/config_perfil";
+import ConfigAlertas from "./pages/config_alertas/config_alertas";
+import ConfigSeguranca from "./pages/config_seguranca/config_seguranca";
 import Dashboard from "./pages/dashboard/dashboard";
 import Clientes from "./pages/clientes/clientes";
 import Contratos from "./pages/contratos/contratos";
@@ -78,6 +82,12 @@ function App() {
             }
           />
 
+          {/* ⚙️ CONFIGURAÇÕES */}
+          <Route
+            path="/configuracoes/perfil"
+            element={
+              <ProtectedRoute>
+                <ConfigPerfil />
           {/* Importação Inteligente com IA */}
           <Route
             path="/contratos/importar"
@@ -88,6 +98,11 @@ function App() {
             }
           />
 
+          <Route
+            path="/configuracoes/alertas"
+            element={
+              <ProtectedRoute>
+                <ConfigAlertas />
           {/* Detalhes de um contrato específico */}
           <Route
             path="/contratos/:id"
@@ -98,6 +113,11 @@ function App() {
             }
           />
 
+          <Route
+            path="/configuracoes/seguranca"
+            element={
+              <ProtectedRoute>
+                <ConfigSeguranca />
           {/* Relatórios e Inteligência */}
           <Route
             path="/relatorios"
@@ -106,6 +126,11 @@ function App() {
                 <Relatorios />
               </ProtectedRoute>
             }
+          />
+
+          <Route
+            path="/configuracoes"
+            element={<Navigate to="/configuracoes/perfil" replace />}
           />
 
           {/* Fluxo Financeiro */}
