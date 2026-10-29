@@ -2,7 +2,7 @@
 import { View, ScrollView, StyleSheet, SafeAreaView, Text, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 import { formatCurrency } from '../utils/format';
 import { api, normalizarErro } from '../services/api';
 import { Header, FilterChip, FinancialCard, ErrorState, LoadingState } from '../components';
@@ -10,6 +10,7 @@ import { Header, FilterChip, FinancialCard, ErrorState, LoadingState } from '../
 const filtros = ['Todas', 'Entradas'];
 
 export function Financeiro() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const [filtro, setFiltro] = useState('Todas');
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
@@ -150,7 +151,7 @@ export function Financeiro() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,
@@ -169,7 +170,7 @@ const styles = StyleSheet.create({
   },
   card: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: spacing.lg,
     borderWidth: 1,
@@ -194,7 +195,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   chartCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: spacing.lg,
     borderWidth: 1,

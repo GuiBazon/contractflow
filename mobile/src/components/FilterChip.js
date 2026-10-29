@@ -1,8 +1,9 @@
 ﻿import React from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 
 export function FilterChip({ label, active, onPress }) {
+  const { styles } = useThemeStyles(createStyles);
   return (
     <TouchableOpacity
       style={[styles.chip, active && styles.active]}
@@ -14,7 +15,7 @@ export function FilterChip({ label, active, onPress }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   chip: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
@@ -31,6 +32,6 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.medium,
   },
   textActive: {
-    color: colors.white,
+    color: colors.onPrimary,
   },
 });
