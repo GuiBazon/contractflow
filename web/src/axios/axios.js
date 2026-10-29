@@ -94,6 +94,17 @@ const sheets = {
     api.post(`/contratos/${contratoId}/pagamentos`, data),
   getHealth: () =>
     api.get("/health"),
+
+  // USUÁRIO / PERFIL
+
+  getPerfilUsuario: (id) =>
+    api.get(`/usuarios/${id}`),
+
+  updatePerfilUsuario: (id, data) =>
+    api.put(`/usuarios/${id}`, data),
+
+  updateSenha: (data) =>
+    api.patch("/usuarios/senha", data),
 };
 
 export default sheets;
