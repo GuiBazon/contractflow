@@ -9,3 +9,6 @@ npm-debug.log*
 .DS_Store
 api/uploads/
 api/*.traineddata
+
+# Clone aninhado acidental na raiz do repositório
+/contractflow/
