@@ -88,10 +88,35 @@ const sheets = {
   deleteContrato: (id) =>
     api.delete("/contratos/" + id),
 
+  updateContratoStatus: (id, status) =>
+    api.patch(`/contratos/${id}/status`, { status }),
+
+  getHistoricoContrato: (id) =>
+    api.get(`/contratos/${id}/historico`),
+
+  getDocumentosContrato: (contratoId) =>
+    api.get(`/documentos/${contratoId}/documentos`),
+
+  uploadDocumentoContrato: (contratoId, formData) =>
+    api.post(`/documentos/${contratoId}/documentos`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+
+  downloadDocumento: (contratoId, docId) =>
+    api.get(`/documentos/${contratoId}/documentos/${docId}/arquivo`, {
+      responseType: "blob",
+    }),
+
+  deleteDocumento: (contratoId, docId) =>
+    api.delete(`/documentos/${contratoId}/documentos/${docId}`),
+
   // PARCELAS
 
   getParcelas: (contratoId, params) =>
     api.get(`/parcelas/${contratoId}/parcelas`, { params }),
+
+  updateParcela: (contratoId, parcelaId, data) =>
+    api.patch(`/parcelas/${contratoId}/parcelas/${parcelaId}`, data),
 
   // PAGAMENTOS / RECEITAS
 
@@ -103,6 +128,25 @@ const sheets = {
 
   createPagamento: (contratoId, data) =>
     api.post(`/contratos/${contratoId}/pagamentos`, data),
+
+  // OCR / IMPORTAÇÃO INTELIGENTE COM IA
+
+  extractOcr: (formData) =>
+    api.post("/ocr/extract", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+
+  getOcr: (id) =>
+    api.get(`/ocr/${id}`),
+
+  updateOcr: (id, dados) =>
+    api.patch(`/ocr/${id}`, { dados }),
+
+  confirmarOcr: (id, dados) =>
+    api.post(`/ocr/${id}/confirmar`, { dados }),
+
+  cancelarOcr: (id) =>
+    api.delete(`/ocr/${id}`),
 
   getHealth: () =>
     api.get("/health"),

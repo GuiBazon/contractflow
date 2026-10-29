@@ -18,6 +18,7 @@ import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
+import FileUploadRoundedIcon from "@mui/icons-material/FileUploadRounded";
 
 // MUI Components
 import {
@@ -55,8 +56,8 @@ const ICON_MAP = {
 const NAV_ITEMS = [
   { label: "Dashboard", iconKey: "dashboard", path: "/dashboard" },
   { label: "Clientes", iconKey: "people", active: true, path: "/clientes" },
-  { label: "Contratos", iconKey: "description", path: "/home" },
-  { label: "Calendário", iconKey: "calendar" },
+  { label: "Contratos", iconKey: "description", path: "/contratos" },
+  { label: "Calendário", iconKey: "calendar", path: "/calendario" },
   { label: "Financeiro", iconKey: "money" },
   { label: "Calculadora", iconKey: "calculate" },
   { label: "Relatórios", iconKey: "bar_chart" },
@@ -528,15 +529,33 @@ export default function Clientes() {
             </Box>
           </Box>
 
-          <Button
-            variant="contained"
-            disableElevation
-            onClick={() => setModalOpen(true)}
-            startIcon={<AddRoundedIcon />}
-            sx={sx.btnNovoCliente}
-          >
-            Novo Cliente
-          </Button>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
+            <Button
+              variant="outlined"
+              startIcon={<FileUploadRoundedIcon />}
+              onClick={() => navigate("/contratos/importar")}
+              sx={sx.btnImportar}
+            >
+              Importar
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<DescriptionRoundedIcon />}
+              onClick={() => navigate("/contratos/novo")}
+              sx={sx.btnNovoContrato}
+            >
+              Novo Contrato
+            </Button>
+            <Button
+              variant="contained"
+              disableElevation
+              onClick={() => setModalOpen(true)}
+              startIcon={<AddRoundedIcon />}
+              sx={sx.btnNovoCliente}
+            >
+              Novo Cliente
+            </Button>
+          </Box>
         </Box>
 
         {/* ── Tabela de Clientes ── */}
@@ -1199,6 +1218,30 @@ const sx = {
     },
   },
 
+  btnImportar: {
+    border: "1px solid #e2e8f0",
+    color: "#475569",
+    bgcolor: "#ffffff",
+    textTransform: "none",
+    fontSize: "13.5px",
+    fontWeight: 600,
+    borderRadius: "8px",
+    px: 2,
+    py: 0.85,
+    "&:hover": { bgcolor: "#f8fafc", borderColor: "#cbd5e1" },
+  },
+  btnNovoContrato: {
+    border: "1px solid #2563eb",
+    color: "#2563eb",
+    bgcolor: "#ffffff",
+    textTransform: "none",
+    fontSize: "13.5px",
+    fontWeight: 600,
+    borderRadius: "8px",
+    px: 2,
+    py: 0.85,
+    "&:hover": { bgcolor: "#eff6ff", borderColor: "#1d4ed8" },
+  },
   btnNovoCliente: {
     bgcolor: "#2563eb",
     color: "#ffffff",
