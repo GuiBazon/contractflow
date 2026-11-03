@@ -18,3 +18,4 @@ export { LoadingState } from './LoadingState';
 export { ErrorState } from './ErrorState';
 export { DocumentViewer } from './DocumentViewer';
 export { DocumentoAcao } from './DocumentoAcao';
+export { TermosConteudo } from './TermosConteudo';

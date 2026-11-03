@@ -4,7 +4,7 @@ import {
   Platform, ScrollView, ActivityIndicator, TouchableOpacity,
 } from 'react-native';
 import { spacing, typography, useThemeStyles } from '../theme';
-import { Input, PrimaryButton, ContractFlowLogo } from '../components';
+import { Input, PrimaryButton, ContractFlowLogo, TermosConteudo } from '../components';
 import { api, normalizarErro } from '../services/api';
 import { salvarSessao } from '../services/storage';
 
@@ -16,9 +16,16 @@ export function Cadastro({ navigation }) {
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
+  const [aceitouTermos, setAceitouTermos] = useState(false);
+  const [cientePrivacidade, setCientePrivacidade] = useState(false);
 
   async function handleCadastro() {
     setErro('');
+
+    if (!aceitouTermos) {
+      setErro('É necessário aceitar os Termos e Condições de Uso para continuar.');
+      return;
+    }
 
     if (!nome.trim() || nome.trim().length < 2) {
       setErro('Informe um nome válido.');
@@ -97,11 +104,59 @@ export function Cadastro({ navigation }) {
               onChangeText={setConfirmarSenha}
               secureTextEntry
             />
+
+            <View style={styles.termosBloco}>
+              <Text style={styles.termosTitulo}>Termos e Condições de Uso</Text>
+              <ScrollView
+                style={styles.termosScroll}
+                contentContainerStyle={styles.termosScrollConteudo}
+                nestedScrollEnabled
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator
+              >
+                <TermosConteudo />
+              </ScrollView>
+
+              <TouchableOpacity
+                style={styles.aceiteRow}
+                activeOpacity={0.7}
+                onPress={() => setAceitouTermos((valor) => !valor)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: aceitouTermos }}
+                accessibilityLabel="Li e concordo com os Termos e Condições de Uso."
+              >
+                <View style={[styles.checkbox, aceitouTermos && styles.checkboxMarcado]}>
+                  {aceitouTermos ? <Text style={styles.checkboxCheck}>✓</Text> : null}
+                </View>
+                <Text style={styles.aceiteTexto}>
+                  Li e concordo com os Termos e Condições de Uso.
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.aceiteRow}
+                activeOpacity={0.7}
+                onPress={() => setCientePrivacidade((valor) => !valor)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: cientePrivacidade }}
+                accessibilityLabel="Estou ciente da Política de Privacidade."
+              >
+                <View style={[styles.checkbox, cientePrivacidade && styles.checkboxMarcado]}>
+                  {cientePrivacidade ? <Text style={styles.checkboxCheck}>✓</Text> : null}
+                </View>
+                <Text style={styles.aceiteTexto}>Estou ciente da Política de Privacidade.</Text>
+              </TouchableOpacity>
+            </View>
+
             {erro ? <Text style={styles.erro}>{erro}</Text> : null}
             {carregando ? (
               <ActivityIndicator size="large" color={colors.accent} />
             ) : (
-              <PrimaryButton title="Criar conta" onPress={handleCadastro} />
+              <PrimaryButton
+                title="Criar conta"
+                onPress={handleCadastro}
+                disabled={!aceitouTermos}
+              />
             )}
 
             <View style={styles.loginRow}>
@@ -156,6 +211,58 @@ const createStyles = (colors) => StyleSheet.create({
     fontSize: typography.sizes.sm,
     marginBottom: spacing.md,
     textAlign: 'center',
+  },
+  termosBloco: {
+    marginTop: spacing.xs,
+    marginBottom: spacing.lg,
+  },
+  termosTitulo: {
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.medium,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  termosScroll: {
+    height: 300,
+    backgroundColor: colors.input,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+  },
+  termosScrollConteudo: {
+    padding: spacing.md,
+  },
+  aceiteRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  checkboxMarcado: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  checkboxCheck: {
+    color: colors.onPrimary,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
+    lineHeight: 16,
+  },
+  aceiteTexto: {
+    flex: 1,
+    fontSize: typography.sizes.sm,
+    lineHeight: 18,
+    color: colors.textPrimary,
   },
   loginRow: {
     flexDirection: 'row',
