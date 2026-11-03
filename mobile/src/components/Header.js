@@ -1,7 +1,7 @@
 ﻿import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 
 export function Header({
   title,
@@ -13,6 +13,7 @@ export function Header({
   rightIcon2,
   onRightPress2,
 }) {
+  const { colors, styles } = useThemeStyles(createStyles);
   return (
     <View style={styles.container}>
       {leftIcon ? (
@@ -42,14 +43,16 @@ export function Header({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: colors.white,
+    backgroundColor: colors.header,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.headerBorder,
   },
   iconBtn: {
     width: 40,

@@ -1,10 +1,11 @@
 ﻿import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 import { formatCurrency, formatDate } from '../utils/format';
 import { StatusBadge } from './StatusBadge';
 
 export function InstallmentCard({ parcela }) {
+  const { styles } = useThemeStyles(createStyles);
   return (
     <View style={styles.card}>
       <View style={styles.left}>
@@ -19,11 +20,11 @@ export function InstallmentCard({ parcela }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 10,
     padding: spacing.md,
     marginBottom: spacing.sm,

@@ -3,10 +3,10 @@ import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity, Ale
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 import { formatCurrency, formatDate } from '../utils/format';
 import { api, normalizarErro } from '../services/api';
-import { Header, StatusBadge, InstallmentCard, TimelineItem, PrimaryButton, LoadingState, ErrorState, Input } from '../components';
+import { Header, StatusBadge, InstallmentCard, TimelineItem, PrimaryButton, LoadingState, ErrorState, Input, DocumentViewer, DocumentoAcao } from '../components';
 
 const STATUS_DISPONIVEIS = ['ATIVO', 'PENDENTE', 'ENCERRADO', 'CANCELADO', 'EM_RENOVACAO'];
 
@@ -32,6 +32,7 @@ function tituloHistorico(acao) {
 }
 
 export function DetalheContrato() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const route = useRoute();
   const navigation = useNavigation();
   const [tab, setTab] = useState('parcelas');
@@ -42,6 +43,7 @@ export function DetalheContrato() {
   const [pagamentos, setPagamentos] = useState([]);
   const [historico, setHistorico] = useState([]);
   const [documentos, setDocumentos] = useState([]);
+  const [documentoVisualizado, setDocumentoVisualizado] = useState(null);
   const [enviandoDoc, setEnviandoDoc] = useState(false);
   const [qtdParcelasForm, setQtdParcelasForm] = useState('');
   const [gerandoParcelas, setGerandoParcelas] = useState(false);
@@ -197,14 +199,14 @@ export function DetalheContrato() {
 
           <View style={styles.infoRow}>
             <View style={styles.infoItem}>
-              <Ionicons name="wallet-outline" size={16} color={colors.primary} />
+              <Ionicons name="wallet-outline" size={16} color={colors.accent} />
               <View style={styles.infoTextWrap}>
                 <Text style={styles.infoLabel}>Valor total</Text>
                 <Text style={styles.infoValue}>{formatCurrency(contrato.valor_total)}</Text>
               </View>
             </View>
             <View style={styles.infoItem}>
-              <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+              <Ionicons name="calendar-outline" size={16} color={colors.accent} />
               <View style={styles.infoTextWrap}>
                 <Text style={styles.infoLabel}>Parcelas</Text>
                 <Text style={styles.infoValue}>{parcelasPagas}/{totalParcelas}</Text>
@@ -248,7 +250,7 @@ export function DetalheContrato() {
               onPress={() => setTab(t.key)}
               activeOpacity={0.7}
             >
-              <Ionicons name={t.icon} size={16} color={tab === t.key ? colors.primary : colors.textMuted} />
+              <Ionicons name={t.icon} size={16} color={tab === t.key ? colors.accent : colors.textMuted} />
               <Text style={[styles.tabText, tab === t.key && styles.tabTextActive]}>
                 {t.label}
               </Text>
@@ -306,9 +308,9 @@ export function DetalheContrato() {
             <View>
               <TouchableOpacity style={styles.uploadBtn} onPress={adicionarDocumento} disabled={enviandoDoc} activeOpacity={0.7}>
                 {enviandoDoc ? (
-                  <ActivityIndicator size="small" color={colors.white} />
+                  <ActivityIndicator size="small" color={colors.onPrimary} />
                 ) : (
-                  <Ionicons name="cloud-upload-outline" size={18} color={colors.white} />
+                  <Ionicons name="cloud-upload-outline" size={18} color={colors.onPrimary} />
                 )}
                 <Text style={styles.uploadBtnText}>{enviandoDoc ? 'Enviando...' : 'Adicionar anexo'}</Text>
               </TouchableOpacity>
@@ -321,20 +323,35 @@ export function DetalheContrato() {
               ) : (
                 documentos.map((doc) => (
                   <View key={doc.id} style={styles.documentoCard}>
-                    <View style={styles.documentoIcon}>
-                      <Ionicons name="document-text-outline" size={20} color={colors.primary} />
+                    <View style={styles.documentoTop}>
+                      <View style={styles.documentoIcon}>
+                        <Ionicons name="document-text-outline" size={20} color={colors.accent} />
+                      </View>
+                      <View style={styles.documentoInfo}>
+                        <Text style={styles.documentoNome} numberOfLines={1}>{doc.nome_original}</Text>
+                        <Text style={styles.documentoMeta}>
+                          {doc.tipo} • {(doc.tamanho / 1024).toFixed(0)} KB
+                        </Text>
+                      </View>
+                      {doc.tipo === 'ANEXO' ? (
+                        <TouchableOpacity onPress={() => confirmarExclusaoDoc(doc)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                          <Ionicons name="trash-outline" size={18} color={colors.danger} />
+                        </TouchableOpacity>
+                      ) : null}
                     </View>
-                    <View style={styles.documentoInfo}>
-                      <Text style={styles.documentoNome} numberOfLines={1}>{doc.nome_original}</Text>
-                      <Text style={styles.documentoMeta}>
-                        {doc.tipo} • {(doc.tamanho / 1024).toFixed(0)} KB
-                      </Text>
-                    </View>
-                    {doc.tipo === 'ANEXO' ? (
-                      <TouchableOpacity onPress={() => confirmarExclusaoDoc(doc)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                        <Ionicons name="trash-outline" size={18} color={colors.danger} />
-                      </TouchableOpacity>
-                    ) : null}
+                    <DocumentoAcao
+                      documento={{ nome: doc.nome_original, mime: doc.mime }}
+                      onPress={() =>
+                        setDocumentoVisualizado({
+                          contratoId,
+                          documentoId: doc.id,
+                          nome: doc.nome_original,
+                          mime: doc.mime,
+                        })
+                      }
+                      compact
+                      style={styles.documentoBotao}
+                    />
                   </View>
                 ))
               )}
@@ -365,6 +382,12 @@ export function DetalheContrato() {
         </View>
       </ScrollView>
 
+      <DocumentViewer
+        visible={Boolean(documentoVisualizado)}
+        documento={documentoVisualizado}
+        onClose={() => setDocumentoVisualizado(null)}
+      />
+
       <View style={styles.bottomBar}>
         <PrimaryButton
           title="Registrar pagamento"
@@ -386,7 +409,7 @@ export function DetalheContrato() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,
@@ -399,7 +422,7 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 14,
     padding: spacing.xl,
     borderWidth: 1,
@@ -469,7 +492,7 @@ const styles = StyleSheet.create({
   progressPct: {
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.semibold,
-    color: colors.primary,
+    color: colors.accent,
   },
   progressBg: {
     height: 6,
@@ -492,7 +515,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   uploadBtnText: {
-    color: colors.white,
+    color: colors.onPrimary,
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.semibold,
   },
@@ -514,7 +537,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
   },
   statusChipActive: {
     backgroundColor: colors.primary,
@@ -525,7 +548,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   statusChipTextActive: {
-    color: colors.white,
+    color: colors.onPrimary,
     fontWeight: typography.weights.semibold,
   },
   erroTexto: {
@@ -535,7 +558,7 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 10,
     padding: spacing.xs,
     marginBottom: spacing.lg,
@@ -559,7 +582,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   tabTextActive: {
-    color: colors.primary,
+    color: colors.accent,
     fontWeight: typography.weights.semibold,
   },
   tabContent: {
@@ -575,14 +598,16 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   documentoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 10,
     padding: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  documentoTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.md,
   },
   documentoIcon: {
@@ -606,10 +631,13 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 2,
   },
+  documentoBotao: {
+    marginTop: spacing.sm,
+  },
   pagamentoCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 10,
     padding: spacing.md,
     marginBottom: spacing.sm,
@@ -658,7 +686,7 @@ const styles = StyleSheet.create({
     right: 0,
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },

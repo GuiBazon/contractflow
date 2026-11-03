@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, StyleSheet, SafeAreaView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 import { Header, Input, PrimaryButton, SecondaryButton } from '../components';
 import { formatCurrency, hojeISO } from '../utils/format';
 
@@ -60,6 +60,7 @@ function simularParcelas({ valorTotal, quantidade, dataInicio, jurosMensal, mult
 }
 
 export function Calculadora() {
+  const { styles } = useThemeStyles(createStyles);
   const navigation = useNavigation();
   const [valorTotal, setValorTotal] = useState('');
   const [quantidade, setQuantidade] = useState('');
@@ -161,7 +162,7 @@ export function Calculadora() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,
@@ -185,7 +186,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   resultadoCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
@@ -224,7 +225,7 @@ const styles = StyleSheet.create({
   parcelaValor: {
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.bold,
-    color: colors.primary,
+    color: colors.accent,
   },
   parcelaExtra: {
     fontSize: typography.sizes.xs,
@@ -250,7 +251,7 @@ const styles = StyleSheet.create({
   resumoValue: {
     fontSize: typography.sizes.lg,
     fontWeight: typography.weights.bold,
-    color: colors.primary,
+    color: colors.accent,
   },
   resumoHint: {
     fontSize: typography.sizes.xs,

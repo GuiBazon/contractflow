@@ -1,14 +1,15 @@
 ﻿import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 
 export function TimelineItem({ title, date, description, icon, isLast }) {
+  const { colors, styles } = useThemeStyles(createStyles);
   return (
     <View style={styles.container}>
       <View style={styles.left}>
         <View style={styles.dot}>
-          <Ionicons name={icon} size={14} color={colors.primary} />
+          <Ionicons name={icon} size={14} color={colors.accent} />
         </View>
         {!isLast && <View style={styles.line} />}
       </View>
@@ -21,7 +22,7 @@ export function TimelineItem({ title, date, description, icon, isLast }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
   },

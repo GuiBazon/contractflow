@@ -16,3 +16,5 @@ export { TimelineItem } from './TimelineItem';
 export { EmptyState } from './EmptyState';
 export { LoadingState } from './LoadingState';
 export { ErrorState } from './ErrorState';
+export { DocumentViewer } from './DocumentViewer';
+export { DocumentoAcao } from './DocumentoAcao';

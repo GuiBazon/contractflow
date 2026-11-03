@@ -1,12 +1,14 @@
 ﻿import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity, Alert, Switch } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useTheme, useThemeStyles } from '../theme';
 import { Header } from '../components';
 import { getUsuario, limparSessao } from '../services/storage';
 
 export function Mais() {
+  const { colors, escuro, definirModo } = useTheme();
+  const { styles } = useThemeStyles(createStyles);
   const navigation = useNavigation();
   const [usuario, setUsuario] = useState(null);
 
@@ -58,6 +60,30 @@ export function Mais() {
         </View>
 
         <View style={styles.menu}>
+          <View style={styles.menuItem}>
+            <Ionicons
+              name={escuro ? 'moon' : 'sunny-outline'}
+              size={20}
+              color={colors.accent}
+            />
+            <View style={styles.aparenciaInfo}>
+              <Text style={styles.aparenciaTitulo}>Modo escuro</Text>
+              <Text style={styles.menuSubtitle}>
+                {escuro ? 'Ativado' : 'Desativado'}
+              </Text>
+            </View>
+            <Switch
+              value={escuro}
+              onValueChange={(valor) => definirModo(valor ? 'escuro' : 'claro')}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor={colors.onPrimary}
+              ios_backgroundColor={colors.border}
+              accessibilityLabel="Alternar modo escuro"
+            />
+          </View>
+        </View>
+
+        <View style={styles.menu}>
           {itensMenu.map((item, idx) => (
             <TouchableOpacity
               key={item.key}
@@ -65,7 +91,7 @@ export function Mais() {
               onPress={item.onPress}
               activeOpacity={0.7}
             >
-              <Ionicons name={item.icon} size={20} color={colors.primary} />
+              <Ionicons name={item.icon} size={20} color={colors.accent} />
               <Text style={styles.menuTitle}>{item.title}</Text>
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </TouchableOpacity>
@@ -83,7 +109,7 @@ export function Mais() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,
@@ -112,7 +138,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.white,
+    backgroundColor: colors.onPrimary,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -128,16 +154,16 @@ const styles = StyleSheet.create({
   perfilNome: {
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.semibold,
-    color: colors.white,
+    color: colors.onPrimary,
   },
   perfilEmail: {
     fontSize: typography.sizes.sm,
-    color: colors.white,
+    color: colors.onPrimary,
     opacity: 0.85,
     marginTop: 2,
   },
   menu: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
@@ -159,12 +185,25 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     flex: 1,
   },
+  aparenciaInfo: {
+    flex: 1,
+  },
+  aparenciaTitulo: {
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.medium,
+    color: colors.textPrimary,
+  },
+  menuSubtitle: {
+    fontSize: typography.sizes.xs,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
   sairBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 12,
     padding: spacing.lg,
     borderWidth: 1,

@@ -1,9 +1,10 @@
 ﻿import React from 'react';
 import { View, TextInput, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 
 export function SearchInput({ icon = 'search', ...props }) {
+  const { colors, styles } = useThemeStyles(createStyles);
   return (
     <View style={styles.container}>
       <Ionicons name={icon} size={18} color={colors.textMuted} style={styles.icon} />
@@ -16,7 +17,7 @@ export function SearchInput({ icon = 'search', ...props }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -1,11 +1,12 @@
 ﻿import React, { useEffect, useState, useCallback } from 'react';
 import { View, FlatList, StyleSheet, SafeAreaView, Text, RefreshControl } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 import { api, normalizarErro } from '../services/api';
 import { Header, SearchInput, ClientCard, EmptyState, LoadingState, ErrorState } from '../components';
 
 export function Clientes() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const navigation = useNavigation();
   const [busca, setBusca] = useState('');
   const [clientes, setClientes] = useState([]);
@@ -88,7 +89,7 @@ export function Clientes() {
             />
           }
           refreshControl={
-            <RefreshControl refreshing={false} onRefresh={carregarClientes} tintColor={colors.primary} />
+            <RefreshControl refreshing={false} onRefresh={carregarClientes} tintColor={colors.accent} />
           }
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
@@ -98,7 +99,7 @@ export function Clientes() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,

@@ -77,7 +77,7 @@ function Register() {
     }));
   };
 
-  function onChange(event) {
+  function onChange(  event) {
     const { name, value } = event.target;
 
     setUsuario((prev) => ({
@@ -152,10 +152,9 @@ function Register() {
         handleClose={handleCloseAlert}
       />
 
-      {/* =========================
-          LADO ESQUERDO
-      ========================== */}
+      {/*LADO ESQUERDO*/}
       <Box sx={styles.leftSide}>
+
         <Box sx={styles.leftContent}>
           {/* Logo */}
           <Box sx={styles.brand}>
@@ -178,6 +177,7 @@ function Register() {
                 <Box sx={styles.stepNumber}>{step.numero}</Box>
 
                 <Box>
+                
                   <Typography sx={styles.stepTitle}>{step.titulo}</Typography>
                   <Typography sx={styles.stepDescription}>
                     {step.descricao}
@@ -194,9 +194,7 @@ function Register() {
         </Box>
       </Box>
 
-      {/* =========================
-          LADO DIREITO
-      ========================== */}
+      {/*LADO DIREITO*/}
       <Box sx={styles.rightSide}>
         <Box sx={styles.card}>
           {/* Título */}

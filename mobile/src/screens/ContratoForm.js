@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 import { api, normalizarErro } from '../services/api';
 import { Header, Input, PrimaryButton, LoadingState, ErrorState } from '../components';
 import { hojeISO } from '../utils/format';
@@ -13,6 +13,7 @@ import { hojeISO } from '../utils/format';
 const FORMAS_PAGAMENTO = ['PIX', 'BOLETO', 'TRANSFERENCIA', 'DINHEIRO', 'CARTAO_CREDITO', 'CARTAO_DEBITO'];
 
 export function ContratoForm() {
+  const { colors, styles } = useThemeStyles(createStyles);
   const navigation = useNavigation();
 
   const [clientes, setClientes] = useState([]);
@@ -133,7 +134,7 @@ export function ContratoForm() {
         <Text style={styles.sectionTitle}>Cliente e identificação</Text>
 
         <TouchableOpacity style={styles.clientPicker} onPress={() => setSeletorAberto(true)} activeOpacity={0.7}>
-          <Ionicons name="person-outline" size={20} color={colors.primary} />
+          <Ionicons name="person-outline" size={20} color={colors.accent} />
           <Text style={clienteNome ? styles.clientText : styles.clientPlaceholder}>
             {clienteNome || 'Selecione o cliente *'}
           </Text>
@@ -189,7 +190,7 @@ export function ContratoForm() {
               <Ionicons
                 name={formaPagamento === f ? 'radio-button-on' : 'radio-button-off'}
                 size={16}
-                color={formaPagamento === f ? colors.primary : colors.textMuted}
+                color={formaPagamento === f ? colors.accent : colors.textMuted}
               />
               <Text style={[styles.formaText, formaPagamento === f && styles.formaTextActive]}>
                 {f.replace('_', ' ')}
@@ -203,7 +204,7 @@ export function ContratoForm() {
         {erro ? <Text style={styles.erro}>{erro}</Text> : null}
 
         {salvando ? (
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.accent} />
         ) : (
           <PrimaryButton title="Criar contrato" onPress={handleSalvar} />
         )}
@@ -241,7 +242,7 @@ export function ContratoForm() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,
@@ -263,7 +264,7 @@ const styles = StyleSheet.create({
   clientPicker: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderRadius: 10,
     padding: spacing.md,
     borderWidth: 1,
@@ -336,11 +337,11 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: colors.overlay,
     justifyContent: 'flex-end',
   },
   modalCard: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     padding: spacing.lg,

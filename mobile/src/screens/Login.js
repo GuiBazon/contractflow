@@ -11,14 +11,14 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography, useThemeStyles } from '../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Input, PrimaryButton, ContractFlowLogo } from '../components';
 import { api, normalizarErro } from '../services/api';
 import { salvarSessao } from '../services/storage';
 
 export function Login({ navigation }) {
+  const { colors, styles } = useThemeStyles(createStyles);
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [carregando, setCarregando] = useState(false);
@@ -163,7 +163,7 @@ export function Login({ navigation }) {
                 <Ionicons
                   name={mostrarSenha ? 'eye-off' : 'eye'}
                   size={22}
-                  color={colors.primary}
+                  color={colors.accent}
                 />
               </TouchableOpacity>
             </View>
@@ -176,7 +176,7 @@ export function Login({ navigation }) {
 
             {carregando ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={colors.primary} />
+                <ActivityIndicator size="large" color={colors.accent} />
                 <Text style={styles.loadingText}>Entrando...</Text>
               </View>
             ) : (
@@ -220,10 +220,10 @@ export function Login({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.card,
   },
 
   flex: {
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
   },
 
   linkText: {
-    color: colors.primary,
+    color: colors.accent,
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.medium,
   },
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
   },
 
   createAccountLink: {
-    color: colors.primary,
+    color: colors.accent,
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.semibold,
   },
