@@ -71,7 +71,7 @@ const sheets = {
   deleteCliente: (id) =>
     api.delete("/clientes/" + id),
 
-  //  CONTRATOS
+  // CONTRATOS
 
   getContratos: (params) =>
     api.get("/contratos", { params }),
@@ -161,6 +161,14 @@ const sheets = {
 
   updateSenha: (data) =>
     api.patch("/usuarios/senha", data),
+
+  // CALCULADORA
+
+  getHistoricoSimulacoes: () =>
+    api.get("/calculadora/historico"),
+
+  postSimulacao: (data) =>
+    api.post("/calculadora/simular", data),
 };
 
 export default sheets;
