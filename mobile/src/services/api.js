@@ -213,7 +213,9 @@ const api = {
     return apiClient
       .post('/ocr/extract', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 60000,
+        // O primeiro OCR pode baixar o modelo do Tesseract (~7MB); o servidor
+        // interrompe em 90s e responde com erro claro.
+        timeout: 120000,
       })
       .then((res) => res.data);
   },

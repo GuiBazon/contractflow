@@ -1,0 +1,13 @@
+﻿fastapi>=0.115
+uvicorn[standard]>=0.32
+python-multipart>=0.0.17
+pydantic-settings>=2.7
+pydantic>=2.10
+pillow>=11.0
+pytesseract>=0.3.13
+ocrmypdf>=16.10
+pypdf>=4.0
+pypdfium2>=5.1
+python-dotenv>=1.0
+httpx>=0.28
+pytest>=8.3

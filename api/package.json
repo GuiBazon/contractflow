@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "jest",
+    "test": "jest --runInBand",
     "test:unit": "jest tests/unit",
     "test:api": "jest tests/integration"
   },
@@ -27,11 +27,14 @@
     "multer": "^2.3.0",
     "mysql2": "^3.2.0",
     "pdf-parse": "^1.1.4",
+    "pdf-to-img": "^7.0.0",
+    "sharp": "^0.35.5",
     "tesseract.js": "^5.1.1"
   },
   "devDependencies": {
-    "jest": "^30.5.1",
+    "jest": "^30.5.2",
     "nodemon": "^3.1.4",
-    "supertest": "^7.2.2"
+    "pdfkit": "^0.20.2",
+    "supertest": "^7.3.0"
   }
 }
