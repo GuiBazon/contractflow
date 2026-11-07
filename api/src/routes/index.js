@@ -10,6 +10,7 @@ const ocrRoutes = require('./ocrRoutes');
 const router = express.Router();
 
 router.use('/auth', authRoutes);
+router.use('/perfil', require('./profileRoutes'));
 router.use('/usuarios', require('./userRoutes'));
 router.use('/clientes', clientRoutes);
 router.use('/contratos', contractRoutes);

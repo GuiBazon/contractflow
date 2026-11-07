@@ -37,6 +37,8 @@ const schemas = {
   Login: object({ email: text('usuario@example.com', { format: 'email' }), senha: text('senha-de-exemplo', { format: 'password' }) }, ['email', 'senha']),
   LoginResponse: object({ message: text('Login realizado com sucesso'), token: text('JWT retornado pelo login'), usuario: ref('User') }, ['token', 'usuario']),
   UserChange: object({ nome: text('Usuário'), email: text('usuario@example.com', { format: 'email' }), perfil: enumText(['ADMIN', 'USUARIO']), ativo: { type: 'integer', enum: [0, 1] } }),
+  Profile: object({ id, nome: text('Usuário'), email: text('usuario@example.com', { format: 'email' }), perfil: enumText(['ADMIN', 'USUARIO']), cargo: { ...text('Gerente'), nullable: true }, telefone: { ...text('11999999999'), nullable: true }, razao_social: { ...text('Empresa Exemplo'), nullable: true }, cnpj: { ...text('11222333000181'), nullable: true }, inscricao_estadual: { ...text('123456'), nullable: true }, foto_url: { ...text('/api/perfil/foto'), nullable: true } }, ['id', 'nome', 'email', 'perfil', 'foto_url']),
+  ProfileChange: { ...object({ nome: text('Usuário', { minLength: 2, maxLength: 150 }), email: text('usuario@example.com', { format: 'email' }), senha_atual: text(undefined, { format: 'password' }), cargo: { ...text('Gerente', { maxLength: 150 }), nullable: true }, telefone: { ...text('11999999999', { maxLength: 30 }), nullable: true }, razao_social: { ...text('Empresa Exemplo', { maxLength: 150 }), nullable: true }, cnpj: { ...text('11222333000181'), nullable: true }, inscricao_estadual: { ...text('123456', { maxLength: 30 }), nullable: true } }), minProperties: 1 },
   Client: object({ id, usuario_id: id, ...nullableFields(clientFields, ['nome_razao_social', 'cpf_cnpj']) }, ['id', 'nome_razao_social', 'cpf_cnpj']),
   ClientCreate: object(clientFields, ['nome_razao_social', 'cpf_cnpj']),
   ClientChange: { ...object(clientFields), minProperties: 1 },
@@ -102,6 +104,12 @@ route('get', '/usuarios', 'Listar usuários (ADMIN)', 'Usuários', { parameters:
 route('get', '/usuarios/{id}', 'Consultar usuário (ADMIN)', 'Usuários', { schema: ref('User') });
 for (const method of ['put', 'patch']) route(method, '/usuarios/{id}', 'Atualizar usuário e revogar sessões (ADMIN)', 'Usuários', { requestBody: jsonBody(ref('UserChange')), schema: object({ message: text(), usuario: ref('User') }) });
 route('delete', '/usuarios/{id}', 'Desativar usuário preservando seus dados (ADMIN)', 'Usuários', { description: 'Não permite desativar o último ADMIN ativo.', schema: object({ message: text(), usuario: ref('User') }) });
+
+route('get', '/perfil', 'Consultar perfil próprio', 'Perfil', { schema: object({ usuario: ref('Profile') }, ['usuario']) });
+route('patch', '/perfil', 'Alterar perfil próprio', 'Perfil', { requestBody: jsonBody(ref('ProfileChange')), schema: object({ message: text(), usuario: ref('Profile'), sessao_encerrada: { type: 'boolean' } }, ['message', 'usuario', 'sessao_encerrada']), description: 'Para mudar o e-mail, informe senha_atual. A alteração revoga as sessões e exige novo login. Campos opcionais podem ser limpos com null.' });
+route('get', '/perfil/foto', 'Obter foto do usuário autenticado', 'Perfil', { description: 'A foto exige Bearer; obtenha-a como blob para usar em uma imagem no navegador.', responses: { 200: { description: 'Foto autenticada', content: Object.fromEntries(['image/jpeg', 'image/png', 'image/webp'].map(mime => [mime, { schema: binary }])) }, 401: { $ref: '#/components/responses/Error401' }, 404: { $ref: '#/components/responses/Error404' } } });
+route('put', '/perfil/foto', 'Enviar ou substituir foto própria', 'Perfil', { requestBody: { required: true, content: { 'multipart/form-data': { schema: object({ foto: binary }, ['foto']) } } }, schema: object({ message: text(), foto_url: text('/api/perfil/foto') }), description: 'Envie o campo foto, JPEG, PNG ou WebP, com até 2 MiB.' });
+route('delete', '/perfil/foto', 'Remover foto própria', 'Perfil', { schema: object({ message: text(), foto_url: { type: 'string', nullable: true } }) });
 
 route('get', '/clientes', 'Pesquisar clientes do usuário', 'Clientes', { parameters: [...pages, parameter('q')], schema: paginated(ref('Client')) });
 route('post', '/clientes', 'Cadastrar cliente', 'Clientes', { status: 201, requestBody: jsonBody(ref('ClientCreate')), schema: object({ message: text(), cliente: ref('Client') }) });
@@ -196,7 +204,7 @@ module.exports = {
   info: { title: 'ContractFlow API', version: '2.1.0', description: 'API do ContractFlow. Faça login e use Authorize com o token recebido. Dados são isolados por usuário. A documentação usa o mesmo servidor da aplicação.' },
   servers: [{ url: '/api' }],
   security: [{ bearerAuth: [] }],
-  tags: ['Sistema', 'Autenticação', 'Usuários', 'Clientes', 'Contratos', 'Parcelas', 'Pagamentos', 'Financeiro', 'Despesas', 'Notificações', 'Documentos', 'OCR', 'Calculadora', 'Relatórios'].map(name => ({ name })),
+  tags: ['Sistema', 'Autenticação', 'Usuários', 'Perfil', 'Clientes', 'Contratos', 'Parcelas', 'Pagamentos', 'Financeiro', 'Despesas', 'Notificações', 'Documentos', 'OCR', 'Calculadora', 'Relatórios'].map(name => ({ name })),
   paths,
   components: {
     securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' } },

@@ -31,15 +31,16 @@
     "exceljs": "^4.4.0",
     "express": "^4.19.2",
     "express-rate-limit": "8.7.1",
+    "fontkit": "^2.0.4",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.3.0",
     "mysql2": "^3.2.0",
     "nodemailer": "10.1.7",
     "pdf-parse": "^1.1.4",
     "pdfkit": "^0.17.2",
+    "sharp": "^0.35.5",
     "swagger-ui-express": "5.0.1",
-    "tesseract.js": "^5.1.1",
-    "fontkit": "^2.0.4"
+    "tesseract.js": "^5.1.1"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "13.1.0",
