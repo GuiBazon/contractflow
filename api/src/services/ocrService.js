@@ -8,6 +8,8 @@ const path = require('path');
 const os = require('os');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
+const sharp = require('sharp');
+const pythonOcr = require('./pythonOcrService');
 const execute = promisify(execFile);
 const { isDate } = require('../utils/validators');
 const { HttpError } = require('../utils/http');
@@ -128,6 +130,28 @@ function extrairDados(texto) {
   return { dados, campos, confianca };
 }
 
+// Fotos de celular e páginas digitalizadas passam pelo mesmo tratamento antes
+// do Tesseract: orientação EXIF, fundo branco, contraste e tamanho legível.
+// Limitar pixels evita que um arquivo pequeno expanda indefinidamente na memória.
+async function preprocessImage(source) {
+  const options = { failOn: 'warning', limitInputPixels: 50000000 };
+  const base = () => sharp(source, options).rotate().flatten({ background: '#ffffff' });
+  let input;
+  try {
+    const trimmed = await base().trim({ threshold: 10 }).toBuffer();
+    const metadata = await sharp(trimmed, options).metadata();
+    if ((metadata.width || 0) >= 80 && (metadata.height || 0) >= 80) input = trimmed;
+  } catch {
+    // Imagens sem margens uniformes continuam pelo caminho original.
+  }
+  let image = input ? sharp(input, options) : base();
+  const metadata = await image.metadata();
+  if (metadata.width && metadata.width < 1600) {
+    image = image.resize({ width: 1600, height: 4000, fit: 'inside' });
+  }
+  return image.grayscale().normalize().jpeg({ quality: 92 }).toBuffer();
+}
+
 async function recognizeFiles(files) {
   const cachePath = path.resolve(__dirname, '../../.cache/ocr');
   await fs.mkdir(cachePath, { recursive: true });
@@ -138,8 +162,11 @@ async function recognizeFiles(files) {
     for (const file of files) {
       let timer;
       try {
+        let image;
+        try { image = await preprocessImage(file); }
+        catch { throw new HttpError(400, 'Imagem inválida ou grande demais para processar'); }
         const result = await Promise.race([
-          worker.recognize(file),
+          worker.recognize(image),
           new Promise((_, reject) => { timer = setTimeout(() => reject(new HttpError(408, 'O OCR excedeu o tempo de processamento; use um documento menor')), 60000); }),
         ]);
         parts.push((result.data.text || '').trim());
@@ -154,6 +181,8 @@ async function extrairTextoDeArquivo({ caminho, tipoArquivo }) {
   active += 1;
   let temp;
   try {
+    const stat = await fs.stat(caminho);
+    if (stat.size > 10 * 1024 * 1024) throw new HttpError(413, 'Arquivo muito grande (máximo 10MB)');
     const buffer = await fs.readFile(caminho);
     if (tipoArquivo === 'application/pdf') {
       if (!buffer.subarray(0, 1024).includes(Buffer.from('%PDF-'))) throw new HttpError(400, 'Documento PDF inválido');
@@ -161,6 +190,8 @@ async function extrairTextoDeArquivo({ caminho, tipoArquivo }) {
       try { parsed = await pdfParse(new Uint8Array(buffer), { max: 10 }); }
       catch { throw new HttpError(400, 'Não foi possível ler o PDF; verifique se está válido e sem senha'); }
       if (parsed.numpages > 10) throw new HttpError(413, 'Documentos de OCR aceitam até 10 páginas');
+      const python = await pythonOcr.extrairComPythonOcr({ caminho, tipoArquivo });
+      if (python.usado) return { text: python.result.text, aviso: (python.result.avisos || []).join(' ') || null };
       const text = (parsed.text || '').trim();
       if (text.length >= 20) return { text };
       temp = await fs.mkdtemp(path.join(os.tmpdir(), 'contractflow-pdf-'));
@@ -179,6 +210,16 @@ async function extrairTextoDeArquivo({ caminho, tipoArquivo }) {
       : tipoArquivo === 'image/jpeg' ? buffer[0] === 255 && buffer[1] === 216
       : tipoArquivo === 'image/webp' ? buffer.subarray(0,4).toString() === 'RIFF' && buffer.subarray(8,12).toString() === 'WEBP' : false;
     if (!signature) throw new HttpError(400, 'Imagem inválida ou conteúdo incompatível com o formato');
+    // Confere formato e dimensão antes de enviar a imagem ao serviço opcional.
+    // O fallback aplica o mesmo pré-processamento antes do reconhecimento.
+    try {
+      const metadata = await sharp(buffer, { failOn: 'warning', limitInputPixels: 50000000 }).metadata();
+      const formats = { 'image/png': 'png', 'image/jpeg': 'jpeg', 'image/webp': 'webp' };
+      if (metadata.format !== formats[tipoArquivo] || !metadata.width || !metadata.height || metadata.width * metadata.height > 50000000) throw new Error('Imagem inválida');
+    }
+    catch { throw new HttpError(400, 'Imagem inválida ou grande demais para processar'); }
+    const python = await pythonOcr.extrairComPythonOcr({ caminho, tipoArquivo });
+    if (python.usado) return { text: python.result.text, aviso: (python.result.avisos || []).join(' ') || null };
     const text = await recognizeFiles([caminho]);
     return { text, aviso: text.length < 20 ? 'Não foi possível identificar texto suficiente; preencha os dados manualmente.' : null };
   } finally {

@@ -23,6 +23,8 @@ a concorrência HTTP é criada somente dentro dos cenários que a avaliam.
 | `analytics.test.js` | Dashboard com 125 pagamentos, calendário, CSV/XLSX e alertas |
 | `ocr.test.js` | PDF textual, PNG, PDF escaneado, revisão/confirmação concorrente, rollback de arquivo e isolamento |
 | `auth.test.js` | Bootstrap ADMIN concorrente, permissões atuais, revogação, último ADMIN e migração sem perder dados |
+| `authRateCollation.test.js` | Limite por conta para endereços equivalentes na collation MySQL, existentes e inexistentes |
+| `businessConsistency.test.js` | Replanejamento com parcelas canceladas, limites de texto e saldo de parcelas |
 | `crud.test.js` | Clientes, replanejamento, parcela, extras concorrentes, pagamento/edição sem deadlock, documentos e uploads inválidos |
 | `extensions.test.js` | Calculadora alinhada ao contrato/dashboard, encargos sobre saldo e renovação com concorrência/rollback |
 | `idempotency.test.js` | Reenvios, oito pedidos simultâneos, conflito, rollback e isolamento |

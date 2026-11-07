@@ -35,6 +35,15 @@ Exemplo de resposta `201 Created` (os campos reconhecidos dependem do documento)
 
 `dados` contém apenas sugestões identificadas, podendo estar vazio ou incompleto. `campos` indica o que foi identificado; `confianca` é uma pontuação heurística baseada na quantidade de campos, **não** uma probabilidade de acerto. Exiba também `aviso` quando não for nulo. Guarde `extracao_id` e apresente todos os dados para conferência humana: nenhuma extração, por si só, cria cliente, contrato ou parcelas.
 
+Por padrão o OCR roda localmente. Opcionalmente, o servidor pode encaminhar o
+arquivo a um serviço Python configurado por `PYTHON_OCR_ENABLED=true` e
+`PYTHON_OCR_URL` (padrão `http://127.0.0.1:8000`). O timeout de comunicação é
+`PYTHON_OCR_TIMEOUT_MS`, em milissegundos, com padrão de 120000. A API valida
+tipo, tamanho e limite de páginas antes do envio; se o serviço estiver
+indisponível, exceder o timeout ou devolver resposta inválida, usa o OCR local.
+O serviço configurado recebe o conteúdo integral do documento; use um endereço
+confiável e preserve seu acesso. Não há mudança no contrato da interface.
+
 No navegador, deixe o próprio `fetch` definir o `Content-Type` multipart e seu boundary:
 
 ```js
@@ -124,7 +133,7 @@ O corpo de erro geralmente tem a forma `{"message":"..."}`. Apresente a mensagem
 ## Limitações atuais a considerar no front
 
 - A extração usa expressões heurísticas em português. Campos e datas podem estar errados, ausentes ou incompletos; qualquer linha com data pode ser interpretada como vencimento. A pontuação não garante qualidade. Permita editar e excluir sugestões, inclusive a lista de vencimentos.
-- Em PDF com pelo menos 20 caracteres de texto extraído, o servidor usa esse texto sem executar OCR nas páginas digitalizadas. Assim, um PDF misto pode ter conteúdo de páginas em imagem omitido. Uma extração vazia ou de baixa qualidade não significa que o documento esteja vazio.
+- No processamento local, PDF com pelo menos 20 caracteres de texto extraído usa esse texto sem executar OCR nas páginas digitalizadas. Assim, um PDF misto pode ter conteúdo de páginas em imagem omitido. Uma extração vazia ou de baixa qualidade não significa que o documento esteja vazio.
 - O OCR de PDF digitalizado depende de `pdftoppm` no servidor, além dos dados de idioma português do Tesseract. Pode ser demorado; apresente estado de carregamento e trate timeout e indisponibilidade. A concorrência limitada é por processo, não uma fila distribuída.
 - A API não devolve o texto bruto nem oferece listagem de extrações; o front precisa preservar o identificador. Uma confirmação não é idempotente em sua resposta: repetir retorna conflito, embora a transação impeça criar dois contratos.
 - A cobertura de integração em `api/tests/mysql/ocr.test.js` exercita PDF textual, PNG e PDF escaneado, confirmação concorrente, rollback e isolamento entre usuários. Ela não garante qualidade para todos os layouts ou para PDFs mistos.
