@@ -25,6 +25,12 @@ ajv.addSchema({ ...jsonSchema(JSON.parse(JSON.stringify(specification))), $id: b
 const pointer = value => String(value).replace(/~/g, '~0').replace(/\//g, '~1');
 let api, c, clientId, expenseId;
 
+function expectResponseMatches(method, documentedPath, status, body) {
+  const fragment = ['paths', documentedPath, method, 'responses', String(status), 'content', 'application/json', 'schema'].map(pointer).join('/');
+  const validate = ajv.compile({ $ref: `${base}#/${fragment}` });
+  if (!validate(body)) throw new Error(`${method.toUpperCase()} ${documentedPath}: ${ajv.errorsText(validate.errors)}`);
+}
+
 beforeAll(async () => {
   await initialize(); await clean();
   const owner = await user(); api = auth(owner.token);
@@ -40,6 +46,8 @@ afterAll(async () => { await clean(); await close(); });
 
 test.each([
   ['get', '/auth/me', () => '/auth/me'],
+  ['get', '/perfil', () => '/perfil'],
+  ['patch', '/perfil', () => '/perfil', { cargo: 'Gerente' }],
   ['get', '/clientes', () => '/clientes'],
   ['get', '/clientes/{id}', () => `/clientes/${clientId}`],
   ['get', '/contratos', () => '/contratos'],
@@ -63,7 +71,26 @@ test.each([
   const operation = api[method]('/api' + address());
   if (body) operation.send(body);
   const response = await operation.expect(200);
-  const fragment = ['paths', documentedPath, method, 'responses', '200', 'content', 'application/json', 'schema'].map(pointer).join('/');
-  const validate = ajv.compile({ $ref: `${base}#/${fragment}` });
-  if (!validate(response.body)) throw new Error(`${documentedPath}: ${ajv.errorsText(validate.errors)}`);
+  expectResponseMatches(method, documentedPath, 200, response.body);
+});
+
+test('foto própria corresponde aos contratos de envio e remoção', async () => {
+  const uploaded = await api.put('/api/perfil/foto').attach('foto', path.join(__dirname, '../fixtures/perfil.jpg')).expect(200);
+  expectResponseMatches('put', '/perfil/foto', 200, uploaded.body);
+  await api.get('/api/perfil/foto').expect('Content-Type', /image\/jpeg/).expect(200);
+  const removed = await api.delete('/api/perfil/foto').expect(200);
+  expectResponseMatches('delete', '/perfil/foto', 200, removed.body);
+});
+
+test('extração, consulta e revisão OCR correspondem aos contratos publicados', async () => {
+  const extracted = await api.post('/api/ocr/extract').attach('arquivo', path.join(__dirname, '../fixtures/contrato-texto.pdf')).expect(201);
+  expectResponseMatches('post', '/ocr/extract', 201, extracted.body);
+  const address = `/api/ocr/${extracted.body.extracao_id}`;
+  const fetched = await api.get(address).expect(200);
+  expectResponseMatches('get', '/ocr/{id}', 200, fetched.body);
+  const dados = { cliente_id: clientId, numero: 'CONTRATO-REVISAO', valor_total: 1000, quantidade_parcelas: 2, data_inicio: '2027-01-10' };
+  const reviewed = await api.patch(address).send({ dados }).expect(200);
+  expectResponseMatches('patch', '/ocr/{id}', 200, reviewed.body);
+  const confirmed = await api.post(`${address}/confirmar`).send({ dados }).expect(201);
+  expectResponseMatches('post', '/ocr/{id}/confirmar', 201, confirmed.body);
 });

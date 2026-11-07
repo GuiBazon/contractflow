@@ -2,9 +2,9 @@ name: Backend
 
 on:
   push:
-    paths: ['api/**', '.github/workflows/backend.yml']
+    paths: ['api/**', 'docs/**', '.github/workflows/backend.yml']
   pull_request:
-    paths: ['api/**', '.github/workflows/backend.yml']
+    paths: ['api/**', 'docs/**', '.github/workflows/backend.yml']
   workflow_dispatch:
 
 permissions:

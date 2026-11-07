@@ -117,10 +117,10 @@ npm run test:api    # apenas integração/API
 
 ### Testes com MySQL real (Sprint 2)
 
-Além dos 92 testes rápidos, 89 cenários de API são executados contra MySQL 8:
+Além dos testes rápidos, cenários de API são executados contra MySQL 8:
 financeiro, isolamento, concorrência, CRUDs, dashboard, calendário, relatórios,
 OCR de PDF/imagem/scan, permissões, migrações, renovação, idempotência, estorno,
-notificações e contratos de resposta OpenAPI. Recuperação de senha usa SMTP real
+notificações, perfil/foto, exportações e contratos de resposta OpenAPI. Recuperação de senha usa SMTP real
 capturado localmente no Mailpit iniciado pelo Compose de teste.
 
 ```bash
@@ -143,11 +143,11 @@ npm run test:coverage
 ```
 
 Relatório em `coverage/combined/index.html`; organização dos casos em
-[tests/mysql/README.md](tests/mysql/README.md). Cobertura local: 93,65% das linhas
-de controllers/services/utils/middlewares, sem medir telas ou implantação.
+[tests/mysql/README.md](tests/mysql/README.md). A cobertura mede
+controllers/services/utils/middlewares, sem medir telas ou implantação.
 
 O workflow `.github/workflows/backend.yml` executa as suítes rápida e MySQL em
-jobs separados e combina a cobertura em um terceiro job, em push/PR da API.
+jobs separados e combina a cobertura em um terceiro job, em push/PR da API ou da documentação.
 Resultados locais e execução do GitHub Actions são evidências distintas.
 
 ### Swagger e recuperação de senha
