@@ -62,8 +62,11 @@ function extrairDados(texto) {
     campos.push('cpf_cnpj');
   }
 
-  const numero = t.match(/(?:numero|n\.?o|no\.?)\s*[.:-]?\s*([A-Za-z0-9\-/]+)/i);
-  if (numero && !/parcelas?/i.test(numero[1])) {
+  // Contratos importados podem rotular o identificador como "número do
+  // contrato"; leia o rótulo completo antes de tentar a forma abreviada.
+  const numero = t.match(/(?:numero[ \t]+(?:do[ \t]+)?contrato|contrato[ \t]+(?:numero|n[º°o]))[ \t]*[:#.-]?[ \t]*([A-Za-z0-9.\-/]+)/i)
+    || t.match(/(?:numero|n\.?o|no\.?)\s*[.:-]?\s*([A-Za-z0-9\-/]+)/i);
+  if (numero && !/parcelas?/i.test(numero[1]) && !/^(?:de|do|da|das|dos|contrato)$/i.test(numero[1])) {
     dados.numero = numero[1].trim();
     campos.push('numero');
   }
