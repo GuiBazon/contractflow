@@ -7,6 +7,10 @@ Listagens paginadas retornam `data` e `paginacao: { page, limit, total, totalPag
 Limite padrão 20, máximo 100; valores inválidos recebem 400.
 Dados financeiros sempre pertencem ao usuário autenticado, inclusive ADMIN.
 
+Guias de integração: [relatórios e downloads](INTEGRACAO_RELATORIOS.md),
+[perfil e foto](INTEGRACAO_PERFIL.md), [OCR](INTEGRACAO_OCR.md) e
+[adaptações necessárias no front principal](INTEGRACAO_FRONT_SPRINT_2.md).
+
 ## Recebíveis — RF19/20/22/23/24
 
 `GET /api/recebiveis?page=1&limit=20&de=2026-10-01&ate=2026-10-31`
@@ -119,7 +123,7 @@ Alertas não enviam push/e-mail automaticamente. Renovação efetiva é registra
 `GET /api/relatorios/:tipo?de=2026-10-01&ate=2026-10-31&formato=json`
 
 Tipos: `financeiro`, `recebiveis`, `receitas`, `despesas`, `contratos`.
-Formatos: `json` (padrão), `csv`, `xlsx`. JSON é paginado; financeiro retorna
+Formatos: `json` (padrão), `csv`, `xlsx`, `pdf`. JSON é paginado; financeiro retorna
 o resumo agregado. Exportações incluem **todos** os resultados filtrados, até
 10000 registros; acima disso retornam 413 pedindo filtros mais restritos.
 
@@ -132,6 +136,7 @@ CSV usa UTF-8 com BOM, separador `;`, campos escapados e neutralização de fór
 XLSX preserva números e textos em células próprias. Resposta de exportação é
 binária/texto com `Content-Disposition: attachment`; o cliente deve solicitar
 `responseType: 'blob'` no Web e usar download/compartilhamento apropriado no Mobile.
+PDF retorna 422 para caracteres sem suporte, com CSV/XLSX como alternativa.
 
 ## Importação de documentos — RF08–13 / RN09/10/17/18
 
@@ -181,6 +186,8 @@ perfil enviado pelo cliente. Senha: mínimo 6 caracteres, máximo 72 bytes UTF-8
 | GET | `/api/auth/me` | Sessão atual; `{ usuario: { id, nome, email, perfil } }` |
 | PATCH | `/api/auth/password` | `{ senha_atual, nova_senha }`; revoga sessões e exige novo login |
 | POST | `/api/auth/logout` | Revoga todas as sessões da própria conta |
+| GET ou PATCH | `/api/perfil` | Consulta/altera dados da própria conta; troca de e-mail exige senha e novo login |
+| GET, PUT ou DELETE | `/api/perfil/foto` | Consulta, envia/substitui ou remove a própria foto autenticada |
 | GET | `/api/usuarios` | ADMIN; paginação e busca `q`; sem hash/token |
 | GET | `/api/usuarios/:id` | ADMIN; dados administrativos do usuário |
 | PUT ou PATCH | `/api/usuarios/:id` | ADMIN; `nome`, `email`, `perfil`, `ativo` |
