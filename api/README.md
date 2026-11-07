@@ -80,8 +80,11 @@ Gere o segredo com:
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-> `JWT_SECRET` é **obrigatório** e não pode ser um dos placeholders. O container
-> recusa subir com segredo fraco (fail-fast no `server.js`).
+> `JWT_SECRET` é **obrigatório**, deve ter pelo menos 32 bytes e não pode ser um
+> dos placeholders; o servidor recusa iniciar se essas verificações falharem.
+> Comprimento não comprova entropia: gere um valor aleatório com o comando acima.
+> Em instalações existentes com segredo curto, configure um novo segredo antes
+> de atualizar; isso invalida os JWTs anteriores e exige novo login.
 
 2. Suba tudo:
 
