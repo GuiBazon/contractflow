@@ -7,7 +7,7 @@ const { HttpError } = require('../utils/http');
 
 async function get(req, res) {
   const tipo = choice(req.params.tipo, ['FINANCEIRO','RECEBIVEIS','RECEITAS','DESPESAS','CONTRATOS'], 'Relatório');
-  const formato = choice(req.query.formato ?? 'JSON', ['JSON','CSV','XLSX'], 'Formato');
+  const formato = choice(req.query.formato ?? 'JSON', ['JSON','CSV','XLSX','PDF'], 'Formato');
   period(req.query);
   let rows, resumo, total, pages;
   if (tipo === 'FINANCEIRO') {
@@ -25,6 +25,7 @@ async function get(req, res) {
   }
   if (formato === 'JSON') return res.json({ tipo, periodo: period(req.query), data: rows, ...(resumo ? { resumo } : {}), paginacao: { page: pages.page, limit: pages.limit, total, totalPages: Math.ceil(total / pages.limit) } });
   const columns = rows.length ? Object.keys(rows[0]) : reports.columns[tipo];
+  if (formato === 'PDF') return require('../services/reportPdfService').stream(res, tipo, rows, columns);
   res.setHeader('Content-Disposition', `attachment; filename="contractflow-${tipo.toLowerCase()}.${formato.toLowerCase()}"`);
   if (formato === 'CSV') {
     res.type('text/csv; charset=utf-8');

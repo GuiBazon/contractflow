@@ -173,8 +173,8 @@ route('post', '/calculadora/saldo', 'Simular saldo e encargos do principal pende
 route('post', '/calculadora/projecao', 'Simular saldo realizado e projetado', 'Calculadora', { requestBody: jsonBody(object({ recebido: number(1000), pendente: number(500), despesas_pagas: number(200), despesas_pendentes: number(100) })), schema: ref('Dashboard') });
 route('get', '/relatorios/{tipo}', 'Consultar ou exportar relatório', 'Relatórios', {
   pathSchemas: { tipo: enumText(['financeiro', 'recebiveis', 'receitas', 'despesas', 'contratos']) },
-  parameters: [...pages, ...period, ...ids, parameter('formato', enumText(['JSON', 'CSV', 'XLSX'])), parameter('status'), parameter('situacao', enumText(installmentStatuses)), parameter('categoria')],
-  responses: { 200: { description: 'JSON paginado ou arquivo de todo o conjunto filtrado, até 10000 registros', content: { 'application/json': { schema: paginated({ type: 'object' }) }, 'text/csv': { schema: text() }, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: binary } } }, 400: { $ref: '#/components/responses/Error400' }, 401: { $ref: '#/components/responses/Error401' }, 413: { $ref: '#/components/responses/Error413' } },
+  parameters: [...pages, ...period, ...ids, parameter('formato', enumText(['JSON', 'CSV', 'XLSX', 'PDF'])), parameter('status'), parameter('situacao', enumText(installmentStatuses)), parameter('categoria')],
+  responses: { 200: { description: 'JSON paginado ou arquivo de todo o conjunto filtrado, até 10000 registros', content: { 'application/json': { schema: paginated({ type: 'object' }) }, 'text/csv': { schema: text() }, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { schema: binary }, 'application/pdf': { schema: binary } } }, 400: { $ref: '#/components/responses/Error400' }, 401: { $ref: '#/components/responses/Error401' }, 413: { $ref: '#/components/responses/Error413' }, 422: { description: 'Caracteres sem suporte no PDF; use CSV ou XLSX', content: { 'application/json': { schema: ref('Message') } } } },
 });
 
 // Rotas antigas continuam disponíveis para os clientes da Sprint 1.

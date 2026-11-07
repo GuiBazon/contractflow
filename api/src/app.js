@@ -15,7 +15,7 @@ const corsOrigins = process.env.CORS_ORIGINS
 
 app.use(cors({
   ...(corsOrigins ? { origin: corsOrigins } : {}),
-  exposedHeaders: ['Idempotency-Replayed', 'Retry-After', 'RateLimit'],
+  exposedHeaders: ['Idempotency-Replayed', 'Retry-After', 'RateLimit', 'Content-Disposition'],
 }));
 app.use(express.json({ limit: '1mb' }));
 
