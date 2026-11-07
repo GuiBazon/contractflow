@@ -89,6 +89,8 @@ async function createPagamento(req, res) {
     const parcelaId = integer(req.body.parcela_id, 'Parcela');
     const valor = money(req.body.valor, 'Valor do pagamento');
     const observacoes = req.body.observacoes ? String(req.body.observacoes) : null;
+    if (forma_pagamento && forma_pagamento.length > 50) throw new HttpError(400, 'forma_pagamento excede o tamanho permitido');
+    if (observacoes && observacoes.length > 5000) throw new HttpError(400, 'observacoes excede o tamanho permitido');
     const key = idempotency.validateKey(req.get('Idempotency-Key'));
     if (!isDate(data_pagamento)) throw new HttpError(400, 'Data do pagamento inválida');
     const contrato = await obterContratoDono(contratoId, req.user.id);

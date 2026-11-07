@@ -33,7 +33,7 @@ async function bloquearContratoDono(connection, contratoId, usuarioId) {
 }
 
 // monta o objeto de dados validado; lanca Error com campo message quando invalido
-function validarDados({ cliente_id, numero, valor_total, data_inicio, data_fim, status }) {
+function validarDados({ cliente_id, numero, valor_total, data_inicio, data_fim, status, tipo, descricao, forma_pagamento, observacoes }) {
   integer(cliente_id, 'Cliente');
   money(valor_total, 'Valor total', { zero: true });
   const erros = [];
@@ -44,6 +44,12 @@ function validarDados({ cliente_id, numero, valor_total, data_inicio, data_fim, 
   if (data_inicio && !isDate(data_inicio)) erros.push('Data de início inválida');
   if (data_fim && !isDate(data_fim)) erros.push('Data de fim inválida');
   if (data_inicio && data_fim && data_fim < data_inicio) erros.push('Data de fim anterior à data de início');
+  for (const [name, value, max] of [
+    ['tipo', tipo, 100], ['descricao', descricao, 5000],
+    ['forma_pagamento', forma_pagamento, 50], ['observacoes', observacoes, 5000],
+  ]) {
+    if (value != null && String(value).length > max) erros.push(`${name} excede o tamanho permitido`);
+  }
 
   if (status && !VALID_STATUS.includes(status)) {
     erros.push('Status inválido');

@@ -59,7 +59,10 @@ async function listContratos(req, res) {
          c.*,
          cl.nome_razao_social AS cliente_nome,
          (SELECT COUNT(*) FROM parcelas p2 WHERE p2.contrato_id = c.id) AS total_parcelas,
-         (SELECT COUNT(*) FROM parcelas p3 WHERE p3.contrato_id = c.id AND p3.status = 'PAGA') AS parcelas_pagas,
+         (SELECT COUNT(*) FROM parcelas p3
+           WHERE p3.contrato_id = c.id AND (p3.status IS NULL OR p3.status <> 'CANCELADA')
+             AND (SELECT COALESCE(SUM(pg3.valor),0) FROM pagamentos pg3
+                  WHERE pg3.parcela_id = p3.id AND pg3.estornado_em IS NULL) >= p3.valor) AS parcelas_pagas,
          (SELECT COALESCE(SUM(p4.valor),0) FROM parcelas p4 WHERE p4.contrato_id = c.id AND p4.status <> 'CANCELADA') AS valor_parcelas,
          (SELECT COALESCE(SUM(pg.valor),0) FROM parcelas p5 JOIN pagamentos pg ON pg.parcela_id = p5.id WHERE p5.contrato_id = c.id AND pg.estornado_em IS NULL) AS recebido
        FROM contratos c
@@ -196,6 +199,9 @@ async function updateContrato(req, res) {
     if (replan) {
       quantity = integer(quantity,'Quantidade de parcelas',{ max: 120 });
       if (!podeGerarParcelas(fields.status ?? before.status)) throw new HttpError(400,'Contrato encerrado ou cancelado não permite refazer parcelas');
+      // Recriar parcelas canceladas como pendentes faria cobranças voltarem sem
+      // autorização explícita. Não há regra para redistribuí-las no novo plano.
+      if (parcelas.some(parcela => parcela.status === 'CANCELADA')) throw new HttpError(409, 'Reative as parcelas canceladas antes de refazer o parcelamento');
       // Alterar somente o valor preserva os vencimentos já combinados.
       const vencimentos = req.body.vencimentos ?? (quantity === parcelas.length ? parcelas.map(p => p.data_vencimento) : undefined);
       const dates = calcularVencimentos({ quantidade_parcelas: quantity,vencimentos,data_inicio: start });

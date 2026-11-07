@@ -42,6 +42,13 @@ continua limitado ao principal; cobrança efetiva de encargos exige regra própr
 
 Pagamento, edição de contrato e alteração de parcela bloqueiam primeiro o
 contrato e depois a parcela dentro da transação, preservando a ordem dos locks.
+O replanejamento retorna `409` enquanto houver parcela cancelada, para não
+reativar uma cobrança silenciosamente; reative-a explicitamente antes de refazer
+o parcelamento. Edições que não replanejam continuam disponíveis. A contagem de
+parcelas pagas é calculada pelo saldo, exclui canceladas e desconsidera estornos.
+Na criação e edição de contratos, `tipo` aceita até 100 caracteres,
+`forma_pagamento` até 50 e `descricao`/`observacoes` até 5.000; pagamentos
+aceitam `forma_pagamento` até 50 e `observacoes` até 5.000.
 Oito requisições concorrentes de R$ 70 para uma parcela de R$ 100 permitem
 somente uma e rejeitam as demais com 400. Alterar/cancelar parcela com pagamentos
 continua bloqueado conforme a operação; não é possível marcar como paga sem pagar.
