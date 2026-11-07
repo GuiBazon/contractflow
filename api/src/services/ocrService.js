@@ -11,7 +11,7 @@ const { promisify } = require('util');
 const sharp = require('sharp');
 const pythonOcr = require('./pythonOcrService');
 const execute = promisify(execFile);
-const { isDate } = require('../utils/validators');
+const { isDate, onlyDigits, isValidCpfCnpj } = require('../utils/validators');
 const { HttpError } = require('../utils/http');
 let active = 0;
 
@@ -35,7 +35,14 @@ function parseData(texto) {
 function parseCpfCnpj(texto) {
   if (!texto) return null;
   const m = String(texto).match(/\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b|\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/);
-  return m ? m[0] : null;
+  if (m) return m[0];
+  // Somente na linha identificada como CPF, aceite vírgula confundida com ponto.
+  // A checagem dos dígitos evita sugerir sequências numéricas arbitrárias.
+  const ocr = String(texto).match(/\bCPF[ \t]*[:#-]?[ \t]*(\d{3}[.,]\d{3}[.,]\d{3}-\d{2})\b/i);
+  if (!ocr || !ocr[1].includes(',')) return null;
+  const digits = onlyDigits(ocr[1]);
+  if (!isValidCpfCnpj(digits).ok) return null;
+  return `${digits.slice(0,3)}.${digits.slice(3,6)}.${digits.slice(6,9)}-${digits.slice(9)}`;
 }
 
 function extrairDados(texto) {
