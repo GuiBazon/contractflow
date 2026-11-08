@@ -158,12 +158,12 @@ PDF retorna 422 para caracteres sem suporte, com CSV/XLSX como alternativa.
 Confirmação aceita `cliente_id` próprio ou
 `cliente_novo: { nome_razao_social, cpf_cnpj }` com CPF/CNPJ válido. Se esse
 CPF/CNPJ já existe para a conta, reutiliza o cliente. Obrigatórios financeiros:
-valor total, quantidade (1–120) ou lista de vencimentos, data de início se não
-houver lista. Taxas entre 0 e 100, com até duas casas decimais. `numero` omitido
+valor total, quantidade (1–120) e data de início se não houver lista de
+vencimentos. Taxas entre 0 e 100, com até duas casas decimais. `numero` omitido
 vira `OCR-<id>`; preferir revisar explicitamente. Valores fixos de parcela devem
 somar o total do contrato. Centavos remanescentes ficam na última parcela.
 
-Se houver vencimentos reconhecidos, a quantidade de parcelas deve ser informada
+Se houver vencimentos reconhecidos ou informados, a quantidade de parcelas deve ser informada
 e a lista deve ter exatamente uma data por parcela. Uma lista parcial retorna
 400, mantém a extração pendente e os dados preservados para revisão; datas e
 quantidade salvas não são descartadas se omitidas no PATCH ou na confirmação.

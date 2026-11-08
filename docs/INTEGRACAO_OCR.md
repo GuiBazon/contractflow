@@ -131,8 +131,8 @@ Resposta `201`:
 ```
 
 A confirmação usa as regras de criação de contrato: valor total válido, de 1 a
-120 parcelas e datas válidas. Se o OCR reconheceu vencimentos, a quantidade de
-parcelas é obrigatória e a lista precisa ter exatamente uma data por parcela.
+120 parcelas e datas válidas. Se houver vencimentos reconhecidos ou informados,
+a quantidade de parcelas é obrigatória e a lista precisa ter exatamente uma data por parcela.
 Uma lista parcial retorna `400` com mensagem de revisão; não são geradas datas
 faltantes. A extração permanece `PENDENTE` e `GET /ocr/{id}` devolve os dados
 salvos. O front deve mantê-los visíveis e permitir que a pessoa corrija a
