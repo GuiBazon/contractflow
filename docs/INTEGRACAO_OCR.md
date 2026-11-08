@@ -70,13 +70,28 @@ if (!response.ok) throw new Error(resultado.message || 'Falha na importação');
   "tipo_arquivo": "application/pdf",
   "status": "PENDENTE",
   "confianca": 95,
-  "dados": { "numero": "OCR-DEMO-001", "valor_total": 1000 }
+  "dados": {
+    "cliente_nome": "Empresa Exemplo",
+    "cpf_cnpj": "11.222.333/0001-81",
+    "numero": "OCR-DEMO-001",
+    "valor_total": 1000,
+    "quantidade_parcelas": 2,
+    "vencimentos": ["2027-01-10", "2027-02-10"],
+    "data_inicio": "2027-01-10",
+    "data_fim": "2027-02-10"
+  }
 }
 ```
 
 Os estados são `PENDENTE`, `CONFIRMADA` e `CANCELADA`. A consulta não retorna o texto reconhecido, `campos` ou `aviso`; preserve-os no front enquanto necessário. Não há endpoint para listar extrações; guarde o identificador para retomada.
 
-Para salvar uma revisão ainda pendente, use `PATCH /ocr/{id}` com o **objeto completo** revisado em `dados`. A operação substitui o objeto salvo, não faz mesclagem parcial. É opcional antes da confirmação e não cria o contrato.
+Para salvar uma revisão ainda pendente, use `PATCH /ocr/{id}` com os campos
+alterados em `dados`. A operação mescla os campos enviados com os dados salvos,
+preservando os reconhecidos que não forem incluídos no PATCH. A resposta contém
+o objeto atualizado. É opcional antes da confirmação e não cria o contrato.
+Ao informar `cliente_id`, a seleção anterior `cliente_novo` é removida, e
+vice-versa; enviar ambos retorna `400`. A API não seleciona cliente a partir de
+`cliente_nome` ou `cpf_cnpj` automaticamente.
 
 ```bash
 curl -X PATCH 'http://localhost:8080/api/ocr/42' \
@@ -87,14 +102,21 @@ curl -X PATCH 'http://localhost:8080/api/ocr/42' \
 Resposta `200`:
 
 ```json
-{"message":"Dados revisados com sucesso","extracao_id":42,"dados":{"cliente_id":1,"numero":"IMPORTADO-001","valor_total":1000,"quantidade_parcelas":2,"data_inicio":"2027-01-10"}}
+{"message":"Dados revisados com sucesso","extracao_id":42,"dados":{"cliente_nome":"Empresa Exemplo","cpf_cnpj":"11.222.333/0001-81","cliente_id":1,"numero":"IMPORTADO-001","valor_total":1000,"quantidade_parcelas":2,"vencimentos":["2027-01-10","2027-02-10"],"data_inicio":"2027-01-10","data_fim":"2027-02-10"}}
 ```
 
 A revisão aceita `cliente_id`, `cliente_novo`, `cliente_nome`, `cpf_cnpj`, `numero`, `tipo`, `descricao`, `valor_total`, `valor_parcela`, `quantidade_parcelas`, `data_inicio`, `data_fim`, `vencimentos`, `forma_pagamento`, `juros_percentual`, `multa_percentual` e `observacoes`; campos adicionais retornam `400`. Datas usam `AAAA-MM-DD`. O PATCH valida a estrutura e os nomes dos campos, mas as regras de criação são verificadas na confirmação.
 
 ## 3. Confirmar ou cancelar
 
-`POST /ocr/{id}/confirmar` exige reenviar o objeto **completo** em `dados`, mesmo depois de um PATCH. Selecione um cliente existente da conta com `cliente_id`, ou informe `cliente_novo` com nome e CPF/CNPJ válido. As sugestões `cliente_nome` e `cpf_cnpj` isoladas **não** criam nem selecionam cliente automaticamente; o front deve montar `cliente_novo` ou solicitar a seleção. Se já existir cliente com o mesmo CPF/CNPJ nessa conta, ele será reutilizado.
+`POST /ocr/{id}/confirmar` exige reenviar em `dados` os dados para a criação,
+mesmo depois de um PATCH. A API não reutiliza uma seleção de cliente salva na
+revisão: informe `cliente_id` de cliente da conta ou `cliente_novo` com nome e
+CPF/CNPJ válido. As sugestões `cliente_nome` e `cpf_cnpj` isoladas **não** criam
+nem selecionam cliente automaticamente; o front deve montar `cliente_novo` ou
+solicitar a seleção. Se já existir cliente com o mesmo CPF/CNPJ nessa conta, ele
+será reutilizado. Para evitar apagar datas já reconhecidas, a API preserva
+`vencimentos` e `quantidade_parcelas` salvos quando omitidos do POST.
 
 ```bash
 curl -X POST 'http://localhost:8080/api/ocr/42/confirmar' \
@@ -108,7 +130,23 @@ Resposta `201`:
 {"message":"Contrato confirmado e criado com sucesso","contrato_id":123,"numero":"IMPORTADO-001"}
 ```
 
-A confirmação usa as regras de criação de contrato: valor total válido, de 1 a 120 parcelas e datas válidas. Informe `data_inicio` para gerar vencimentos mensais ou uma lista `vencimentos`; caso forneça ambos `quantidade_parcelas` e `vencimentos`, as quantidades devem coincidir. Quando `valor_parcela` for informado, sua soma deve corresponder ao valor total. Se o número não for informado, a API usa `OCR-{id}`. Se `valor_total` faltar, a API tenta calculá-lo por `valor_parcela × quantidade_parcelas`; envie ambos para usar esse cálculo. Revise sempre as datas e os valores antes de confirmar.
+A confirmação usa as regras de criação de contrato: valor total válido, de 1 a
+120 parcelas e datas válidas. Se o OCR reconheceu vencimentos, a quantidade de
+parcelas é obrigatória e a lista precisa ter exatamente uma data por parcela.
+Uma lista parcial retorna `400` com mensagem de revisão; não são geradas datas
+faltantes. A extração permanece `PENDENTE` e `GET /ocr/{id}` devolve os dados
+salvos. O front deve mantê-los visíveis e permitir que a pessoa corrija a
+quantidade ou informe uma lista completa no PATCH ou na confirmação. Uma lista
+não vazia de datas válidas pode ser salva ainda parcial no PATCH. Para evitar
+perda acidental, uma lista já reconhecida não pode ser removida com `null` ou
+`[]`; envie as datas corrigidas, e informe uma quantidade válida. Se **nenhuma**
+data foi reconhecida, o usuário pode optar conscientemente por enviar somente
+`data_inicio` e confirmar a geração mensal; informe isso antes da confirmação.
+
+Quando `valor_parcela` for informado, sua soma deve corresponder ao valor total.
+Se o número não for informado, a API usa `OCR-{id}`. Se `valor_total` faltar,
+a API tenta calculá-lo por `valor_parcela × quantidade_parcelas`; envie ambos
+para usar esse cálculo. Revise sempre as datas e os valores antes de confirmar.
 
 Cliente, contrato, parcelas, vínculo do documento original e histórico são criados na mesma operação. Em falha, a transação é revertida. Uma confirmação concorrente ou repetida recebe `409`, portanto, após interrupção ou dúvida, consulte `GET /ocr/{id}` antes de tentar novamente. A consulta não retorna o ID do contrato criado; se a resposta de confirmação foi perdida, procure o contrato pelo número revisado. O original confirmado pode ser obtido pelas rotas de documentos do contrato; sua exclusão é protegida.
 
@@ -132,7 +170,7 @@ O corpo de erro geralmente tem a forma `{"message":"..."}`. Apresente a mensagem
 
 ## Limitações atuais a considerar no front
 
-- A extração usa expressões heurísticas em português. Campos e datas podem estar errados, ausentes ou incompletos; qualquer linha com data pode ser interpretada como vencimento. A pontuação não garante qualidade. Permita editar e excluir sugestões, inclusive a lista de vencimentos.
+- A extração usa expressões heurísticas em português. Campos e datas podem estar errados, ausentes ou incompletos; qualquer linha com data pode ser interpretada como vencimento. A pontuação não garante qualidade. Permita corrigir as sugestões e a lista de vencimentos antes da confirmação.
 - No processamento local, PDF com pelo menos 20 caracteres de texto extraído usa esse texto sem executar OCR nas páginas digitalizadas. Assim, um PDF misto pode ter conteúdo de páginas em imagem omitido. Uma extração vazia ou de baixa qualidade não significa que o documento esteja vazio.
 - O OCR de PDF digitalizado depende de `pdftoppm` no servidor, além dos dados de idioma português do Tesseract. Pode ser demorado; apresente estado de carregamento e trate timeout e indisponibilidade. A concorrência limitada é por processo, não uma fila distribuída.
 - A API não devolve o texto bruto nem oferece listagem de extrações; o front precisa preservar o identificador. Uma confirmação não é idempotente em sua resposta: repetir retorna conflito, embora a transação impeça criar dois contratos.

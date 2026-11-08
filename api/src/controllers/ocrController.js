@@ -6,7 +6,7 @@ const { UPLOAD_ROOT, SUBDIRS, buildUploader, uploadSizeHandler, ensureUploadDirs
 const { extrairTextoDeArquivo, extrairDados } = require('../services/ocrService');
 const { criarContratoComParcelas } = require('../services/contratoService');
 const { registrarHistorico } = require('../services/historicoService');
-const { onlyDigits, isValidCpfCnpj, str } = require('../utils/validators');
+const { onlyDigits, isDate, isValidCpfCnpj, str } = require('../utils/validators');
 const { integer } = require('../utils/query');
 const { HttpError, asyncHandler } = require('../utils/http');
 
@@ -18,11 +18,52 @@ function safePath(subdir, filename) {
 }
 
 function reviewed(body) {
-  const dados = body.dados ?? body.dados_json;
+  const dados = body?.dados ?? body?.dados_json;
   if (!dados || typeof dados !== 'object' || Array.isArray(dados)) throw new HttpError(400, 'Corpo deve conter o objeto "dados" revisado');
   const allowed = new Set(['cliente_id','cliente_novo','cliente_nome','cpf_cnpj','numero','tipo','descricao','valor_total','valor_parcela','quantidade_parcelas','data_inicio','data_fim','vencimentos','forma_pagamento','juros_percentual','multa_percentual','observacoes']);
   if (Object.keys(dados).some(k => !allowed.has(k))) throw new HttpError(400, 'Campo não permitido na revisão');
+  if (dados.cliente_id != null && dados.cliente_novo != null) throw new HttpError(400, 'Informe cliente_id ou cliente_novo, não ambos.');
+  return { ...dados };
+}
+
+// Revisões e confirmações não devem apagar silenciosamente as datas
+// reconhecidas nem a quantidade que indica uma lista incompleta.
+function preserveSchedule(dados, original) {
+  const stored = typeof original === 'string' ? JSON.parse(original) : original;
+  if (Array.isArray(stored?.vencimentos) && stored.vencimentos.length) {
+    if (!Object.hasOwn(dados, 'vencimentos')) dados.vencimentos = stored.vencimentos;
+    if (!Array.isArray(dados.vencimentos) || !dados.vencimentos.length || dados.vencimentos.some(date => !isDate(date))) {
+      throw new HttpError(400, 'Mantenha e revise os vencimentos reconhecidos; envie uma lista não vazia de datas válidas.');
+    }
+    if (!Object.hasOwn(dados, 'quantidade_parcelas') && stored.quantidade_parcelas != null) {
+      dados.quantidade_parcelas = stored.quantidade_parcelas;
+    }
+    if (dados.quantidade_parcelas == null && stored.quantidade_parcelas != null) {
+      throw new HttpError(400, 'Informe a quantidade de parcelas para revisar os vencimentos reconhecidos.');
+    }
+  }
   return dados;
+}
+
+function mergeReview(dados, original) {
+  const stored = (typeof original === 'string' ? JSON.parse(original) : original) || {};
+  const merged = { ...stored, ...dados };
+  // Escolher outra forma de identificar o cliente descarta a seleção anterior.
+  if (Object.hasOwn(dados, 'cliente_id') && !Object.hasOwn(dados, 'cliente_novo')) delete merged.cliente_novo;
+  if (Object.hasOwn(dados, 'cliente_novo') && !Object.hasOwn(dados, 'cliente_id')) delete merged.cliente_id;
+  return preserveSchedule(merged, stored);
+}
+
+function scheduleMessage(dados) {
+  const dates = dados.vencimentos;
+  if (Array.isArray(dates) && dates.length && (dados.quantidade_parcelas == null || dados.quantidade_parcelas === '')) {
+    return 'Informe a quantidade de parcelas e revise os vencimentos reconhecidos antes de confirmar.';
+  }
+  const quantity = Number(dados.quantidade_parcelas);
+  if (Array.isArray(dates) && Number.isSafeInteger(quantity) && quantity > 0 && dates.length !== quantity) {
+    return `A lista de vencimentos contém ${dates.length} data(s) para ${quantity} parcela(s). Revise e informe uma data para cada parcela antes de confirmar.`;
+  }
+  return null;
 }
 
 async function owned(conn, id, usuarioId, lock = false) {
@@ -43,8 +84,9 @@ const extract = [
       const [result] = await db.execute(`INSERT INTO extracao_ocr
        (usuario_id,nome_original,nome_arquivo,caminho,tipo_arquivo,tamanho,texto_extraido,dados_json,confianca,status)
        VALUES (?,?,?,?,?,?,?,?,?,'PENDENTE')`, [req.user.id, req.file.originalname, req.file.filename, path.join(SUBDIRS.OCR, req.file.filename), req.file.mimetype, req.file.size, leitura.text, JSON.stringify(sugestao.dados), sugestao.confianca]);
+      const warnings = [leitura.aviso, scheduleMessage(sugestao.dados), sugestao.campos.length < 3 ? 'Poucos campos identificados; revise e preencha os dados antes de confirmar.' : null].filter(Boolean);
       res.status(201).json({ extracao_id: result.insertId, dados: sugestao.dados, campos: sugestao.campos, confianca: sugestao.confianca,
-        aviso: leitura.aviso || (sugestao.campos.length < 3 ? 'Poucos campos identificados; revise e preencha os dados antes de confirmar.' : null) });
+        aviso: warnings.join(' ') || null });
     } catch (err) { await fs.unlink(filename).catch(() => {}); throw err; }
   }),
 ];
@@ -61,9 +103,10 @@ async function updateExtracao(req, res) {
     await conn.beginTransaction();
     const row = await owned(conn, req.params.id, req.user.id, true);
     if (row.status !== 'PENDENTE') throw new HttpError(409, 'Extração já foi confirmada ou cancelada');
-    await conn.execute('UPDATE extracao_ocr SET dados_json = ? WHERE id = ?', [JSON.stringify(dados), row.id]);
+    const merged = mergeReview(dados, row.dados_json);
+    await conn.execute('UPDATE extracao_ocr SET dados_json = ? WHERE id = ?', [JSON.stringify(merged), row.id]);
     await conn.commit();
-    res.json({ message: 'Dados revisados com sucesso', extracao_id: row.id, dados });
+    res.json({ message: 'Dados revisados com sucesso', extracao_id: row.id, dados: merged });
   } catch (err) { await conn.rollback(); throw err; }
   finally { conn.release(); }
 }
@@ -90,6 +133,9 @@ async function confirmar(req, res) {
     await conn.beginTransaction();
     const row = await owned(conn, req.params.id, req.user.id, true);
     if (row.status !== 'PENDENTE') throw new HttpError(409, 'Extração já foi confirmada ou cancelada');
+    preserveSchedule(dados, row.dados_json);
+    const warning = scheduleMessage(dados);
+    if (warning) throw new HttpError(400, warning);
     const clientId = await resolveClient(conn, req.user.id, dados);
     const payload = { ...dados, cliente_id: clientId, numero: dados.numero || `OCR-${row.id}`,
       valor_total: dados.valor_total ?? (dados.valor_parcela !== undefined ? Number(dados.valor_parcela) * Number(dados.quantidade_parcelas) : undefined),

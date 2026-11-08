@@ -151,7 +151,7 @@ PDF retorna 422 para caracteres sem suporte, com CSV/XLSX como alternativa.
    Retorna 201 com `extracao_id`, `dados`, `campos`, `confianca` e `aviso`.
 2. `GET /api/ocr/:id`: consulta própria extração e seu status.
 3. `PATCH /api/ocr/:id`: `{ "dados": { ...campos revisados... } }`.
-   `dados_json` é aceito como alias para compatibilidade com a documentação antiga.
+   Mescla os campos com os dados reconhecidos; `dados_json` é aceito como alias.
 4. `POST /api/ocr/:id/confirmar`: `{ "dados": { ...campos revisados... } }`.
 5. `DELETE /api/ocr/:id`: cancela uma extração pendente.
 
@@ -162,6 +162,12 @@ valor total, quantidade (1–120) ou lista de vencimentos, data de início se n�
 houver lista. Taxas entre 0 e 100, com até duas casas decimais. `numero` omitido
 vira `OCR-<id>`; preferir revisar explicitamente. Valores fixos de parcela devem
 somar o total do contrato. Centavos remanescentes ficam na última parcela.
+
+Se houver vencimentos reconhecidos, a quantidade de parcelas deve ser informada
+e a lista deve ter exatamente uma data por parcela. Uma lista parcial retorna
+400, mantém a extração pendente e os dados preservados para revisão; datas e
+quantidade salvas não são descartadas se omitidas no PATCH ou na confirmação.
+Consulte [o fluxo de revisão](INTEGRACAO_OCR.md) para os detalhes.
 
 PDF textual usa extração direta; PDF escaneado usa Poppler + Tesseract em
 português, até 10 páginas. O modelo de idioma é instalado pelo npm, sem download
