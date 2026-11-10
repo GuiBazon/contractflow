@@ -126,8 +126,16 @@ const sheets = {
   getReceitas: (params) =>
     api.get("/receitas", { params }),
 
+  getPagamentosContrato: (contratoId, params) =>
+    api.get(`/pagamentos/${contratoId}/pagamentos`, { params }),
+
   createPagamento: (contratoId, data) =>
-    api.post(`/contratos/${contratoId}/pagamentos`, data),
+    api.post(`/pagamentos/${contratoId}/pagamentos`, data).catch((err) => {
+      if (err?.response?.status === 404) {
+        return api.post(`/contratos/${contratoId}/pagamentos`, data);
+      }
+      throw err;
+    }),
 
   // OCR / IMPORTAÇÃO INTELIGENTE COM IA
 

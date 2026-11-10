@@ -113,6 +113,7 @@ export default function NovoContrato() {
   const [titulo, setTitulo] = useState("Contrato de Licença de Software ERP e Consultoria");
   const [valorTotalStr, setValorTotalStr] = useState("48.000,00");
   const [numeroParcelas, setNumeroParcelas] = useState(12);
+  const [parcelasPagas, setParcelasPagas] = useState(0);
   const [dataInicio, setDataInicio] = useState("2026-10-01");
   const [dataTermino, setDataTermino] = useState("2027-09-30");
   const [periodicidade, setPeriodicidade] = useState("Mensal");
@@ -302,6 +303,21 @@ export default function NovoContrato() {
 
       const resContrato = await sheets.createContrato(payload);
       const contratoCriado = resContrato?.data?.contrato;
+
+      // Se informou parcelas já pagas, atualiza o status das N primeiras
+      const qtdPagasIniciais = Number(parcelasPagas) || 0;
+      if (contratoCriado?.id && qtdPagasIniciais > 0) {
+        try {
+          const resParc = await sheets.getParcelas(contratoCriado.id);
+          const listaParc = resParc?.data?.data || resParc?.data || [];
+          const paraPagar = listaParc.slice(0, qtdPagasIniciais);
+          for (const p of paraPagar) {
+            await sheets.updateParcela(contratoCriado.id, p.id, { status: "PAGA" });
+          }
+        } catch (errPagas) {
+          console.warn("Aviso ao definir parcelas já pagas:", errPagas);
+        }
+      }
 
       // Se há PDF anexado no passo 04, faz upload
       if (arquivoPdf && contratoCriado?.id) {
@@ -519,7 +535,7 @@ export default function NovoContrato() {
                   />
                 </Box>
 
-                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
+                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr 1fr" }, gap: 2 }}>
                   <Box>
                     <Typography sx={sx.fieldLabel}>
                       Valor Total <span style={{ color: "#ef4444" }}>*</span>
@@ -547,6 +563,25 @@ export default function NovoContrato() {
                       sx={sx.customInput}
                       inputProps={{ min: 1, max: 120 }}
                     />
+                  </Box>
+
+                  <Box>
+                    <Typography sx={sx.fieldLabel}>
+                      Parcelas Já Pagas (Opcional)
+                    </Typography>
+                    <InputBase
+                      type="number"
+                      value={parcelasPagas}
+                      onChange={(e) => setParcelasPagas(Math.max(0, Math.min(Number(numeroParcelas), Number(e.target.value))))}
+                      placeholder="0"
+                      sx={sx.customInput}
+                      inputProps={{ min: 0, max: Number(numeroParcelas) }}
+                    />
+                    {Number(parcelasPagas) > 0 && (
+                      <Typography sx={{ fontSize: "11px", color: "#16a34a", mt: 0.5, fontWeight: 600 }}>
+                        ✓ {parcelasPagas} de {numeroParcelas} parcelas já serão iniciadas como quitadas.
+                      </Typography>
+                    )}
                   </Box>
                 </Box>
 
