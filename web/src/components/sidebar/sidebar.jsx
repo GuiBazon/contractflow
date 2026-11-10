@@ -18,14 +18,14 @@ import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 
 const NAV_ITEMS = [
-  { label: "Dashboard",    icon: <DashboardRoundedIcon />,            path: "/home" },
+  { label: "Dashboard",    icon: <DashboardRoundedIcon />,            path: "/dashboard" },
   { label: "Clientes",     icon: <PeopleAltRoundedIcon />,            path: "/clientes" },
   { label: "Contratos",    icon: <DescriptionRoundedIcon />,          path: "/contratos" },
   { label: "Calendário",   icon: <CalendarMonthRoundedIcon />,        path: "/calendario" },
   { label: "Financeiro",   icon: <AccountBalanceWalletRoundedIcon />, path: "/financeiro" },
   { label: "Calculadora",  icon: <CalculateRoundedIcon />,            path: "/calculadora" },
   { label: "Relatórios",   icon: <BarChartRoundedIcon />,             path: "/relatorios" },
-  { label: "Configurações",icon: <SettingsRoundedIcon />,             path: "/configuracoes" },
+  { label: "Configurações",icon: <SettingsRoundedIcon />,             path: "/configuracoes/perfil" },
 ];
 
 function Sidebar() {
@@ -52,7 +52,7 @@ function Sidebar() {
   return (
     <Box sx={styles.sidebar}>
       {/* ── Logo ── */}
-      <Box sx={styles.brand} onClick={() => navigate("/home")}>
+      <Box sx={styles.brand} onClick={() => navigate("/dashboard")}>
         <Box sx={styles.brandIcon}>
           <DescriptionRoundedIcon sx={{ fontSize: 20 }} />
         </Box>

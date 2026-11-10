@@ -12,6 +12,7 @@ import ImportarContrato from "./pages/contratos/importar_contrato";
 import Calendario from "./pages/calendario/calendario";
 import Relatorios from "./pages/relatorios/relatorios";
 import Financeiro from "./pages/financeiro/financeiro";
+import Calculadora from "./pages/calculadora/calculadora";
 
 import { CssBaseline } from "@mui/material";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -50,6 +51,9 @@ function App() {
 
           {/* Fluxo Financeiro */}
           <Route path="/financeiro" element={<ProtectedRoute><Financeiro /></ProtectedRoute>} />
+
+          {/* Calculadora Financeira */}
+          <Route path="/calculadora" element={<ProtectedRoute><Calculadora /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </>

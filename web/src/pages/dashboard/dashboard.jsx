@@ -699,7 +699,7 @@ function Dashboard() {
                 <Typography sx={sx.panelTitle}>Próximos Vencimentos</Typography>
                 <Typography sx={sx.panelSub}>Parcelas e contratos pendentes</Typography>
               </Box>
-              <Box sx={sx.link} onClick={() => navigate("/home")}>
+              <Box sx={sx.link} onClick={() => navigate("/contratos")}>
                 Ver todos os contratos <ChevronRightRoundedIcon sx={{ fontSize: 16 }} />
               </Box>
             </Box>
