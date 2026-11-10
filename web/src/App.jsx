@@ -29,6 +29,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/home" element={<ProtectedRoute><Navigate to="/dashboard" replace /></ProtectedRoute>} />
           <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
 
           {/* ⚙️ CONFIGURAÇÕES */}

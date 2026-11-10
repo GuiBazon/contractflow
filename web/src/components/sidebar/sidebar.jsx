@@ -1,48 +1,65 @@
-import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import {
-  Box,
-  Typography,
-  Tooltip,
-  Avatar,
-} from "@mui/material";
+import { Box, Typography, Avatar } from "@mui/material";
 
+// MUI Icons
 import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import PeopleAltRoundedIcon from "@mui/icons-material/PeopleAltRounded";
 import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
 import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
-import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
+import AttachMoneyRoundedIcon from "@mui/icons-material/AttachMoneyRounded";
 import CalculateRoundedIcon from "@mui/icons-material/CalculateRounded";
 import BarChartRoundedIcon from "@mui/icons-material/BarChartRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
+import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
+
+/* ─────────────────────────────────────────────────────────
+   Mapeamento iconKey → componente MUI
+───────────────────────────────────────────────────────── */
+const ICON_MAP = {
+  dashboard: DashboardRoundedIcon,
+  people: PeopleAltRoundedIcon,
+  description: DescriptionRoundedIcon,
+  calendar: CalendarMonthRoundedIcon,
+  money: AttachMoneyRoundedIcon,
+  calculate: CalculateRoundedIcon,
+  bar_chart: BarChartRoundedIcon,
+  settings: SettingsRoundedIcon,
+};
 
 const NAV_ITEMS = [
-  { label: "Dashboard",    icon: <DashboardRoundedIcon />,            path: "/dashboard" },
-  { label: "Clientes",     icon: <PeopleAltRoundedIcon />,            path: "/clientes" },
-  { label: "Contratos",    icon: <DescriptionRoundedIcon />,          path: "/contratos" },
-  { label: "Calendário",   icon: <CalendarMonthRoundedIcon />,        path: "/calendario" },
-  { label: "Financeiro",   icon: <AccountBalanceWalletRoundedIcon />, path: "/financeiro" },
-  { label: "Calculadora",  icon: <CalculateRoundedIcon />,            path: "/calculadora" },
-  { label: "Relatórios",   icon: <BarChartRoundedIcon />,             path: "/relatorios" },
-  { label: "Configurações",icon: <SettingsRoundedIcon />,             path: "/configuracoes/perfil" },
+  { label: "Dashboard",     iconKey: "dashboard",   path: "/dashboard" },
+  { label: "Clientes",      iconKey: "people",      path: "/clientes" },
+  { label: "Contratos",     iconKey: "description", path: "/contratos" },
+  { label: "Calendário",    iconKey: "calendar",    path: "/calendario" },
+  { label: "Financeiro",    iconKey: "money",       path: "/financeiro" },
+  { label: "Calculadora",   iconKey: "calculate",   path: "/calculadora" },
+  { label: "Relatórios",    iconKey: "bar_chart",   path: "/relatorios" },
+  { label: "Configurações", iconKey: "settings",    path: "/configuracoes/perfil" },
 ];
 
 function Sidebar() {
-  const navigate   = useNavigate();
-  const location   = useLocation();
-  const [hovered, setHovered] = useState(null);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const usuario = (() => {
-    try { return JSON.parse(localStorage.getItem("usuario") || "{}"); }
-    catch { return {}; }
+  const storageUser = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("usuario") || "{}");
+    } catch {
+      return {};
+    }
   })();
 
-  function getInitials(name = "") {
-    return name.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase() || "U";
-  }
+  const nomeUsuario = storageUser?.nome || "Usuário";
+  const initials =
+    nomeUsuario
+      .split(" ")
+      .slice(0, 2)
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase() || "U";
 
-  function logout() {
+  function handleLogout() {
     localStorage.removeItem("token");
     localStorage.removeItem("usuario");
     localStorage.removeItem("auth");
@@ -51,91 +68,67 @@ function Sidebar() {
 
   return (
     <Box sx={styles.sidebar}>
-      {/* ── Logo ── */}
-      <Box sx={styles.brand} onClick={() => navigate("/dashboard")}>
-        <Box sx={styles.brandIcon}>
-          <DescriptionRoundedIcon sx={{ fontSize: 20 }} />
+      <Box>
+        {/* Brand */}
+        <Box sx={styles.brand} onClick={() => navigate("/dashboard")}>
+          <Box sx={styles.brandIcon}>
+            <LinkRoundedIcon sx={{ fontSize: 18, transform: "rotate(-45deg)" }} />
+          </Box>
+          <Box>
+            <Typography sx={styles.brandName}>ContractFlow</Typography>
+            <Typography sx={styles.brandSub}>Gestão Inteligente</Typography>
+          </Box>
         </Box>
-        <Box>
-          <Typography sx={styles.brandName}>ContractFlow</Typography>
-          <Typography sx={styles.brandSub}>Gestão de Contratos</Typography>
-        </Box>
-      </Box>
 
-      {/* ── Divider ── */}
-      <Box sx={styles.divider} />
+        {/* Navigation */}
+        <Box sx={styles.nav}>
+          {NAV_ITEMS.map((item) => {
+            const Icon = ICON_MAP[item.iconKey];
+            const isActive =
+              item.path === "/configuracoes/perfil"
+                ? location.pathname.startsWith("/configuracoes")
+                : item.path === "/contratos"
+                ? location.pathname.startsWith("/contratos")
+                : location.pathname === item.path;
 
-      {/* ── Nav Items ── */}
-      <Box sx={styles.nav} component="nav">
-        <Typography sx={styles.navSection}>MENU PRINCIPAL</Typography>
-
-        {NAV_ITEMS.map((item) => {
-          const isActive = location.pathname === item.path;
-          const isHover  = hovered === item.path;
-
-          return (
-            <Tooltip
-              key={item.path}
-              title=""
-              placement="right"
-              arrow={false}
-            >
+            return (
               <Box
+                key={item.label}
+                onClick={() => item.path && navigate(item.path)}
                 sx={{
                   ...styles.navItem,
-                  ...(isActive ? styles.navItemActive : {}),
-                  ...(isHover && !isActive ? styles.navItemHover : {}),
+                  ...(isActive ? styles.navActive : {}),
+                  cursor: item.path ? "pointer" : "default",
                 }}
-                onClick={() => navigate(item.path)}
-                onMouseEnter={() => setHovered(item.path)}
-                onMouseLeave={() => setHovered(null)}
+                title={item.path ? `Ir para ${item.label}` : item.label}
               >
-                <Box sx={{
-                  ...styles.navIcon,
-                  ...(isActive ? styles.navIconActive : {}),
-                }}>
-                  {item.icon}
-                </Box>
-                <Typography sx={{
-                  ...styles.navLabel,
-                  ...(isActive ? styles.navLabelActive : {}),
-                }}>
-                  {item.label}
-                </Typography>
-
-                {isActive && <Box sx={styles.activeIndicator} />}
+                {Icon && <Icon sx={{ fontSize: 18 }} />}
+                <Typography sx={styles.navLabel}>{item.label}</Typography>
               </Box>
-            </Tooltip>
-          );
-        })}
+            );
+          })}
+        </Box>
       </Box>
 
-      {/* ── Spacer ── */}
-      <Box sx={{ flex: 1 }} />
-
-      {/* ── Divider ── */}
-      <Box sx={styles.divider} />
-
-      {/* ── User Profile ── */}
-      <Box sx={styles.userSection}>
-        <Avatar sx={styles.avatar}>
-          {getInitials(usuario.nome)}
-        </Avatar>
-
-        <Box sx={styles.userInfo}>
-          <Typography sx={styles.userName}>
-            {usuario.nome || "Usuário"}
+      {/* User Section */}
+      <Box sx={styles.userRow}>
+        <Avatar sx={styles.avatar}>{initials}</Avatar>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography sx={styles.userName} noWrap>
+            {nomeUsuario}
           </Typography>
           <Typography sx={styles.userRole}>
-            {usuario.perfil || "Colaborador"}
+            {storageUser?.perfil || "Usuário"}
           </Typography>
         </Box>
-
-        <Tooltip title="Sair" placement="right">
-          <Box sx={styles.logoutBtn} onClick={logout}>
-            <LogoutRoundedIcon sx={{ fontSize: 16 }} />
-          </Box>
-        </Tooltip>
+        <Box
+          component="button"
+          onClick={handleLogout}
+          sx={styles.logoutBtn}
+          title="Sair"
+        >
+          <LogoutRoundedIcon sx={{ fontSize: 17 }} />
+        </Box>
       </Box>
     </Box>
   );
@@ -143,39 +136,38 @@ function Sidebar() {
 
 const styles = {
   sidebar: {
-    width: "240px",
-    minWidth: "240px",
-    height: "100vh",
-    backgroundColor: "#203f82",
+    width: 220,
+    minWidth: 220,
+    bgcolor: "#192d65",
     display: "flex",
     flexDirection: "column",
-    position: "sticky",
+    justifyContent: "space-between",
+    px: 2.5,
+    py: 3,
+    position: "fixed",
     top: 0,
+    left: 0,
+    height: "100dvh",
     overflowY: "auto",
-    overflowX: "hidden",
     zIndex: 100,
-    boxShadow: "4px 0 24px rgba(0,0,0,0.15)",
-
-    "&::-webkit-scrollbar": { width: "4px" },
-    "&::-webkit-scrollbar-track": { background: "transparent" },
-    "&::-webkit-scrollbar-thumb": { background: "rgba(255,255,255,0.15)", borderRadius: "4px" },
+    flexShrink: 0,
+    boxSizing: "border-box",
   },
 
   brand: {
     display: "flex",
     alignItems: "center",
-    gap: 1.5,
-    px: 2.5,
-    py: 2.5,
+    gap: 1.3,
+    mb: 4,
+    px: 0.5,
     cursor: "pointer",
-    userSelect: "none",
   },
 
   brandIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: "10px",
-    backgroundColor: "rgba(255,255,255,0.15)",
+    width: 34,
+    height: 34,
+    borderRadius: "9px",
+    bgcolor: "#3f7ff2",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -185,159 +177,97 @@ const styles = {
 
   brandName: {
     color: "#fff",
-    fontSize: "15px",
+    fontSize: "14.5px",
     fontWeight: 700,
-    lineHeight: 1.1,
-    letterSpacing: "0.2px",
+    lineHeight: 1.2,
   },
 
   brandSub: {
-    color: "rgba(255,255,255,0.45)",
+    color: "rgba(255,255,255,0.42)",
     fontSize: "10px",
-    mt: 0.3,
-  },
-
-  divider: {
-    height: "1px",
-    backgroundColor: "rgba(255,255,255,0.08)",
-    mx: 2.5,
-    my: 0.5,
+    mt: "1px",
   },
 
   nav: {
     display: "flex",
     flexDirection: "column",
-    px: 1.5,
-    pt: 1.5,
-    gap: 0.5,
-  },
-
-  navSection: {
-    color: "rgba(255,255,255,0.35)",
-    fontSize: "9px",
-    fontWeight: 700,
-    letterSpacing: "1.2px",
-    px: 1,
-    py: 1,
-    mb: 0.5,
+    gap: "2px",
   },
 
   navItem: {
     display: "flex",
     alignItems: "center",
-    gap: 1.2,
-    px: 1.2,
-    py: 1,
-    borderRadius: "10px",
+    gap: 1.4,
+    px: 1.5,
+    py: 1.15,
+    borderRadius: "8px",
+    color: "rgba(255,255,255,0.55)",
     cursor: "pointer",
-    position: "relative",
-    transition: "all 0.18s ease",
-    userSelect: "none",
+    transition: "background 0.15s, color 0.15s",
+    "&:hover": {
+      bgcolor: "rgba(255,255,255,0.08)",
+      color: "rgba(255,255,255,0.85)",
+    },
   },
 
-  navItemActive: {
-    backgroundColor: "rgba(255,255,255,0.14)",
-  },
-
-  navItemHover: {
-    backgroundColor: "rgba(255,255,255,0.07)",
-  },
-
-  navIcon: {
-    color: "rgba(255,255,255,0.5)",
-    display: "flex",
-    alignItems: "center",
-    "& svg": { fontSize: 19 },
-    transition: "color 0.18s ease",
-  },
-
-  navIconActive: {
-    color: "#7eb8ff",
+  navActive: {
+    bgcolor: "rgba(255,255,255,0.12)",
+    color: "#fff",
+    "&:hover": {
+      bgcolor: "rgba(255,255,255,0.15)",
+    },
   },
 
   navLabel: {
-    color: "rgba(255,255,255,0.6)",
     fontSize: "13px",
     fontWeight: 500,
-    transition: "color 0.18s ease",
-    flex: 1,
   },
 
-  navLabelActive: {
-    color: "#fff",
-    fontWeight: 600,
-  },
-
-  activeIndicator: {
-    position: "absolute",
-    right: 0,
-    top: "50%",
-    transform: "translateY(-50%)",
-    width: "3px",
-    height: "18px",
-    borderRadius: "3px 0 0 3px",
-    backgroundColor: "#7eb8ff",
-  },
-
-  userSection: {
+  userRow: {
     display: "flex",
     alignItems: "center",
     gap: 1.2,
-    px: 2,
-    py: 2,
+    borderTop: "1px solid rgba(255,255,255,0.08)",
+    pt: 2.5,
+    px: 0.5,
+    mt: 2,
   },
 
   avatar: {
     width: 34,
     height: 34,
-    fontSize: "13px",
+    fontSize: "12px",
     fontWeight: 700,
-    backgroundColor: "rgba(126, 184, 255, 0.25)",
-    color: "#a8d0ff",
-    border: "1.5px solid rgba(255,255,255,0.12)",
+    bgcolor: "#3f7ff2",
     flexShrink: 0,
-  },
-
-  userInfo: {
-    flex: 1,
-    minWidth: 0,
   },
 
   userName: {
     color: "#fff",
-    fontSize: "12px",
+    fontSize: "12.5px",
     fontWeight: 600,
-    lineHeight: 1.2,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
+    lineHeight: 1.3,
   },
 
   userRole: {
-    color: "rgba(255,255,255,0.4)",
-    fontSize: "10px",
-    mt: 0.2,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
+    color: "rgba(255,255,255,0.42)",
+    fontSize: "10.5px",
   },
 
   logoutBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: "8px",
-    backgroundColor: "rgba(255,255,255,0.07)",
+    border: "none",
+    background: "none",
+    cursor: "pointer",
     color: "rgba(255,255,255,0.45)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    cursor: "pointer",
+    p: 0,
+    ml: "auto",
     flexShrink: 0,
-    transition: "all 0.18s ease",
-
+    transition: "color 0.15s",
     "&:hover": {
-      backgroundColor: "rgba(255,80,80,0.2)",
-      color: "#ff8080",
+      color: "#fff",
     },
   },
 };

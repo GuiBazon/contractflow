@@ -46,9 +46,9 @@ const NAV_ITEMS = [
   { label: "Clientes", iconKey: "people", path: "/clientes" },
   { label: "Contratos", iconKey: "description", path: "/contratos" },
   { label: "Calendário", iconKey: "calendar", path: "/calendario" },
-  { label: "Financeiro", iconKey: "money" },
-  { label: "Calculadora", iconKey: "calculate" },
-  { label: "Relatórios", iconKey: "bar_chart" },
+  { label: "Financeiro", iconKey: "money", path: "/financeiro" },
+  { label: "Calculadora", iconKey: "calculate", path: "/calculadora" },
+  { label: "Relatórios", iconKey: "bar_chart", path: "/relatorios" },
   { label: "Configurações", iconKey: "settings", path: "/configuracoes/perfil" },
 ];
 

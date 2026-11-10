@@ -706,6 +706,7 @@ const styles = {
     flexDirection: "column",
     minWidth: 0,
     overflow: "hidden",
+    marginLeft: "220px",
   },
 
   body: {
