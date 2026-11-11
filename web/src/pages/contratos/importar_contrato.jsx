@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import sheets from "../../axios/axios";
 
@@ -84,22 +84,23 @@ function parseCurrency(str) {
 export default function ImportarContrato() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   // Etapas: 1 (Enviar PDF) -> 2 (Processamento) -> 3 (Revisão de IA) -> 4 (Confirmação)
-  const [etapaAtual, setEtapaAtual] = useState(3); // Inicia na etapa 3 conforme o Anexo 2
+  const [etapaAtual, setEtapaAtual] = useState(1);
   const [arquivo, setArquivo] = useState(null);
-  const [nomeArquivo, setNomeArquivo] = useState("contrato_confeitaria_final.pdf");
+  const [nomeArquivo, setNomeArquivo] = useState("");
   const [arquivoUrl, setArquivoUrl] = useState(null);
   const [extracaoId, setExtracaoId] = useState(null);
-  const [confianca, setConfianca] = useState(98);
+  const [confianca, setConfianca] = useState(0);
 
-  // Campos Revisados pelo Usuário (Valores padrão idênticos ao anexo 2)
-  const [clienteNome, setClienteNome] = useState("Maria Santos Confeitaria LTDA");
-  const [cpfCnpj, setCpfCnpj] = useState("12.345.678/0001-90");
-  const [valorTotalStr, setValorTotalStr] = useState("R$ 36.000,00");
-  const [parcelamentoStr, setParcelamentoStr] = useState("12 faturas de R$ 3.000,00");
-  const [dataInicio, setDataInicio] = useState("2026-10-01");
-  const [primeiroVencimento, setPrimeiroVencimento] = useState("2026-10-15");
+  // Campos Revisados pelo Usuário
+  const [clienteNome, setClienteNome] = useState("");
+  const [cpfCnpj, setCpfCnpj] = useState("");
+  const [valorTotalStr, setValorTotalStr] = useState("");
+  const [parcelamentoStr, setParcelamentoStr] = useState("");
+  const [dataInicio, setDataInicio] = useState("");
+  const [primeiroVencimento, setPrimeiroVencimento] = useState("");
 
   // Estados de Operação
   const [processando, setProcessando] = useState(false);
@@ -133,6 +134,13 @@ export default function ImportarContrato() {
     carregarClientes();
   }, []);
 
+  // Cleanup: abort any in-flight OCR request on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   function handleLogout() {
     localStorage.removeItem("auth");
     localStorage.removeItem("token");
@@ -141,7 +149,7 @@ export default function ImportarContrato() {
   }
 
   // Upload e envio para OCR
-  async function processarArquivoOcr(file) {
+  const processarArquivoOcr = useCallback(async (file) => {
     if (!file) return;
     setArquivo(file);
     setNomeArquivo(file.name);
@@ -152,11 +160,14 @@ export default function ImportarContrato() {
     setProcessando(true);
     setErro("");
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     const formData = new FormData();
     formData.append("arquivo", file);
 
     try {
-      const res = await sheets.extractOcr(formData);
+      const res = await sheets.extractOcr(formData, { signal: controller.signal });
       const data = res?.data;
 
       if (data) {
@@ -184,27 +195,31 @@ export default function ImportarContrato() {
       }
       setEtapaAtual(3);
     } catch (err) {
+      if (err.name === "AbortError" || err.code === "ERR_CANCELED") {
+        // Request was aborted, exit silently
+        return;
+      }
       console.error("Erro na extração de OCR pela API:", err);
       // Mantém os dados da tela para permitir que o usuário continue e revise
       setEtapaAtual(3);
     } finally {
       setProcessando(false);
     }
-  }
+  }, []);
 
-  function handleFileChange(e) {
+  const handleFileChange = useCallback((e) => {
     if (e.target.files && e.target.files[0]) {
       processarArquivoOcr(e.target.files[0]);
     }
-  }
+  }, [processarArquivoOcr]);
 
-  function handleDrop(e) {
+  const handleDrop = useCallback((e) => {
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       processarArquivoOcr(e.dataTransfer.files[0]);
     }
-  }
+  }, [processarArquivoOcr]);
 
   // Cancelar Extração
   async function handleCancelar() {
@@ -297,6 +312,53 @@ export default function ImportarContrato() {
     } finally {
       setSalvando(false);
     }
+  }
+
+  // Helper: render stepper circle for a given step number
+  function renderStepCircle(stepNum) {
+    if (etapaAtual > stepNum) {
+      return (
+        <Box sx={sx.stepCircleCompleted}>
+          <CheckRoundedIcon sx={{ fontSize: 15, color: "#fff" }} />
+        </Box>
+      );
+    }
+    if (etapaAtual === stepNum) {
+      return (
+        <Box sx={sx.stepCircleActive}>
+          <Typography sx={{ fontSize: "12px", fontWeight: 700, color: "#fff" }}>
+            {stepNum}
+          </Typography>
+        </Box>
+      );
+    }
+    return (
+      <Box sx={sx.stepCircleInactive}>
+        <Typography sx={{ fontSize: "12px", fontWeight: 600, color: "#94a3b8" }}>
+          {stepNum}
+        </Typography>
+      </Box>
+    );
+  }
+
+  // Helper: render stepper label for a given step number and label text
+  function renderStepLabel(stepNum, label) {
+    if (etapaAtual === stepNum) {
+      return <Typography sx={sx.stepLabelCurrent}>{label}</Typography>;
+    }
+    if (etapaAtual > stepNum) {
+      return <Typography sx={sx.stepLabelActive}>{label}</Typography>;
+    }
+    return <Typography sx={sx.stepLabelInactive}>{label}</Typography>;
+  }
+
+  // Helper: render stepper divider between step A and step B
+  function renderStepDivider(stepA) {
+    return etapaAtual > stepA ? (
+      <Box sx={sx.stepDividerActive} />
+    ) : (
+      <Box sx={sx.stepDividerInactive} />
+    );
   }
 
   return (
@@ -402,48 +464,36 @@ export default function ImportarContrato() {
           </Box>
         </Box>
 
-        {/* ── Barra de Progresso / Stepper (Conforme Anexo 2) ── */}
+        {/* ── Barra de Progresso / Stepper (Dinâmico) ── */}
         <Box sx={sx.stepperBar}>
           {/* Passo 1 */}
           <Box sx={sx.stepItem}>
-            <Box sx={sx.stepCircleCompleted}>
-              <CheckRoundedIcon sx={{ fontSize: 15, color: "#fff" }} />
-            </Box>
-            <Typography sx={sx.stepLabelActive}>Enviar PDF</Typography>
+            {renderStepCircle(1)}
+            {renderStepLabel(1, "Enviar PDF")}
           </Box>
 
-          <Box sx={sx.stepDividerActive} />
+          {renderStepDivider(1)}
 
           {/* Passo 2 */}
           <Box sx={sx.stepItem}>
-            <Box sx={sx.stepCircleCompleted}>
-              <CheckRoundedIcon sx={{ fontSize: 15, color: "#fff" }} />
-            </Box>
-            <Typography sx={sx.stepLabelActive}>Processamento</Typography>
+            {renderStepCircle(2)}
+            {renderStepLabel(2, "Processamento")}
           </Box>
 
-          <Box sx={sx.stepDividerActive} />
+          {renderStepDivider(2)}
 
           {/* Passo 3 */}
           <Box sx={sx.stepItem}>
-            <Box sx={sx.stepCircleActive}>
-              <Typography sx={{ fontSize: "12px", fontWeight: 700, color: "#fff" }}>
-                3
-              </Typography>
-            </Box>
-            <Typography sx={sx.stepLabelCurrent}>Revisão de IA</Typography>
+            {renderStepCircle(3)}
+            {renderStepLabel(3, "Revisão de IA")}
           </Box>
 
-          <Box sx={sx.stepDividerInactive} />
+          {renderStepDivider(3)}
 
           {/* Passo 4 */}
           <Box sx={sx.stepItem}>
-            <Box sx={sx.stepCircleInactive}>
-              <Typography sx={{ fontSize: "12px", fontWeight: 600, color: "#94a3b8" }}>
-                4
-              </Typography>
-            </Box>
-            <Typography sx={sx.stepLabelInactive}>Confirmação</Typography>
+            {renderStepCircle(4)}
+            {renderStepLabel(4, "Confirmação")}
           </Box>
         </Box>
 
@@ -468,224 +518,284 @@ export default function ImportarContrato() {
             </Typography>
           </Box>
         ) : (
-          /* ═════════════════════════════════════════════════════════
-             ETAPA 3: REVISÃO DE IA (Layout idêntico ao Anexo 2)
-          ═════════════════════════════════════════════════════════ */
-          <Box sx={sx.contentGrid}>
-            {/* ── Coluna Esquerda: Visualização do Original (~48%) ── */}
-            <Box sx={sx.docCard}>
-              <Box sx={sx.docHeader}>
-                <Typography sx={sx.docTitle}>Visualização do Original</Typography>
-                <Typography sx={sx.docFilename} noWrap>
-                  {nomeArquivo}
-                </Typography>
-              </Box>
-
-              {/* Área de Visualização do Documento */}
-              <Box sx={sx.docViewer}>
-                {arquivoUrl ? (
-                  <Box
-                    component="iframe"
-                    src={arquivoUrl}
-                    title="Documento PDF Original"
-                    sx={{
-                      width: "100%",
-                      height: "100%",
-                      border: "none",
-                      borderRadius: "6px",
-                    }}
-                  />
-                ) : (
-                  <Box sx={sx.mockPdfViewer}>
-                    <Box sx={sx.mockPdfPage}>
-                      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
-                        <Box sx={{ width: "35%", height: "14px", bgcolor: "#cbd5e1", borderRadius: "4px" }} />
-                        <Box sx={{ width: "20%", height: "14px", bgcolor: "#e2e8f0", borderRadius: "4px" }} />
-                      </Box>
-                      <Box sx={{ width: "70%", height: "18px", bgcolor: "#94a3b8", borderRadius: "4px", mb: 2 }} />
-                      <Box sx={{ width: "95%", height: "10px", bgcolor: "#e2e8f0", borderRadius: "4px", mb: 1 }} />
-                      <Box sx={{ width: "88%", height: "10px", bgcolor: "#e2e8f0", borderRadius: "4px", mb: 1 }} />
-                      <Box sx={{ width: "92%", height: "10px", bgcolor: "#e2e8f0", borderRadius: "4px", mb: 3 }} />
-
-                      <Box sx={{ p: 1.5, bgcolor: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: "6px", mb: 2 }}>
-                        <Typography sx={{ fontSize: "11px", fontWeight: 700, color: "#065f46" }}>
-                          CONTRATANTE: {clienteNome}
-                        </Typography>
-                        <Typography sx={{ fontSize: "10px", color: "#047857" }}>
-                          CNPJ: {cpfCnpj}
-                        </Typography>
-                      </Box>
-
-                      <Box sx={{ p: 1.5, bgcolor: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "6px", mb: 2 }}>
-                        <Typography sx={{ fontSize: "11px", fontWeight: 700, color: "#1e40af" }}>
-                          VALOR TOTAL: {valorTotalStr}
-                        </Typography>
-                        <Typography sx={{ fontSize: "10px", color: "#1d4ed8" }}>
-                          FORMA DE PAGAMENTO: {parcelamentoStr}
-                        </Typography>
-                      </Box>
-
-                      <Box sx={{ width: "85%", height: "10px", bgcolor: "#e2e8f0", borderRadius: "4px", mb: 1 }} />
-                      <Box sx={{ width: "75%", height: "10px", bgcolor: "#e2e8f0", borderRadius: "4px", mb: 1 }} />
-                    </Box>
-                  </Box>
-                )}
-              </Box>
-
-              {/* Legenda de Confiança */}
-              <Box sx={sx.legendRow}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
-                  <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#10b981" }} />
-                  <Typography sx={{ fontSize: "12px", color: "#475569", fontWeight: 500 }}>
-                    Confiança Alta (IA)
-                  </Typography>
-                </Box>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
-                  <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#f59e0b" }} />
-                  <Typography sx={{ fontSize: "12px", color: "#475569", fontWeight: 500 }}>
-                    Confiança Média
-                  </Typography>
-                </Box>
-
-                {/* Botão sutil para trocar PDF se desejar testar outro */}
+          <>
+            {/* ═════════════════════════════════════════════════════════
+                ETAPA 1: DROPZONE (Upload de arquivo)
+            ═════════════════════════════════════════════════════════ */}
+            {etapaAtual === 1 && (
+              <Box sx={sx.uploadContainer}>
+                {/* Área de Drop */}
                 <Box
-                  component="button"
+                  sx={{
+                    ...sx.dropzone,
+                    ...(isDragging ? sx.dropzoneActive : {}),
+                  }}
+                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
                   onClick={() => fileInputRef.current?.click()}
-                  sx={sx.btnTrocarPdf}
                 >
-                  Substituir PDF
+                  <CloudUploadOutlinedIcon sx={{ fontSize: 52, color: isDragging ? "#2563eb" : "#94a3b8", mb: 2 }} />
+                  <Typography sx={{ fontSize: "16px", fontWeight: 700, color: "#182338", mb: 0.5 }}>
+                    Arraste seu contrato aqui
+                  </Typography>
+                  <Typography sx={{ fontSize: "13px", color: "#64748b", mb: 2 }}>
+                    ou clique para selecionar um arquivo
+                  </Typography>
+                  <Typography sx={{ fontSize: "12px", color: "#94a3b8" }}>
+                    Suporta PDF, JPG e PNG · Máximo 20 MB
+                  </Typography>
+                  <input
+                    type="file"
+                    accept="application/pdf,image/*"
+                    ref={fileInputRef}
+                    style={{ display: "none" }}
+                    onChange={handleFileChange}
+                  />
                 </Box>
-                <input
-                  type="file"
-                  accept="application/pdf,image/*"
-                  ref={fileInputRef}
-                  style={{ display: "none" }}
-                  onChange={handleFileChange}
-                />
-              </Box>
-            </Box>
 
-            {/* ── Coluna Direita: Dados Confirmados pela IA (~52%) ── */}
-            <Box sx={sx.reviewColumn}>
-              {/* Card de Estruturação Concluída (Verde) */}
-              <Box sx={sx.successCard}>
-                <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
-                  <CheckCircleOutlineRoundedIcon sx={{ fontSize: 22, color: "#16a34a", mt: "2px" }} />
+                {/* Card de info sobre o processo */}
+                <Box sx={sx.infoCard}>
+                  <AutoAwesomeRoundedIcon sx={{ fontSize: 20, color: "#2563eb" }} />
                   <Box>
-                    <Typography sx={{ fontSize: "14.5px", fontWeight: 700, color: "#166534" }}>
-                      Estruturação de IA Concluída!
+                    <Typography sx={{ fontSize: "13.5px", fontWeight: 700, color: "#182338" }}>
+                      Como funciona a Importação Inteligente?
                     </Typography>
-                    <Typography sx={{ fontSize: "12.5px", color: "#15803d", mt: 0.5, lineHeight: 1.45 }}>
-                      Revisamos seu documento e preenchemos os campos abaixo com {confianca}% de precisão.
-                      Por favor, confirme as informações.
+                    <Typography sx={{ fontSize: "12.5px", color: "#64748b", mt: 0.5, lineHeight: 1.5 }}>
+                      Nossa IA lê e extrai automaticamente os dados do contrato (partes, valores, datas e condições de pagamento).
+                      Você revisa e confirma antes de salvar. Conforme nossos Termos de Uso, a leitura automática é um recurso de apoio
+                      e todos os campos ficam editáveis.
                     </Typography>
                   </Box>
                 </Box>
               </Box>
+            )}
 
-              {/* Card do Formulário de Confirmação */}
-              <Box sx={sx.formCard}>
-                <Typography sx={sx.formCardTitle}>Confirmar Dados do Contrato</Typography>
-
-                <Box sx={{ mt: 2.5, display: "flex", flexDirection: "column", gap: 2 }}>
-                  {/* Linha 1: Cliente e CPF/CNPJ */}
-                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1.2fr 1fr" }, gap: 2 }}>
-                    <Box>
-                      <Typography sx={sx.inputLabel}>Cliente</Typography>
-                      <InputBase
-                        value={clienteNome}
-                        onChange={(e) => setClienteNome(e.target.value)}
-                        sx={sx.inputField}
-                      />
-                    </Box>
-                    <Box>
-                      <Typography sx={sx.inputLabel}>CPF/CNPJ</Typography>
-                      <InputBase
-                        value={cpfCnpj}
-                        onChange={(e) => setCpfCnpj(e.target.value)}
-                        sx={sx.inputField}
-                      />
-                    </Box>
-                  </Box>
-
-                  {/* Linha 2: Valor Total e Parcelamento */}
-                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1.2fr" }, gap: 2 }}>
-                    <Box>
-                      <Typography sx={sx.inputLabel}>Valor Total</Typography>
-                      <InputBase
-                        value={valorTotalStr}
-                        onChange={(e) => setValorTotalStr(e.target.value)}
-                        sx={sx.inputField}
-                      />
-                    </Box>
-                    <Box>
-                      <Typography sx={sx.inputLabel}>Parcelamento</Typography>
-                      <InputBase
-                        value={parcelamentoStr}
-                        onChange={(e) => setParcelamentoStr(e.target.value)}
-                        sx={sx.inputField}
-                      />
-                    </Box>
-                  </Box>
-
-                  {/* Linha 3: Data Início e Primeiro Vencimento */}
-                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
-                    <Box>
-                      <Typography sx={sx.inputLabel}>Data Início</Typography>
-                      <InputBase
-                        type="date"
-                        value={dataInicio}
-                        onChange={(e) => setDataInicio(e.target.value)}
-                        sx={sx.inputField}
-                      />
-                    </Box>
-                    <Box>
-                      <Typography sx={sx.inputLabel}>Primeiro Vencimento</Typography>
-                      <InputBase
-                        type="date"
-                        value={primeiroVencimento}
-                        onChange={(e) => setPrimeiroVencimento(e.target.value)}
-                        sx={sx.inputField}
-                      />
-                    </Box>
-                  </Box>
-
-                  {/* Alerta Amarelo de Vencimento Sugerido */}
-                  <Box sx={sx.warningBox}>
-                    <ErrorOutlineRoundedIcon sx={{ fontSize: 18, color: "#d97706", mt: "2px", flexShrink: 0 }} />
-                    <Typography sx={sx.warningText}>
-                      A data do primeiro vencimento foi sugerida com base no padrão contratual. Deseja alterar?
+            {/* ═════════════════════════════════════════════════════════
+                ETAPA 3+: REVISÃO DE IA (Layout idêntico ao Anexo 2)
+            ═════════════════════════════════════════════════════════ */}
+            {etapaAtual >= 3 && (
+              <Box sx={sx.contentGrid}>
+                {/* ── Coluna Esquerda: Visualização do Original (~48%) ── */}
+                <Box sx={sx.docCard}>
+                  <Box sx={sx.docHeader}>
+                    <Typography sx={sx.docTitle}>Visualização do Original</Typography>
+                    <Typography sx={sx.docFilename} noWrap>
+                      {nomeArquivo}
                     </Typography>
                   </Box>
 
-                  {/* Botões de Ação */}
-                  <Box sx={sx.actionRow}>
-                    <Button
-                      variant="outlined"
-                      onClick={handleCancelar}
-                      disabled={salvando}
-                      sx={sx.btnCancelar}
+                  {/* Área de Visualização do Documento */}
+                  <Box sx={sx.docViewer}>
+                    {arquivoUrl ? (
+                      <Box
+                        component="iframe"
+                        src={arquivoUrl}
+                        title="Documento PDF Original"
+                        sx={{
+                          width: "100%",
+                          height: "100%",
+                          border: "none",
+                          borderRadius: "6px",
+                        }}
+                      />
+                    ) : (
+                      <Box sx={sx.mockPdfViewer}>
+                        <Box sx={sx.mockPdfPage}>
+                          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
+                            <Box sx={{ width: "35%", height: "14px", bgcolor: "#cbd5e1", borderRadius: "4px" }} />
+                            <Box sx={{ width: "20%", height: "14px", bgcolor: "#e2e8f0", borderRadius: "4px" }} />
+                          </Box>
+                          <Box sx={{ width: "70%", height: "18px", bgcolor: "#94a3b8", borderRadius: "4px", mb: 2 }} />
+                          <Box sx={{ width: "95%", height: "10px", bgcolor: "#e2e8f0", borderRadius: "4px", mb: 1 }} />
+                          <Box sx={{ width: "88%", height: "10px", bgcolor: "#e2e8f0", borderRadius: "4px", mb: 1 }} />
+                          <Box sx={{ width: "92%", height: "10px", bgcolor: "#e2e8f0", borderRadius: "4px", mb: 3 }} />
+
+                          <Box sx={{ p: 1.5, bgcolor: "#ecfdf5", border: "1px solid #a7f3d0", borderRadius: "6px", mb: 2 }}>
+                            <Typography sx={{ fontSize: "11px", fontWeight: 700, color: "#065f46" }}>
+                              CONTRATANTE: {clienteNome}
+                            </Typography>
+                            <Typography sx={{ fontSize: "10px", color: "#047857" }}>
+                              CNPJ: {cpfCnpj}
+                            </Typography>
+                          </Box>
+
+                          <Box sx={{ p: 1.5, bgcolor: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "6px", mb: 2 }}>
+                            <Typography sx={{ fontSize: "11px", fontWeight: 700, color: "#1e40af" }}>
+                              VALOR TOTAL: {valorTotalStr}
+                            </Typography>
+                            <Typography sx={{ fontSize: "10px", color: "#1d4ed8" }}>
+                              FORMA DE PAGAMENTO: {parcelamentoStr}
+                            </Typography>
+                          </Box>
+
+                          <Box sx={{ width: "85%", height: "10px", bgcolor: "#e2e8f0", borderRadius: "4px", mb: 1 }} />
+                          <Box sx={{ width: "75%", height: "10px", bgcolor: "#e2e8f0", borderRadius: "4px", mb: 1 }} />
+                        </Box>
+                      </Box>
+                    )}
+                  </Box>
+
+                  {/* Legenda de Confiança */}
+                  <Box sx={sx.legendRow}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
+                      <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#10b981" }} />
+                      <Typography sx={{ fontSize: "12px", color: "#475569", fontWeight: 500 }}>
+                        Confiança Alta (IA)
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
+                      <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#f59e0b" }} />
+                      <Typography sx={{ fontSize: "12px", color: "#475569", fontWeight: 500 }}>
+                        Confiança Média
+                      </Typography>
+                    </Box>
+
+                    {/* Botão sutil para trocar PDF se desejar testar outro */}
+                    <Box
+                      component="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      sx={sx.btnTrocarPdf}
                     >
-                      Cancelar
-                    </Button>
-                    <Button
-                      variant="contained"
-                      disableElevation
-                      disabled={salvando}
-                      onClick={handleAprovarContrato}
-                      sx={sx.btnAprovar}
-                    >
-                      {salvando ? (
-                        <CircularProgress size={20} sx={{ color: "#fff" }} />
-                      ) : (
-                        "Aprovar e Criar Contrato"
-                      )}
-                    </Button>
+                      Substituir PDF
+                    </Box>
+                  </Box>
+                </Box>
+
+                {/* ── Coluna Direita: Dados Confirmados pela IA (~52%) ── */}
+                <Box sx={sx.reviewColumn}>
+                  {/* Card de Estruturação Concluída (Verde) */}
+                  <Box sx={sx.successCard}>
+                    <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
+                      <CheckCircleOutlineRoundedIcon sx={{ fontSize: 22, color: "#16a34a", mt: "2px" }} />
+                      <Box>
+                        <Typography sx={{ fontSize: "14.5px", fontWeight: 700, color: "#166534" }}>
+                          Estruturação de IA Concluída!
+                        </Typography>
+                        <Typography sx={{ fontSize: "12.5px", color: "#15803d", mt: 0.5, lineHeight: 1.45 }}>
+                          Revisamos seu documento e preenchemos os campos abaixo com {confianca}% de precisão.
+                          Por favor, confirme as informações.
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+
+                  {/* Card do Formulário de Confirmação */}
+                  <Box sx={sx.formCard}>
+                    <Typography sx={sx.formCardTitle}>Confirmar Dados do Contrato</Typography>
+
+                    <Box sx={{ mt: 2.5, display: "flex", flexDirection: "column", gap: 2 }}>
+                      {/* Linha 1: Cliente e CPF/CNPJ */}
+                      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1.2fr 1fr" }, gap: 2 }}>
+                        <Box>
+                          <Typography sx={sx.inputLabel}>Cliente</Typography>
+                          <InputBase
+                            value={clienteNome}
+                            onChange={(e) => setClienteNome(e.target.value)}
+                            sx={sx.inputField}
+                          />
+                        </Box>
+                        <Box>
+                          <Typography sx={sx.inputLabel}>CPF/CNPJ</Typography>
+                          <InputBase
+                            value={cpfCnpj}
+                            onChange={(e) => setCpfCnpj(e.target.value)}
+                            sx={sx.inputField}
+                          />
+                        </Box>
+                      </Box>
+
+                      {/* Linha 2: Valor Total e Parcelamento */}
+                      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1.2fr" }, gap: 2 }}>
+                        <Box>
+                          <Typography sx={sx.inputLabel}>Valor Total</Typography>
+                          <InputBase
+                            value={valorTotalStr}
+                            onChange={(e) => setValorTotalStr(e.target.value)}
+                            sx={sx.inputField}
+                          />
+                        </Box>
+                        <Box>
+                          <Typography sx={sx.inputLabel}>Parcelamento</Typography>
+                          <InputBase
+                            value={parcelamentoStr}
+                            onChange={(e) => setParcelamentoStr(e.target.value)}
+                            sx={sx.inputField}
+                          />
+                        </Box>
+                      </Box>
+
+                      {/* Linha 3: Data Início e Primeiro Vencimento */}
+                      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
+                        <Box>
+                          <Typography sx={sx.inputLabel}>Data Início</Typography>
+                          <InputBase
+                            type="date"
+                            value={dataInicio}
+                            onChange={(e) => setDataInicio(e.target.value)}
+                            sx={sx.inputField}
+                          />
+                        </Box>
+                        <Box>
+                          <Typography sx={sx.inputLabel}>Primeiro Vencimento</Typography>
+                          <InputBase
+                            type="date"
+                            value={primeiroVencimento}
+                            onChange={(e) => setPrimeiroVencimento(e.target.value)}
+                            sx={sx.inputField}
+                          />
+                        </Box>
+                      </Box>
+
+                      {/* Alerta Amarelo de Vencimento Sugerido */}
+                      <Box sx={sx.warningBox}>
+                        <ErrorOutlineRoundedIcon sx={{ fontSize: 18, color: "#d97706", mt: "2px", flexShrink: 0 }} />
+                        <Typography sx={sx.warningText}>
+                          A data do primeiro vencimento foi sugerida com base no padrão contratual. Deseja alterar?
+                        </Typography>
+                      </Box>
+
+                      {/* Botões de Ação */}
+                      <Box sx={sx.actionRow}>
+                        <Button
+                          variant="outlined"
+                          onClick={handleCancelar}
+                          disabled={salvando}
+                          sx={sx.btnCancelar}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          variant="contained"
+                          disableElevation
+                          disabled={salvando}
+                          onClick={handleAprovarContrato}
+                          sx={sx.btnAprovar}
+                        >
+                          {salvando ? (
+                            <CircularProgress size={20} sx={{ color: "#fff" }} />
+                          ) : (
+                            "Aprovar e Criar Contrato"
+                          )}
+                        </Button>
+                      </Box>
+                    </Box>
                   </Box>
                 </Box>
               </Box>
-            </Box>
-          </Box>
+            )}
+          </>
+        )}
+
+        {/* Input file único, compartilhado pela dropzone e pelo botão "Substituir PDF" */}
+        {etapaAtual >= 3 && (
+          <input
+            type="file"
+            accept="application/pdf,image/*"
+            ref={fileInputRef}
+            style={{ display: "none" }}
+            onChange={handleFileChange}
+          />
         )}
       </Box>
 
@@ -1120,5 +1230,43 @@ const sx = {
     px: 3,
     py: 1,
     "&:hover": { bgcolor: "#1d4ed8" },
+  },
+
+  /* Upload / Dropzone */
+  uploadContainer: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 2.5,
+    maxWidth: 600,
+    mx: "auto",
+    mt: 2,
+  },
+  dropzone: {
+    border: "2px dashed #cbd5e1",
+    borderRadius: "16px",
+    bgcolor: "#fff",
+    p: 6,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    textAlign: "center",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+    "&:hover": { borderColor: "#2563eb", bgcolor: "#eff6ff" },
+  },
+  dropzoneActive: {
+    borderColor: "#2563eb",
+    bgcolor: "#eff6ff",
+    boxShadow: "0 0 0 4px rgba(37,99,235,0.1)",
+  },
+  infoCard: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: 1.5,
+    bgcolor: "#eff6ff",
+    border: "1px solid #bfdbfe",
+    borderRadius: "12px",
+    p: 2.5,
   },
 };

@@ -1,6 +1,7 @@
 // Imports de Páginas
 import Login from "./pages/login/login";
 import Register from "./pages/register/register";
+import TermosDeUso from "./pages/termos_de_uso/termos_de_uso";
 import ConfigPerfil from "./pages/config_perfil/config_perfil";
 import ConfigAlertas from "./pages/config_alertas/config_alertas";
 import ConfigSeguranca from "./pages/config_seguranca/config_seguranca";
@@ -27,6 +28,7 @@ function App() {
           {/* 🔓 PUBLIC */}
           <Route path="/" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/termos-de-uso" element={<TermosDeUso />} />
           
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/home" element={<ProtectedRoute><Navigate to="/dashboard" replace /></ProtectedRoute>} />

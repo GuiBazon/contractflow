@@ -375,12 +375,24 @@ function Register() {
               label={
                 <Typography sx={styles.termsLabel}>
                   Eu aceito os{" "}
-                  <Box component="span" sx={styles.termsLink}>
-                    Termos de Uso
+                  <Box
+                    component="a"
+                    href="/termos-de-uso"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={styles.termsLink}
+                  >
+                    Termos e Condições de Uso
                   </Box>{" "}
                   e a{" "}
-                  <Box component="span" sx={styles.termsLink}>
-                    Política de Privacidade
+                  <Box
+                    component="a"
+                    href="/termos-de-uso#clausula-13"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={styles.termsLink}
+                  >
+                    Política de Privacidade (Cláusula 13)
                   </Box>
                 </Typography>
               }
@@ -703,6 +715,7 @@ const styles = {
     color: "#3478ed",
     fontWeight: 600,
     cursor: "pointer",
+    textDecoration: "none",
 
     "&:hover": {
       textDecoration: "underline",
