@@ -5,10 +5,6 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "splash": {
-      "resizeMode": "contain",
-      "backgroundColor": "#0B1120"
-    },
     "androidStatusBar": {
       "backgroundColor": "#0B1120",
       "barStyle": "light-content"
@@ -16,11 +12,7 @@
     "ios": {
       "supportsTablet": true
     },
-    "android": {
-      "navigationBar": {
-        "visible": "leanback"
-      }
-    },
+    "android": {},
     "web": {
       "bundler": "metro"
     },
@@ -34,7 +26,14 @@
           "behavior": "overlay-swipe"
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-splash-screen",
+        {
+          "resizeMode": "contain",
+          "backgroundColor": "#0B1120"
+        }
+      ]
     ]
   }
 }
