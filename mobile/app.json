@@ -8,11 +8,7 @@
     "ios": {
       "supportsTablet": true
     },
-    "android": {
-      "navigationBar": {
-        "visible": "leanback"
-      }
-    },
+    "android": {},
     "web": {
       "bundler": "metro"
     },
