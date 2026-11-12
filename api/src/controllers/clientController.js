@@ -1,5 +1,7 @@
 const db = require('../config/db');
 const { onlyDigits, isValidCpfCnpj, isEmail, isState, str } = require('../utils/validators');
+const { pagination,integer } = require('../utils/query');
+const { asyncHandler } = require('../utils/http');
 
 const VALID_FIELDS = [
   'nome_razao_social',
@@ -18,10 +20,8 @@ const VALID_FIELDS = [
 
 // Todos os clientes sempre filtrados pelo dono (RNF04 / isolamento de dados)
 async function listClientes(req, res) {
-  const page = Math.max(1, Number(req.query.page) || 1);
-  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+  const { page,limit,offset } = pagination(req.query);
   const q = str(req.query.q);
-  const offset = (page - 1) * limit;
 
   const where = ['cl.usuario_id = ?'];
   const params = [req.user.id];
@@ -62,6 +62,7 @@ async function listClientes(req, res) {
 
 async function getClienteById(req, res) {
   const { id } = req.params;
+  integer(id,'Cliente');
 
   try {
     const [rows] = await db.execute(
@@ -80,20 +81,22 @@ async function getClienteById(req, res) {
   }
 }
 
-function validateCliente(body) {
+function validateCliente(body, partial = false) {
   const errors = [];
   const nome = str(body.nome_razao_social);
-  if (!nome) errors.push('Nome/Razão social é obrigatório');
+  if ((!partial || Object.hasOwn(body,'nome_razao_social')) && !nome) errors.push('Nome/Razão social é obrigatório');
 
   const cpfCnpj = onlyDigits(body.cpf_cnpj);
-  if (!body.cpf_cnpj) {
+  if ((!partial || Object.hasOwn(body,'cpf_cnpj')) && !body.cpf_cnpj) {
     errors.push('CPF/CNPJ é obrigatório');
-  } else if (!isValidCpfCnpj(cpfCnpj).ok) {
+  } else if (body.cpf_cnpj && !isValidCpfCnpj(cpfCnpj).ok) {
     errors.push('CPF/CNPJ inválido');
   }
 
   if (body.email && !isEmail(body.email)) errors.push('E-mail inválido');
   if (body.estado && !isState(body.estado)) errors.push('Estado deve ter 2 letras (UF)');
+  const lengths = { nome_razao_social: 200,email: 150,telefone: 30,cep: 20,logradouro: 200,numero: 20,complemento: 100,bairro: 100,cidade: 100,observacoes: 5000 };
+  for (const [field,max] of Object.entries(lengths)) if (str(body[field]).length > max) errors.push(`${field} excede ${max} caracteres`);
   return { errors, nome, cpfCnpj };
 }
 
@@ -154,6 +157,7 @@ async function createCliente(req, res) {
 
 async function updateCliente(req, res) {
   const { id } = req.params;
+  integer(id,'Cliente');
   const campos = req.body;
 
   if (Object.keys(campos).length === 0) {
@@ -176,6 +180,8 @@ async function updateCliente(req, res) {
 
   const updates = [];
   const values = [];
+  const { errors } = validateCliente(campos,true);
+  if (errors.length) return res.status(400).json({ message: errors.join('; ') });
 
   for (const field of VALID_FIELDS) {
     if (Object.prototype.hasOwnProperty.call(campos, field)) {
@@ -230,6 +236,7 @@ async function updateCliente(req, res) {
 
 async function deleteCliente(req, res) {
   const { id } = req.params;
+  integer(id,'Cliente');
 
   try {
     const [result] = await db.execute(
@@ -254,9 +261,9 @@ async function deleteCliente(req, res) {
 }
 
 module.exports = {
-  listClientes,
-  getClienteById,
-  createCliente,
-  updateCliente,
-  deleteCliente,
+  listClientes: asyncHandler(listClientes),
+  getClienteById: asyncHandler(getClienteById),
+  createCliente: asyncHandler(createCliente),
+  updateCliente: asyncHandler(updateCliente),
+  deleteCliente: asyncHandler(deleteCliente),
 };

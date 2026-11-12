@@ -29,6 +29,11 @@ function makeDb() {
   };
 
   async function dispatch(sql, params) {
+    // Estado persistido da sessão; controles reais de desativação/revogação
+    // são exercitados também pela suíte com MySQL.
+    if (String(sql).startsWith('SELECT id, nome, email, perfil, ativo, token_version FROM usuarios WHERE id')) {
+      return [[{ id: params[0], nome: 'Usuario', email: 'u@example.com', perfil: 'USUARIO', ativo: 1, token_version: 0 }]];
+    }
     for (const { substr, handler } of handlers) {
       if (String(sql).includes(substr)) {
         return handler(sql, params);
@@ -188,6 +193,7 @@ describe('API — regras de negócio (pagamentos, status, documentos)', () => {
     fake.reset();
     fake
       .when('cl.nome_razao_social', async () => [[{ id: 1, status: 'ATIVO' }]])
+      .when('SELECT * FROM contratos', async () => [[{ id: 1, status: 'ATIVO' }]])
       .when('SELECT * FROM parcelas', async () => [[{ id: 1, valor: 100, status: 'CANCELADA', numero: 1 }]]);
 
     const res = await request(app)
@@ -203,6 +209,7 @@ describe('API — regras de negócio (pagamentos, status, documentos)', () => {
     fake.reset();
     fake
       .when('cl.nome_razao_social', async () => [[{ id: 1, status: 'ATIVO' }]])
+      .when('SELECT * FROM contratos', async () => [[{ id: 1, status: 'ATIVO' }]])
       .when('SELECT * FROM parcelas', async () => [[{ id: 1, valor: 100, status: 'PENDENTE', numero: 1 }]])
       .when('SELECT COALESCE(SUM(valor),0)', async () => [[{ totalPago: 0 }]]);
 
@@ -219,6 +226,7 @@ describe('API — regras de negócio (pagamentos, status, documentos)', () => {
     fake.reset();
     fake
       .when('cl.nome_razao_social', async () => [[{ id: 1, status: 'ATIVO' }]])
+      .when('SELECT * FROM contratos', async () => [[{ id: 1, status: 'ATIVO' }]])
       .when('SELECT * FROM parcelas', async () => [[{ id: 1, valor: 100, status: 'PENDENTE', numero: 1 }]])
       // antes de pagar: total 0
       .when('AS totalPago', async () => [[{ totalPago: 0 }]])
@@ -241,7 +249,7 @@ describe('API — regras de negócio (pagamentos, status, documentos)', () => {
 
   test('gerar parcelas em contrato ENCERRADO retorna 400 (RN12)', async () => {
     fake.reset();
-    fake.when('cl.nome_razao_social', async () => [[{ id: 1, status: 'ENCERRADO', data_inicio: '2026-01-01' }]]);
+    fake.when('SELECT * FROM contratos', async () => [[{ id: 1, status: 'ENCERRADO', data_inicio: '2026-01-01' }]]);
 
     const res = await request(app)
       .post('/api/contratos/1/parcelas')
@@ -268,8 +276,9 @@ describe('API — regras de negócio (pagamentos, status, documentos)', () => {
   test('alterar número do contrato após pagamentos retorna 400', async () => {
     fake.reset();
     fake
-      .when('cl.nome_razao_social', async () => [[{ id: 1, status: 'ATIVO', numero: 'OLD', valor_total: 1000 }]])
-      .when('COUNT(*) AS total', async () => [[{ total: 1 }]]);
+      .when('SELECT * FROM contratos', async () => [[{ id: 1, status: 'ATIVO', numero: 'OLD', valor_total: 1000 }]])
+      .when('SELECT * FROM parcelas WHERE contrato_id', async () => [[]])
+      .when('COUNT(*) AS pagos', async () => [[{ pagos: 1 }]]);
 
     const res = await request(app)
       .put('/api/contratos/1')
@@ -282,7 +291,9 @@ describe('API — regras de negócio (pagamentos, status, documentos)', () => {
 
   test('excluir documento ORIGINAL retorna 400 (RN10/RN11)', async () => {
     fake.reset();
-    fake.when('SELECT d.*', async () => [[{ id: 1, nome_arquivo: 'x.pdf', tipo: 'ORIGINAL' }]]);
+    fake
+      .when('SELECT * FROM contratos', async () => [[{ id: 1, status: 'ATIVO' }]])
+      .when('SELECT d.*', async () => [[{ id: 1, nome_arquivo: 'x.pdf', tipo: 'ORIGINAL' }]]);
 
     const res = await request(app)
       .delete('/api/documentos/1/documentos/1')

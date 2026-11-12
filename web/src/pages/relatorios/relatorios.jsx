@@ -405,7 +405,7 @@ export default function Relatorios() {
     return { tipo: "receitas", titulo: "Top 4 Maiores Contratos", itens: [] };
   }, [relatorioSelecionado, dadosFiltrados]);
 
-  /* ── Exportação do Relatório para Arquivo XLS / CSV (100% REAL) ── */
+  /* ── Exportação do Relatório para CSV (100% REAL) ── */
   function handleExportarXLS() {
     try {
       const relConfig = RELATORIOS_CONFIG.find((r) => r.id === relatorioSelecionado);
@@ -669,7 +669,7 @@ export default function Relatorios() {
                 title="Exportar dados para Excel (.csv)"
               >
                 <FileDownloadRoundedIcon sx={{ fontSize: 15 }} />
-                Exportar XLS
+                Exportar CSV
               </Box>
             </Box>
 

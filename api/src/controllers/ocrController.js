@@ -1,367 +1,185 @@
-// Controller de OCR (RF08-RF13 / RN09 / RN17 / RN18).
-// O resultado da leitura e SEMPRE uma sugestao (status PENDENTE) e precisa de
-// confirmacao do usuario (RN17). A confirmacao cria o contrato de verdade (RN09).
-
-const fs = require('fs');
+const fs = require('fs/promises');
 const path = require('path');
 const crypto = require('crypto');
 const db = require('../config/db');
-const {
-  UPLOAD_ROOT, SUBDIRS, buildUploader, uploadSizeHandler, ensureUploadDirs,
-} = require('../config/uploads');
-const { processarArquivo } = require('../services/ocrService');
-const { criarContratoComParcelas, normalizarVencimentosImportados } = require('../services/contratoService');
+const { UPLOAD_ROOT, SUBDIRS, buildUploader, uploadSizeHandler, ensureUploadDirs } = require('../config/uploads');
+const { extrairTextoDeArquivo, extrairDados } = require('../services/ocrService');
+const { criarContratoComParcelas } = require('../services/contratoService');
 const { registrarHistorico } = require('../services/historicoService');
-const { onlyDigits, isValidCpfCnpj, str } = require('../utils/validators');
+const { onlyDigits, isDate, isValidCpfCnpj, str } = require('../utils/validators');
+const { integer } = require('../utils/query');
+const { HttpError, asyncHandler } = require('../utils/http');
 
-function hashArquivo(caminho) {
-  const buf = fs.readFileSync(caminho);
-  return crypto.createHash('sha256').update(buf).digest('hex');
-}
-
-function caminhoSeguro(subdir, nomeArquivo) {
-  const full = path.join(UPLOAD_ROOT, subdir, nomeArquivo);
-  const root = path.join(UPLOAD_ROOT, subdir);
-  if (!full.startsWith(root)) {
-    throw Object.assign(new Error('Caminho de arquivo inválido'), { status: 400 });
-  }
+function safePath(subdir, filename) {
+  const root = path.resolve(UPLOAD_ROOT, subdir);
+  const full = path.resolve(root, filename);
+  if (path.relative(root, full).startsWith('..') || path.isAbsolute(path.relative(root, full))) throw new HttpError(400, 'Caminho de arquivo inválido');
   return full;
 }
 
-async function obterExtracao(id, usuarioId) {
-  const [rows] = await db.execute(
-    'SELECT * FROM extracao_ocr WHERE id = ? AND usuario_id = ?',
-    [id, usuarioId]
-  );
-  return rows[0] || null;
+function reviewed(body) {
+  const dados = body?.dados ?? body?.dados_json;
+  if (!dados || typeof dados !== 'object' || Array.isArray(dados)) throw new HttpError(400, 'Corpo deve conter o objeto "dados" revisado');
+  const allowed = new Set(['cliente_id','cliente_novo','cliente_nome','cpf_cnpj','numero','tipo','descricao','valor_total','valor_parcela','quantidade_parcelas','data_inicio','data_fim','vencimentos','forma_pagamento','juros_percentual','multa_percentual','observacoes']);
+  if (Object.keys(dados).some(k => !allowed.has(k))) throw new HttpError(400, 'Campo não permitido na revisão');
+  if (dados.cliente_id != null && dados.cliente_novo != null) throw new HttpError(400, 'Informe cliente_id ou cliente_novo, não ambos.');
+  return { ...dados };
 }
 
-// Salva o arquivo original em uploads/ocr; o arquivo so e "aprovado" (ORIGINAL) na confirmacao.
-function persistirNoBanco({ usuarioId, arquivo, textoExtraido, dados }) {
-  const caminho = path.join(SUBDIRS.OCR, arquivo.filename);
-  return db.execute(
-    `INSERT INTO extracao_ocr
-     (usuario_id, nome_original, nome_arquivo, caminho, tipo_arquivo, tamanho,
-      texto_extraido, dados_json, confianca, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDENTE')`,
-    [
-      usuarioId,
-      arquivo.originalname,
-      arquivo.filename,
-      caminho,
-      arquivo.mimetype,
-      arquivo.size,
-      textoExtraido,
-      JSON.stringify(dados.dados || {}),
-      dados.confianca || 0,
-    ]
-  );
+// Revisões e confirmações não devem apagar silenciosamente as datas
+// reconhecidas nem a quantidade que indica uma lista incompleta.
+function preserveSchedule(dados, original) {
+  const stored = typeof original === 'string' ? JSON.parse(original) : original;
+  if (Array.isArray(stored?.vencimentos) && stored.vencimentos.length) {
+    if (!Object.hasOwn(dados, 'vencimentos')) dados.vencimentos = stored.vencimentos;
+    if (!Array.isArray(dados.vencimentos) || !dados.vencimentos.length || dados.vencimentos.some(date => !isDate(date))) {
+      throw new HttpError(400, 'Mantenha e revise os vencimentos reconhecidos; envie uma lista não vazia de datas válidas.');
+    }
+    if (!Object.hasOwn(dados, 'quantidade_parcelas') && stored.quantidade_parcelas != null) {
+      dados.quantidade_parcelas = stored.quantidade_parcelas;
+    }
+    if (dados.quantidade_parcelas == null && stored.quantidade_parcelas != null) {
+      throw new HttpError(400, 'Informe a quantidade de parcelas para revisar os vencimentos reconhecidos.');
+    }
+  }
+  return dados;
 }
 
-// POST /api/ocr/extract (multipart 'arquivo')
+function mergeReview(dados, original) {
+  const stored = (typeof original === 'string' ? JSON.parse(original) : original) || {};
+  const merged = { ...stored, ...dados };
+  // Escolher outra forma de identificar o cliente descarta a seleção anterior.
+  if (Object.hasOwn(dados, 'cliente_id') && !Object.hasOwn(dados, 'cliente_novo')) delete merged.cliente_novo;
+  if (Object.hasOwn(dados, 'cliente_novo') && !Object.hasOwn(dados, 'cliente_id')) delete merged.cliente_id;
+  return preserveSchedule(merged, stored);
+}
+
+function scheduleMessage(dados) {
+  const dates = dados.vencimentos;
+  if (Array.isArray(dates) && dates.length && (dados.quantidade_parcelas == null || dados.quantidade_parcelas === '')) {
+    return 'Informe a quantidade de parcelas e revise os vencimentos reconhecidos antes de confirmar.';
+  }
+  const quantity = Number(dados.quantidade_parcelas);
+  if (Array.isArray(dates) && Number.isSafeInteger(quantity) && quantity > 0 && dates.length !== quantity) {
+    return `A lista de vencimentos contém ${dates.length} data(s) para ${quantity} parcela(s). Revise e informe uma data para cada parcela antes de confirmar.`;
+  }
+  return null;
+}
+
+async function owned(conn, id, usuarioId, lock = false) {
+  const [[row]] = await conn.query(`SELECT * FROM extracao_ocr WHERE id = ? AND usuario_id = ?${lock ? ' FOR UPDATE' : ''}`, [integer(id, 'Extração'), usuarioId]);
+  if (!row) throw new HttpError(404, 'Extração não encontrada');
+  return row;
+}
+
 const extract = [
-  (req, res, next) => {
-    ensureUploadDirs();
-    buildUploader(SUBDIRS.OCR, 'arquivo')(req, res, next);
-  },
+  (req, res, next) => { ensureUploadDirs(); buildUploader(SUBDIRS.OCR, 'arquivo')(req, res, next); },
   uploadSizeHandler,
-  async (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ message: 'Nenhum arquivo enviado' });
-    }
+  asyncHandler(async (req, res) => {
+    if (!req.file) throw new HttpError(400, 'Nenhum arquivo enviado');
+    const filename = safePath(SUBDIRS.OCR, req.file.filename);
     try {
-      const caminho = caminhoSeguro(SUBDIRS.OCR, req.file.filename);
-      const leitura = await processarArquivo({
-        caminho,
-        tipoArquivo: req.file.mimetype,
-      });
-
-      const [result] = await persistirNoBanco({
-        usuarioId: req.user.id,
-        arquivo: req.file,
-        textoExtraido: leitura.texto,
-        dados: leitura,
-      });
-
-      return res.status(201).json({
-        extracao_id: result.insertId,
-        dados: leitura.dados,
-        campos: leitura.campos,
-        confianca: leitura.confianca,
-        aviso: (leitura.avisos || []).join(' ') || null,
-      });
-    } catch (error) {
-      fs.unlink(caminhoSeguro(SUBDIRS.OCR, req.file.filename), () => {});
-      const status = error.status || 500;
-      console.error('erro ao extrair dados via OCR:', error);
-      return res.status(status).json({ message: error.message || 'Erro ao processar o OCR' });
-    }
-  },
+      const leitura = await extrairTextoDeArquivo({ caminho: filename, tipoArquivo: req.file.mimetype });
+      const sugestao = extrairDados(leitura.text);
+      const [result] = await db.execute(`INSERT INTO extracao_ocr
+       (usuario_id,nome_original,nome_arquivo,caminho,tipo_arquivo,tamanho,texto_extraido,dados_json,confianca,status)
+       VALUES (?,?,?,?,?,?,?,?,?,'PENDENTE')`, [req.user.id, req.file.originalname, req.file.filename, path.join(SUBDIRS.OCR, req.file.filename), req.file.mimetype, req.file.size, leitura.text, JSON.stringify(sugestao.dados), sugestao.confianca]);
+      const warnings = [leitura.aviso, scheduleMessage(sugestao.dados), sugestao.campos.length < 3 ? 'Poucos campos identificados; revise e preencha os dados antes de confirmar.' : null].filter(Boolean);
+      res.status(201).json({ extracao_id: result.insertId, dados: sugestao.dados, campos: sugestao.campos, confianca: sugestao.confianca,
+        aviso: warnings.join(' ') || null });
+    } catch (err) { await fs.unlink(filename).catch(() => {}); throw err; }
+  }),
 ];
 
-// GET /api/ocr/:id — retorna a extracao pendente/confirmada do usuário
 async function getExtracao(req, res) {
-  const { id } = req.params;
-  try {
-    const extracao = await obterExtracao(id, req.user.id);
-    if (!extracao) {
-      return res.status(404).json({ message: 'Extração não encontrada' });
-    }
-    return res.json({
-      extracao_id: extracao.id,
-      nome_original: extracao.nome_original,
-      tipo_arquivo: extracao.tipo_arquivo,
-      status: extracao.status,
-      confianca: extracao.confianca,
-      dados: extracao.dados_json || {},
-    });
-  } catch (error) {
-    console.error('erro ao buscar extração:', error);
-    return res.status(500).json({ message: 'Erro ao buscar extração' });
-  }
+  const row = await owned(db, req.params.id, req.user.id);
+  res.json({ extracao_id: row.id, nome_original: row.nome_original, tipo_arquivo: row.tipo_arquivo, status: row.status, confianca: Number(row.confianca), dados: row.dados_json || {} });
 }
 
-// PATCH /api/ocr/:id — revisão/correção dos dados antes de confirmar (RF12/RF13/RN18)
 async function updateExtracao(req, res) {
-  const { id } = req.params;
-  const dados = req.body.dados;
-  if (!dados || typeof dados !== 'object' || Array.isArray(dados)) {
-    return res.status(400).json({ message: 'Corpo deve conter o objeto "dados" revisado' });
-  }
+  const dados = reviewed(req.body);
+  const conn = await db.getConnection();
   try {
-    const extracao = await obterExtracao(id, req.user.id);
-    if (!extracao) {
-      return res.status(404).json({ message: 'Extração não encontrada' });
-    }
-    if (extracao.status !== 'PENDENTE') {
-      return res.status(400).json({ message: 'Extração já foi confirmada ou cancelada' });
-    }
-    await db.execute('UPDATE extracao_ocr SET dados_json = ? WHERE id = ?', [
-      JSON.stringify(dados),
-      id,
-    ]);
-    return res.json({ message: 'Dados revisados com sucesso', extracao_id: Number(id), dados });
-  } catch (error) {
-    console.error('erro ao revisar extração:', error);
-    return res.status(500).json({ message: 'Erro ao revisar extração' });
-  }
+    await conn.beginTransaction();
+    const row = await owned(conn, req.params.id, req.user.id, true);
+    if (row.status !== 'PENDENTE') throw new HttpError(409, 'Extração já foi confirmada ou cancelada');
+    const merged = mergeReview(dados, row.dados_json);
+    await conn.execute('UPDATE extracao_ocr SET dados_json = ? WHERE id = ?', [JSON.stringify(merged), row.id]);
+    await conn.commit();
+    res.json({ message: 'Dados revisados com sucesso', extracao_id: row.id, dados: merged });
+  } catch (err) { await conn.rollback(); throw err; }
+  finally { conn.release(); }
 }
 
-// Cria (ou resolve) o cliente com os dados revisados.
-// cliente_id usa um cliente existente; cliente_novo recebe nome + cpf/cnpj.
-// Retorna { id, criado } para permitir desfazer a criacao em caso de falha.
-async function resolverCliente({ usuarioId, dados }) {
-  if (dados.cliente_id) {
-    const [rows] = await db.execute(
-      'SELECT id, nome_razao_social FROM clientes WHERE id = ? AND usuario_id = ?',
-      [dados.cliente_id, usuarioId]
-    );
-    if (rows.length === 0) {
-      throw Object.assign(new Error('Cliente selecionado não pertence a esta conta'), { status: 400 });
-    }
-    return { id: rows[0].id, criado: false };
+async function resolveClient(conn, usuarioId, dados) {
+  if (dados.cliente_id !== undefined) {
+    const [[client]] = await conn.query('SELECT id FROM clientes WHERE id = ? AND usuario_id = ?', [integer(dados.cliente_id, 'Cliente'), usuarioId]);
+    if (!client) throw new HttpError(400, 'Cliente selecionado não pertence a esta conta');
+    return client.id;
   }
-
-  if (dados.cliente_novo && str(dados.cliente_novo.nome_razao_social)) {
-    const nome = str(dados.cliente_novo.nome_razao_social);
-    const cpfCnpj = onlyDigits(dados.cliente_novo.cpf_cnpj || '');
-    if (!cpfCnpj) {
-      throw Object.assign(new Error('Informe o CPF/CNPJ do novo cliente'), { status: 400 });
-    }
-    if (!isValidCpfCnpj(cpfCnpj).ok) {
-      throw Object.assign(new Error('CPF/CNPJ do novo cliente é inválido'), { status: 400 });
-    }
-
-    // Se ja existe cliente com o mesmo CPF/CNPJ nesta conta, reaproveita
-    // (evita ER_DUP_ENTRY e importacoes duplicadas do mesmo cliente).
-    if (cpfCnpj) {
-      const [existentes] = await db.execute(
-        'SELECT id FROM clientes WHERE usuario_id = ? AND cpf_cnpj = ? LIMIT 1',
-        [usuarioId, cpfCnpj]
-      );
-      if (existentes.length > 0) {
-        return { id: existentes[0].id, criado: false };
-      }
-    }
-
-    const [result] = await db.execute(
-      `INSERT INTO clientes (usuario_id, nome_razao_social, cpf_cnpj, observacoes)
-       VALUES (?, ?, ?, ?)`,
-      [usuarioId, nome, cpfCnpj, 'Cadastrado via importação de contrato']
-    );
-    return { id: result.insertId, criado: true };
-  }
-
-  throw Object.assign(new Error('Informe cliente_id ou cliente_novo para confirmar'), { status: 400 });
+  const name = str(dados.cliente_novo?.nome_razao_social);
+  const cpf = onlyDigits(dados.cliente_novo?.cpf_cnpj || '');
+  if (name.length < 2 || name.length > 200 || !isValidCpfCnpj(cpf).ok) throw new HttpError(400, 'Informe cliente_id ou cliente_novo com nome e CPF/CNPJ válidos');
+  const [result] = await conn.execute(`INSERT INTO clientes (usuario_id,nome_razao_social,cpf_cnpj,observacoes)
+   VALUES (?,?,?,'Cadastrado via importação de contrato') ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id)`, [usuarioId, name, cpf]);
+  return result.insertId;
 }
 
-// Desfaz a criacao de um cliente feita nesta confirmacao quando o contrato nao
-// chega a ser criado (evita deixar cliente orfao na base).
-async function reverterClienteCriado(clienteId) {
-  if (!clienteId) return;
-  try {
-    await db.execute('DELETE FROM clientes WHERE id = ?', [clienteId]);
-  } catch (e) {
-    console.error('nao foi possivel reverter o cliente criado:', e.message);
-  }
-}
-
-// POST /api/ocr/:id/confirmar — valida, cria cliente (se novo) e contrato+parcelas (RN09/RN17)
 async function confirmar(req, res) {
-  const { id } = req.params;
-  const dados = req.body.dados;
-  if (!dados || typeof dados !== 'object' || Array.isArray(dados)) {
-    return res.status(400).json({ message: 'Corpo deve conter o objeto "dados" revisado' });
-  }
-
-  let extracao;
-  let clienteCriadoId = null;
-  let contratoCriado = false;
+  const dados = reviewed(req.body);
+  const conn = await db.getConnection();
+  let copied, source, committed = false;
   try {
-    extracao = await obterExtracao(id, req.user.id);
-    if (!extracao) {
-      return res.status(404).json({ message: 'Extração não encontrada' });
+    await conn.beginTransaction();
+    const row = await owned(conn, req.params.id, req.user.id, true);
+    if (row.status !== 'PENDENTE') throw new HttpError(409, 'Extração já foi confirmada ou cancelada');
+    preserveSchedule(dados, row.dados_json);
+    const warning = scheduleMessage(dados);
+    if (warning) throw new HttpError(400, warning);
+    const clientId = await resolveClient(conn, req.user.id, dados);
+    const payload = { ...dados, cliente_id: clientId, numero: dados.numero || `OCR-${row.id}`,
+      valor_total: dados.valor_total ?? (dados.valor_parcela !== undefined ? Number(dados.valor_parcela) * Number(dados.quantidade_parcelas) : undefined),
+      data_inicio: dados.data_inicio || dados.vencimentos?.[0],
+      data_fim: dados.data_fim || dados.vencimentos?.at(-1) };
+    const { contrato, erro } = await criarContratoComParcelas({ usuarioId: req.user.id, dados: payload, connection: conn });
+    if (erro) throw erro;
+    ensureUploadDirs();
+    const name = crypto.randomUUID() + path.extname(row.nome_arquivo);
+    source = safePath(SUBDIRS.OCR, row.nome_arquivo);
+    copied = safePath(SUBDIRS.DOCS, name);
+    try { await fs.copyFile(source, copied, require('fs').constants.COPYFILE_EXCL); }
+    catch (err) { if (err.code === 'ENOENT') throw new HttpError(409, 'Documento original ausente; envie o arquivo novamente'); throw err; }
+    const hash = crypto.createHash('sha256').update(await fs.readFile(copied)).digest('hex');
+    await conn.execute(`INSERT INTO documentos (contrato_id,usuario_id,nome_original,nome_arquivo,caminho,tipo,mime,tamanho,hash,descricao)
+     VALUES (?,?,?,?,?,'ORIGINAL',?,?,?,'Documento original importado por OCR')`, [contrato.id, req.user.id, row.nome_original, name, path.join(SUBDIRS.DOCS,name), row.tipo_arquivo, row.tamanho, hash]);
+    await registrarHistorico(conn, { contratoId: contrato.id, usuarioId: req.user.id, acao: 'DOCUMENTO', descricao: 'Documento original importado por OCR confirmado' });
+    await conn.execute("UPDATE extracao_ocr SET status='CONFIRMADA', dados_json=? WHERE id=?", [JSON.stringify(dados), row.id]);
+    await conn.commit();
+    committed = true;
+    await fs.unlink(source).catch(() => {});
+    res.status(201).json({ message: 'Contrato confirmado e criado com sucesso', contrato_id: contrato.id, numero: contrato.numero });
+  } catch (err) {
+    if (!committed) {
+      await conn.rollback();
+      if (copied) await fs.unlink(copied).catch(() => {});
     }
-    if (extracao.status !== 'PENDENTE') {
-      return res.status(400).json({ message: 'Extração já foi confirmada ou cancelada' });
-    }
-
-    const { id: clienteId, criado: clienteCriado } = await resolverCliente({
-      usuarioId: req.user.id,
-      dados,
-    });
-    if (clienteCriado) clienteCriadoId = clienteId;
-
-    const valorTotal = dados.valor_total
-      ?? (dados.valor_parcela && dados.quantidade_parcelas
-        ? Number((Number(dados.valor_parcela) * Number(dados.quantidade_parcelas)).toFixed(2))
-        : null);
-
-    // Reconcilia vencimentos x quantidade de parcelas (contratos reais listam
-    // apenas alguns vencimentos; gera a agenda completa a partir da data inicial).
-    const { vencimentos, data_inicio, data_fim } = normalizarVencimentosImportados({
-      quantidade_parcelas: dados.quantidade_parcelas,
-      vencimentos: dados.vencimentos,
-      data_inicio: dados.data_inicio,
-      data_fim: dados.data_fim,
-    });
-
-    const payload = {
-      cliente_id: clienteId,
-      numero: dados.numero || `CTR-${new Date().getTime().toString().slice(-6)}`,
-      tipo: dados.tipo || 'SERVIÇO',
-      descricao: dados.descricao || 'Contrato importado por OCR',
-      valor_total: valorTotal,
-      data_inicio,
-      data_fim,
-      vencimentos,
-      quantidade_parcelas: Number(dados.quantidade_parcelas) || undefined,
-      valor_parcela: dados.valor_parcela ? Number(dados.valor_parcela) : undefined,
-      forma_pagamento: dados.forma_pagamento || 'PIX',
-      juros_percentual: Number(dados.juros_percentual || 0),
-      multa_percentual: Number(dados.multa_percentual || 0),
-      status: 'ATIVO',
-    };
-
-    if (!payload.valor_total || payload.valor_total <= 0) {
-      throw Object.assign(new Error('Valor total do contrato é obrigatório'), { status: 400 });
-    }
-
-    const { contrato, erro } = await criarContratoComParcelas({
-      usuarioId: req.user.id,
-      dados: payload,
-    });
-    if (erro) {
-      await reverterClienteCriado(clienteCriadoId);
-      const status = erro.status || 400;
-      return res.status(status).json({ message: erro.message });
-    }
-    contratoCriado = true;
-
-    // move o arquivo de uploads/ocr para uploads/docs e associa como ORIGINAL (RN11)
-    const origem = caminhoSeguro(SUBDIRS.OCR, extracao.nome_arquivo);
-    const destinoArquivo = `${crypto.randomUUID()}${path.extname(extracao.nome_arquivo)}`;
-    const destino = caminhoSeguro(SUBDIRS.DOCS, destinoArquivo);
-    fs.renameSync(origem, destino);
-
-    const conn = await db.getConnection();
-    try {
-      await conn.execute(
-        `INSERT INTO documentos
-         (contrato_id, usuario_id, nome_original, nome_arquivo, caminho, tipo, mime, tamanho, hash, descricao)
-         VALUES (?, ?, ?, ?, ?, 'ORIGINAL', ?, ?, ?, ?)`,
-        [
-          contrato.id,
-          req.user.id,
-          extracao.nome_original,
-          destinoArquivo,
-          path.join(SUBDIRS.DOCS, destinoArquivo),
-          extracao.tipo_arquivo,
-          extracao.tamanho,
-          hashArquivo(destino),
-          'Documento original importado por OCR',
-        ]
-      );
-      await registrarHistorico(conn, {
-        contratoId: contrato.id,
-        usuarioId: req.user.id,
-        acao: 'DOCUMENTO',
-        descricao: 'Documento original importado por OCR confirmado',
-      });
-      await conn.commit();
-      conn.release();
-    } catch (error) {
-      if (conn) {
-        await conn.rollback().catch(() => {});
-        conn.release();
-      }
-      throw error;
-    }
-
-    await db.execute("UPDATE extracao_ocr SET status = 'CONFIRMADA' WHERE id = ?", [id]);
-
-    return res.status(201).json({
-      message: 'Contrato confirmado e criado com sucesso',
-      contrato_id: contrato.id,
-      numero: contrato.numero,
-    });
-  } catch (error) {
-    if (clienteCriadoId && !contratoCriado) {
-      await reverterClienteCriado(clienteCriadoId);
-    }
-    const status = error.status || 500;
-    console.error('erro ao confirmar extração:', error);
-    if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ message: 'Já existe um contrato com esses dados' });
-    }
-    return res.status(status).json({ message: error.message || 'Erro ao confirmar extração' });
-  }
+    if (err.code === 'ER_DUP_ENTRY') throw new HttpError(409, 'Já existe um contrato com esse número');
+    throw err;
+  } finally { conn.release(); }
 }
 
-// DELETE /api/ocr/:id — cancela a extração e apaga o arquivo
 async function cancelarExtracao(req, res) {
-  const { id } = req.params;
+  const conn = await db.getConnection();
   try {
-    const extracao = await obterExtracao(id, req.user.id);
-    if (!extracao) {
-      return res.status(404).json({ message: 'Extração não encontrada' });
-    }
-    if (extracao.status !== 'PENDENTE') {
-      return res.status(400).json({ message: 'Extração já foi confirmada ou cancelada' });
-    }
-    await db.execute("UPDATE extracao_ocr SET status = 'CANCELADA' WHERE id = ?", [id]);
-    fs.unlink(caminhoSeguro(SUBDIRS.OCR, extracao.nome_arquivo), () => {});
-    return res.json({ message: 'Extração cancelada' });
-  } catch (error) {
-    console.error('erro ao cancelar extração:', error);
-    return res.status(500).json({ message: 'Erro ao cancelar extração' });
-  }
+    await conn.beginTransaction();
+    const row = await owned(conn, req.params.id, req.user.id, true);
+    if (row.status !== 'PENDENTE') throw new HttpError(409, 'Extração já foi confirmada ou cancelada');
+    await conn.execute("UPDATE extracao_ocr SET status='CANCELADA' WHERE id=?", [row.id]);
+    await conn.commit();
+    await fs.unlink(safePath(SUBDIRS.OCR,row.nome_arquivo)).catch(() => {});
+    res.json({ message: 'Extração cancelada' });
+  } catch (err) { await conn.rollback(); throw err; }
+  finally { conn.release(); }
 }
 
-module.exports = {
-  extract,
-  getExtracao,
-  updateExtracao,
-  confirmar,
-  cancelarExtracao,
-};
+module.exports = { extract, getExtracao, updateExtracao, confirmar, cancelarExtracao };

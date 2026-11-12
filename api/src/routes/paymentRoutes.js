@@ -13,17 +13,14 @@ const allRouter = express.Router();
 router.use(authMiddleware);
 allRouter.use(authMiddleware);
 
-// Rotas com ID do pagamento direto (ex: PATCH /api/pagamentos/:id/estornar)
+// Compatibilidade com o cliente Web da Sprint 1.
+router.get('/', listAllPagamentos);
 router.patch('/:id/estornar', estornarPagamento);
 router.patch('/:id/reverse', estornarPagamento);
-
-// Rotas aninhadas por contrato
+router.post('/:pagamentoId/estorno', require('../utils/http').asyncHandler(require('../controllers/paymentReversalController').reverse));
 router.get('/:contratoId/pagamentos', listPagamentos);
 router.post('/:contratoId/pagamentos', createPagamento);
 
-// Listagem geral de receitas / pagamentos
 allRouter.get('/', listAllPagamentos);
-allRouter.patch('/:id/estornar', estornarPagamento);
-allRouter.patch('/:id/reverse', estornarPagamento);
 
 module.exports = { router, allRouter };

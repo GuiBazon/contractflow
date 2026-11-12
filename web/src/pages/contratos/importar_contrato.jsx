@@ -88,8 +88,7 @@ export default function ImportarContrato() {
 
   // Etapas: 1 (Enviar PDF) -> 2 (Processamento) -> 3 (Revisão de IA) -> 4 (Confirmação)
   const [etapaAtual, setEtapaAtual] = useState(1);
-  const [arquivo, setArquivo] = useState(null);
-  const [nomeArquivo, setNomeArquivo] = useState("");
+    const [nomeArquivo, setNomeArquivo] = useState("");
   const [arquivoUrl, setArquivoUrl] = useState(null);
   const [extracaoId, setExtracaoId] = useState(null);
   const [confianca, setConfianca] = useState(0);
@@ -151,7 +150,6 @@ export default function ImportarContrato() {
   // Upload e envio para OCR
   const processarArquivoOcr = useCallback(async (file) => {
     if (!file) return;
-    setArquivo(file);
     setNomeArquivo(file.name);
     const objectUrl = URL.createObjectURL(file);
     setArquivoUrl(objectUrl);
@@ -170,7 +168,7 @@ export default function ImportarContrato() {
       const res = await sheets.extractOcr(formData, { signal: controller.signal });
       const data = res?.data;
 
-      if (data) {
+      if (data?.extracao_id) {
         setExtracaoId(data.extracao_id);
         if (data.confianca) setConfianca(data.confianca);
 
@@ -192,6 +190,8 @@ export default function ImportarContrato() {
         if (dadosExtraidos.vencimentos && dadosExtraidos.vencimentos[0]) {
           setPrimeiroVencimento(dadosExtraidos.vencimentos[0]);
         }
+      } else {
+        throw new Error("A API não retornou o identificador da extração OCR");
       }
       setEtapaAtual(3);
     } catch (err) {
@@ -200,8 +200,10 @@ export default function ImportarContrato() {
         return;
       }
       console.error("Erro na extração de OCR pela API:", err);
-      // Mantém os dados da tela para permitir que o usuário continue e revise
-      setEtapaAtual(3);
+      // Não permite criar um contrato sem extração OCR válida.
+      setExtracaoId(null);
+      setErro(err?.response?.data?.message || err.message || "Falha na leitura do documento. Tente novamente.");
+      setEtapaAtual(1);
     } finally {
       setProcessando(false);
     }
@@ -239,10 +241,24 @@ export default function ImportarContrato() {
     setErro("");
 
     try {
-      const valorNumerico = parseCurrency(valorTotalStr) || 36000;
+      if (!extracaoId) throw new Error("Extração OCR não confirmada. Reenvie o documento.");
+      const valorNumerico = parseCurrency(valorTotalStr);
       const matchParcelas = String(parcelamentoStr).match(/(\d+)/);
-      const qtdParcelas = matchParcelas ? Number(matchParcelas[1]) : 12;
-      const valorParcela = valorNumerico / qtdParcelas;
+      const qtdParcelas = matchParcelas ? Number(matchParcelas[1]) : 0;
+      if (!Number.isFinite(valorNumerico) || valorNumerico <= 0 || !Number.isSafeInteger(qtdParcelas) || qtdParcelas < 1 || qtdParcelas > 120) {
+        throw new Error("Informe valor total e quantidade de parcelas válidos.");
+      }
+      if (!clienteNome.trim()) throw new Error("Informe o nome do cliente.");
+      // Geração mensal com dia-base fixo, ajustando automaticamente o último dia de cada mês.
+      const vencimentoBase = primeiroVencimento || dataInicio;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(vencimentoBase)) throw new Error("Informe o primeiro vencimento.");
+      const [anoBase, mesBase, diaBase] = vencimentoBase.split("-").map(Number);
+      const vencimentosGerados = Array.from({ length: qtdParcelas }, (_, i) => {
+        const ano = anoBase + Math.floor((mesBase - 1 + i) / 12);
+        const mes = (mesBase - 1 + i) % 12 + 1;
+        const ultimoDia = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
+        return `${ano}-${String(mes).padStart(2, "0")}-${String(Math.min(diaBase, ultimoDia)).padStart(2, "0")}`;
+      });
 
       // Verifica se cliente já existe por CPF/CNPJ ou Nome
       const cpfLimpo = String(cpfCnpj).replace(/\D/g, "");
@@ -256,9 +272,8 @@ export default function ImportarContrato() {
       const dadosParaConfirmar = {
         valor_total: valorNumerico,
         quantidade_parcelas: qtdParcelas,
-        valor_parcela: Number(valorParcela.toFixed(2)),
-        data_inicio: dataInicio,
-        vencimentos: [primeiroVencimento],
+        data_inicio: dataInicio || vencimentoBase,
+        vencimentos: vencimentosGerados,
         numero: `CTR-${new Date().getFullYear()}-${String(
           Math.floor(Math.random() * 9000) + 1000
         )}`,
@@ -275,30 +290,8 @@ export default function ImportarContrato() {
         };
       }
 
-      if (extracaoId) {
-        await sheets.confirmarOcr(extracaoId, dadosParaConfirmar);
-      } else {
-        // Fallback: se não tiver extracaoId (ex: modo de demonstração inicial), cria cliente e contrato diretamente
-        let clienteFinalId = clienteExistente?.id;
-        if (!clienteFinalId) {
-          const resCli = await sheets.createCliente({
-            nome_razao_social: clienteNome,
-            cpf_cnpj: cpfLimpo || "12345678000190",
-          });
-          clienteFinalId = resCli?.data?.cliente?.id;
-        }
+      await sheets.confirmarOcr(extracaoId, dadosParaConfirmar);
 
-        await sheets.createContrato({
-          cliente_id: clienteFinalId,
-          numero: dadosParaConfirmar.numero,
-          descricao: dadosParaConfirmar.descricao,
-          tipo: "SERVIÇO",
-          valor_total: valorNumerico,
-          quantidade_parcelas: qtdParcelas,
-          data_inicio: dataInicio,
-          status: "ATIVO",
-        });
-      }
 
       setEtapaAtual(4);
       setSucesso("Contrato aprovado e criado com sucesso!");

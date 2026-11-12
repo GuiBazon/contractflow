@@ -1,0 +1,179 @@
+name: Backend
+
+on:
+  push:
+    paths: ['api/**', 'docs/**', '.github/workflows/backend.yml']
+  pull_request:
+    paths: ['api/**', 'docs/**', '.github/workflows/backend.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - run: npm ci
+      - run: npm run docs:validate
+      - run: npm test -- --ci --runInBand --coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage
+          path: api/coverage/unit
+          if-no-files-found: ignore
+
+  mysql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: api
+    services:
+      mysql:
+        image: mysql:8.0@sha256:7dcddc01f13bab2f15cde676d44d01f61fc9f99fe7785e86196dfc07d358ae2b
+        env:
+          MYSQL_DATABASE: contractflow_test
+          MYSQL_USER: contractflow_test
+          MYSQL_PASSWORD: contractflow_test
+          MYSQL_ROOT_PASSWORD: test_root_only
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+      mailpit:
+        image: axllent/mailpit@sha256:23fe39e81bde596a918000b3135c0f85dc8bb4c9ea6be274b051143f3e300387
+        ports: ['1025:1025', '8025:8025']
+        options: >-
+          --health-cmd="/mailpit readyz"
+          --health-interval=2s
+          --health-timeout=5s
+          --health-retries=30
+    env:
+      CF_TEST_DB_PORT: '3306'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - run: npm ci
+      - name: Instalar conversor de PDF
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      - run: npm run test:mysql -- --ci --coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-mysql-coverage
+          path: api/coverage/mysql
+          if-no-files-found: ignore
+
+  coverage:
+    needs: [unit-api, mysql]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+          path: api/coverage/unit
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend-mysql-coverage
+          path: api/coverage/mysql
+      - run: npm run coverage:merge
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-combined-coverage
+          path: api/coverage/combined
+
+  demo-seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: api
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: contractflow
+          MYSQL_ROOT_PASSWORD: demo_root_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_USER: root
+      DB_PASSWORD: demo_root_test
+      DB_NAME: contractflow
+      JWT_SECRET: ci-demo-only-32-bytes-contractflow-sprint2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - run: npm ci
+      - name: Criar e popular banco de apresentação
+        run: npm run demo:setup
+      - name: Verificar idempotência ao executar novamente
+        run: npm run demo:setup
+      - name: Verificar dados, login e endpoints reais
+        run: |
+          node <<'NODE'
+          const mysql=require('mysql2/promise');
+          const request=require('supertest');
+          const app=require('./src/app');
+          (async()=>{
+            const conn=await mysql.createConnection({host:process.env.DB_HOST,port:Number(process.env.DB_PORT),user:process.env.DB_USER,password:process.env.DB_PASSWORD,database:process.env.DB_NAME});
+            try{
+              for(const [table,expected] of [['clientes',12],['contratos',12],['parcelas',89],['pagamentos',39],['despesas',12]]){
+                const [[{n}]]=await conn.query('SELECT COUNT(*) AS n FROM '+table);
+                if(Number(n)!==expected)throw new Error(table+': esperado '+expected+', encontrado '+n);
+              }
+              const login=await request(app).post('/api/auth/login').send({email:'apresentacao@contractflow.com',senha:'demo123'});
+              if(login.status!==200||!login.body.token)throw new Error('Login demo falhou '+login.status);
+              const auth={Authorization:'Bearer '+login.body.token};
+              for(const route of ['/api/clientes','/api/contratos','/api/dashboard','/api/recebiveis','/api/calendario?de=2026-09-01&ate=2027-02-28','/api/despesas','/api/receitas']){
+                const response=await request(app).get(route).set(auth);
+                if(response.status!==200)throw new Error(route+' retornou HTTP '+response.status+' '+JSON.stringify(response.body).slice(0,200));
+              }
+              console.log('DEMO OK: 12 clientes, 12 contratos, 89 parcelas, 39 pagamentos, 12 despesas, login e 7 endpoints.');
+            } finally {await conn.end();}
+          })().then(()=>process.exit(0)).catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
