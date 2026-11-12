@@ -6,10 +6,12 @@ const parcelaRoutes = require('./parcelaRoutes');
 const { router: paymentRoutes, allRouter: paymentAllRoutes } = require('./paymentRoutes');
 const documentRoutes = require('./documentRoutes');
 const ocrRoutes = require('./ocrRoutes');
+const usuarioRoutes = require('./usuarioRoutes');
 
 const router = express.Router();
 
 router.use('/auth', authRoutes);
+router.use('/usuarios', usuarioRoutes);
 router.use('/clientes', clientRoutes);
 router.use('/contratos', contractRoutes);
 router.use('/contracts', contractRoutes);
