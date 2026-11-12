@@ -135,9 +135,14 @@ async function createContrato(req, res) {
 
 async function updateContrato(req, res) {
   const { id } = req.params;
+  const contratoId = Number(id);
+
+  if (!id || Number.isNaN(contratoId) || contratoId <= 0) {
+    return res.status(400).json({ message: 'ID do contrato inválido' });
+  }
 
   try {
-    const contrato = await obterContratoDono(id, req.user.id);
+    const contrato = await obterContratoDono(contratoId, req.user.id);
     if (!contrato) {
       return res.status(404).json({ message: 'Contrato não encontrado' });
     }
@@ -209,10 +214,13 @@ async function updateContrato(req, res) {
       return res.status(400).json({ message: 'Nenhum campo permitido enviado' });
     }
 
+    // Prefixar cada coluna com alias "c." para evitar ER_NON_UNIQ_ERROR
+    // quando "observacoes" ou "created_at" existem tanto em contratos quanto em clientes.
+    const updatesComAlias = updates.map((u) => u.replace(/^(\w+)\s*=/, 'c.$1 ='));
     values.push(id, req.user.id);
     await db.execute(
       `UPDATE contratos c JOIN clientes cl ON cl.id = c.cliente_id
-       SET ${updates.join(', ')}
+       SET ${updatesComAlias.join(', ')}
        WHERE c.id = ? AND cl.usuario_id = ?`,
       values
     );

@@ -23,6 +23,7 @@ async function getResumoContrato(db, contratoId, usuarioId) {
      LEFT JOIN (
        SELECT parcela_id, SUM(valor) AS valor
        FROM pagamentos
+       WHERE status IS NULL OR (status != 'ESTORNADO' AND status != 'REVERSED')
        GROUP BY parcela_id
      ) pg_sum ON pg_sum.parcela_id = p.id
      WHERE c.id = ? AND cl.usuario_id = ?
@@ -57,10 +58,12 @@ async function getValorParcelas(db, contratoId, usuarioId) {
 }
 
 // Atualiza o status armazenado da parcela com base nos pagamentos (RN06).
-// A situacao "VENCIDA" e computada nas consultas e nao precisa ser gravada.
+// Pagamentos com status ESTORNADO ou REVERSED não são computados.
 async function recalcSituacaoParcela(db, parcelaId) {
   const [rows] = await db.execute(
-    `SELECT p.valor, COALESCE(SUM(pg.valor), 0) AS pago, p.status
+    `SELECT p.valor,
+            COALESCE(SUM(CASE WHEN pg.status IS NULL OR (pg.status != 'ESTORNADO' AND pg.status != 'REVERSED') THEN pg.valor ELSE 0 END), 0) AS pago,
+            p.status
      FROM parcelas p
      LEFT JOIN pagamentos pg ON pg.parcela_id = p.id
      WHERE p.id = ?

@@ -109,10 +109,14 @@ CREATE TABLE IF NOT EXISTS pagamentos (
   data_pagamento DATE NOT NULL,
   forma_pagamento VARCHAR(50),
   observacoes TEXT,
+  status ENUM('CONCLUIDO', 'ESTORNADO') DEFAULT 'CONCLUIDO',
+  motivo_estorno TEXT,
+  data_estorno DATETIME,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_pagamentos_parcela_id (parcela_id),
   KEY idx_pagamentos_data (data_pagamento),
+  KEY idx_pagamentos_status (status),
   CONSTRAINT chk_pagamentos_valor CHECK (valor >= 0),
   CONSTRAINT fk_pagamentos_parcela
     FOREIGN KEY (parcela_id) REFERENCES parcelas(id) ON DELETE RESTRICT

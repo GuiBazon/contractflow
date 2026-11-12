@@ -19,6 +19,7 @@ router.get('/', listContratos);
 router.get('/:id', getContratoById);
 router.post('/', createContrato);
 router.put('/:id', updateContrato);
+router.patch('/:id', updateContrato);
 router.delete('/:id', deleteContrato);
 router.patch('/:id/status', updateContratoStatus);
 router.post('/:id/parcelas', generateParcelas);

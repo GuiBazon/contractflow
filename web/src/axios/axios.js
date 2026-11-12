@@ -77,16 +77,22 @@ const sheets = {
     api.get("/contratos", { params }),
 
   getContratoById: (id) =>
-    api.get("/contratos/" + id),
+    api.get(`/contratos/${id}`),
 
   createContrato: (data) =>
     api.post("/contratos", data),
 
   updateContrato: (id, data) =>
-    api.put("/contratos/" + id, data),
+    api.put(`/contratos/${id}`, data),
+
+  updateContract: (id, data) =>
+    api.put(`/contracts/${id}`, data),
+
+  patchContrato: (id, data) =>
+    api.patch(`/contratos/${id}`, data),
 
   deleteContrato: (id) =>
-    api.delete("/contratos/" + id),
+    api.delete(`/contratos/${id}`),
 
   updateContratoStatus: (id, status) =>
     api.patch(`/contratos/${id}/status`, { status }),
@@ -118,6 +124,9 @@ const sheets = {
   updateParcela: (contratoId, parcelaId, data) =>
     api.patch(`/parcelas/${contratoId}/parcelas/${parcelaId}`, data),
 
+  bulkPayParcelas: (data) =>
+    api.post("/parcelas/bulk-pay", data),
+
   // PAGAMENTOS / RECEITAS
 
   getPagamentos: (params) =>
@@ -137,11 +146,18 @@ const sheets = {
       throw err;
     }),
 
+  estornarPagamento: (id, data) =>
+    api.patch(`/pagamentos/${id}/estornar`, data),
+
+  reversePayment: (id, data) =>
+    api.patch(`/payments/${id}/reverse`, data),
+
   // OCR / IMPORTAÇÃO INTELIGENTE COM IA
 
-  extractOcr: (formData) =>
+  extractOcr: (formData, config = {}) =>
     api.post("/ocr/extract", formData, {
       headers: { "Content-Type": "multipart/form-data" },
+      ...config,
     }),
 
   getOcr: (id) =>

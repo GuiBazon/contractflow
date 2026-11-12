@@ -240,6 +240,18 @@ export default function Contratos() {
   const [parcelasSelecionadas, setParcelasSelecionadas] = useState([]);
   const [modalLoteAberto, setModalLoteAberto] = useState(false);
   const [ateParcelaLote, setAteParcelaLote] = useState(1);
+  const [loteForm, setLoteForm] = useState({
+    paymentMethod: "PIX",
+    paymentDate: new Date().toISOString().split("T")[0],
+    observacoes: "Baixa realizada em lote",
+  });
+
+  // Gestão de Pagamentos Reais e Estorno (Controle Interno)
+  const [pagamentosDetalhe, setPagamentosDetalhe] = useState([]);
+  const [modalEstornoAberto, setModalEstornoAberto] = useState(false);
+  const [pagamentoParaEstorno, setPagamentoParaEstorno] = useState(null);
+  const [motivoEstorno, setMotivoEstorno] = useState("");
+  const [salvandoEstorno, setSalvandoEstorno] = useState(false);
 
   // Modal Editar Contrato
   const [modalEditarAberto, setModalEditarAberto] = useState(false);
@@ -303,11 +315,12 @@ export default function Contratos() {
       }
       setLoadingDetalhes(true);
       try {
-        const [resContrato, resParcelas, resHist, resDocs] = await Promise.allSettled([
+        const [resContrato, resParcelas, resHist, resDocs, resPags] = await Promise.allSettled([
           sheets.getContratoById(id),
           sheets.getParcelas(id),
           sheets.getHistoricoContrato(id),
           sheets.getDocumentosContrato(id),
+          sheets.getPagamentosContrato(id),
         ]);
 
         if (resContrato.status === "fulfilled") {
@@ -337,6 +350,13 @@ export default function Contratos() {
           setDocumentosDetalhe(docs?.data || (Array.isArray(docs) ? docs : []));
         } else {
           setDocumentosDetalhe([]);
+        }
+
+        if (resPags.status === "fulfilled") {
+          const pags = resPags.value.data;
+          setPagamentosDetalhe(pags?.data || (Array.isArray(pags) ? pags : []));
+        } else {
+          setPagamentosDetalhe([]);
         }
       } catch (err) {
         console.error("Erro ao buscar detalhes do contrato:", err);
@@ -477,12 +497,21 @@ export default function Contratos() {
     };
 
     try {
-      await sheets.updateContrato(contratoDetalhe.id, payload);
+      const res = await sheets.updateContrato(contratoDetalhe.id, payload);
+      const contratoAtualizado = res?.data?.contrato || {
+        ...contratoDetalhe,
+        ...payload,
+      };
+
+      setContratoDetalhe(contratoAtualizado);
+      setEditForm(contratoAtualizado);
       setFeedbackSuccess("Contrato atualizado com sucesso!");
       setModalEditarAberto(false);
+
       await carregarDetalhesContrato(contratoDetalhe.id);
       await carregarLista(true);
     } catch (err) {
+      console.error("Erro ao salvar alterações no contrato:", err);
       const msg = err.response?.data?.message || err.message;
       alert(msg || "Erro ao salvar alterações no contrato.");
     }
@@ -641,30 +670,112 @@ export default function Contratos() {
     }
   }
 
-  async function handleEstornarParcela(parcela) {
-    if (!contratoDetalhe) return;
-    const confirma = window.confirm(
-      `Deseja estornar o pagamento da Parcela #${parcela.numero} e marcá-la como Em Aberto?`
-    );
-    if (!confirma) return;
+  /* ── Estorno de Pagamento (Marcador de Controle Interno) ── */
+  function abrirModalEstorno(pagamento) {
+    setPagamentoParaEstorno(pagamento);
+    setMotivoEstorno("");
+    setModalEstornoAberto(true);
+  }
 
-    setProcessandoPagamento(true);
+  /**
+   * Chamado pelo botão ↩ na aba Parcelas.
+   * Busca o pagamento mais recente (não estornado) da parcela e abre o modal de estorno.
+   */
+  async function handleEstornarParcela(parcela) {
+    if (!contratoDetalhe || !parcela?.id) return;
     try {
-      await sheets.updateParcela(contratoDetalhe.id, parcela.id, {
-        status: "PENDENTE",
+      const res = await sheets.getPagamentosContrato(contratoDetalhe.id);
+      const todosPagamentos = res?.data?.data || res?.data || [];
+      // Encontra o último pagamento ativo (não estornado) desta parcela
+      const pagDaParcela = todosPagamentos
+        .filter(
+          (pg) =>
+            pg.parcela_id === parcela.id &&
+            pg.status !== "ESTORNADO" &&
+            pg.status !== "REVERSED"
+        )
+        .sort((a, b) => b.id - a.id)[0];
+
+      if (!pagDaParcela) {
+        alert("Nenhum pagamento ativo encontrado para esta parcela.");
+        return;
+      }
+      abrirModalEstorno(pagDaParcela);
+    } catch (err) {
+      console.error("Erro ao buscar pagamento da parcela:", err);
+      alert("Não foi possível localizar o pagamento desta parcela.");
+    }
+  }
+
+  async function handleConfirmarEstorno() {
+    if (!pagamentoParaEstorno || !motivoEstorno.trim()) return;
+
+    setSalvandoEstorno(true);
+    try {
+      const res = await sheets.estornarPagamento(pagamentoParaEstorno.id, {
+        motivo: motivoEstorno.trim(),
       });
 
-      setFeedbackSuccess(`Parcela #${parcela.numero} retornada para Em Aberto.`);
+      // Atualização otimista imediata na lista de pagamentos
+      setPagamentosDetalhe((prev) =>
+        prev.map((pg) =>
+          pg.id === pagamentoParaEstorno.id
+            ? { ...pg, status: "ESTORNADO", motivo_estorno: motivoEstorno.trim() }
+            : pg
+        )
+      );
+
+      // Atualização otimista imediata na aba Parcelas:
+      // se a API retornou a parcela atualizada, reflete o novo status
+      const parcelaAtualizada = res?.data?.parcela;
+      if (parcelaAtualizada) {
+        setParcelasDetalhe((prev) =>
+          prev.map((p) =>
+            p.id === parcelaAtualizada.id
+              ? { ...p, status: parcelaAtualizada.status, situacao: parcelaAtualizada.status }
+              : p
+          )
+        );
+      } else {
+        // Fallback: marca a parcela como PENDENTE otimisticamente
+        setParcelasDetalhe((prev) =>
+          prev.map((p) =>
+            p.id === pagamentoParaEstorno.parcela_id
+              ? { ...p, status: "PENDENTE", situacao: "PENDENTE" }
+              : p
+          )
+        );
+      }
+
+      setFeedbackSuccess(`Pagamento #${pagamentoParaEstorno.id} estornado com sucesso.`);
+      setModalEstornoAberto(false);
+      setPagamentoParaEstorno(null);
+      setMotivoEstorno("");
+
+      // Recarrega ambas as abas do servidor para garantir consistência
       await carregarDetalhesContrato(contratoDetalhe.id);
       await carregarLista(true);
     } catch (err) {
-      console.error("Erro ao estornar parcela:", err);
+      console.error("Erro ao estornar pagamento:", err);
       const msg = err.response?.data?.message || err.message;
-      alert("Erro ao estornar parcela: " + (msg || "Falha na comunicação com o servidor"));
+      alert("Erro ao estornar pagamento: " + (msg || "Falha na comunicação com o servidor"));
     } finally {
-      setProcessandoPagamento(false);
+      setSalvandoEstorno(false);
     }
   }
+
+  /* ── Seleção Múltipla e Baixa em Lote (Bulk Actions) ── */
+  const parcelasElegiveis = useMemo(() => {
+    return parcelasDetalhe.filter(
+      (p) => p.status !== "PAGA" && p.situacao !== "PAGA" && p.status !== "CANCELADA"
+    );
+  }, [parcelasDetalhe]);
+
+  const totalSelecionado = useMemo(() => {
+    return parcelasDetalhe
+      .filter((p) => parcelasSelecionadas.includes(p.id))
+      .reduce((acc, p) => acc + Number(p.valor || 0), 0);
+  }, [parcelasDetalhe, parcelasSelecionadas]);
 
   function toggleSelecionarParcela(parcelaId) {
     setParcelasSelecionadas((prev) =>
@@ -675,65 +786,49 @@ export default function Contratos() {
   }
 
   function toggleSelecionarTodasPendentes() {
-    const pendentes = parcelasDetalhe
-      .filter((p) => p.status !== "PAGA" && p.situacao !== "PAGA" && p.status !== "CANCELADA")
-      .map((p) => p.id);
-
-    if (parcelasSelecionadas.length === pendentes.length) {
+    if (parcelasSelecionadas.length === parcelasElegiveis.length) {
       setParcelasSelecionadas([]);
     } else {
-      setParcelasSelecionadas(pendentes);
+      setParcelasSelecionadas(parcelasElegiveis.map((p) => p.id));
     }
   }
 
-  async function handlePagarSelecionadas() {
+  async function handleConfirmarBaixaEmLote(e) {
+    if (e) e.preventDefault();
     if (!contratoDetalhe || parcelasSelecionadas.length === 0) return;
+
     setProcessandoPagamento(true);
     try {
-      for (const parcelaId of parcelasSelecionadas) {
-        await sheets.updateParcela(contratoDetalhe.id, parcelaId, { status: "PAGA" });
-      }
-      setFeedbackSuccess(
-        `${parcelasSelecionadas.length} parcela(s) marcada(s) como Paga(s) com sucesso!`
+      await sheets.bulkPayParcelas({
+        contractId: contratoDetalhe.id,
+        installmentIds: parcelasSelecionadas,
+        paymentMethod: loteForm.paymentMethod || "PIX",
+        paymentDate: loteForm.paymentDate || new Date().toISOString().split("T")[0],
+        totalPaid: Number(totalSelecionado.toFixed(2)),
+        observacoes: loteForm.observacoes || "Baixa realizada em lote",
+      });
+
+      // Atualização otimista imediata no estado local sem refresh completo
+      setParcelasDetalhe((prev) =>
+        prev.map((p) =>
+          parcelasSelecionadas.includes(p.id)
+            ? { ...p, status: "PAGA", situacao: "PAGA" }
+            : p
+        )
       );
+
+      setFeedbackSuccess(
+        `${parcelasSelecionadas.length} parcela(s) liquidada(s) com sucesso em lote!`
+      );
+      setModalLoteAberto(false);
       setParcelasSelecionadas([]);
-      await carregarDetalhesContrato(contratoDetalhe.id);
-      await carregarLista(true);
-    } catch (err) {
-      console.error("Erro ao pagar parcelas selecionadas:", err);
-      alert("Erro ao pagar parcelas selecionadas.");
-    } finally {
-      setProcessandoPagamento(false);
-    }
-  }
 
-  async function handleBaixaEmLote() {
-    if (!contratoDetalhe) return;
-    const ate = Number(ateParcelaLote) || 1;
-    const parcelasParaPagar = parcelasDetalhe.filter(
-      (p) => Number(p.numero) <= ate && p.status !== "PAGA" && p.situacao !== "PAGA"
-    );
-
-    if (parcelasParaPagar.length === 0) {
-      alert(`As parcelas até a #${ate} já estão todas pagas.`);
-      setModalLoteAberto(false);
-      return;
-    }
-
-    setProcessandoPagamento(true);
-    try {
-      for (const p of parcelasParaPagar) {
-        await sheets.updateParcela(contratoDetalhe.id, p.id, { status: "PAGA" });
-      }
-      setFeedbackSuccess(
-        `Parcelas até a #${ate} foram marcadas como pagas com sucesso!`
-      );
-      setModalLoteAberto(false);
       await carregarDetalhesContrato(contratoDetalhe.id);
       await carregarLista(true);
     } catch (err) {
       console.error("Erro na baixa em lote:", err);
-      alert("Erro ao realizar baixa em lote.");
+      const msg = err.response?.data?.message || err.message;
+      alert("Erro ao realizar baixa em lote: " + (msg || "Falha na comunicação com o servidor"));
     } finally {
       setProcessandoPagamento(false);
     }
@@ -844,8 +939,8 @@ export default function Contratos() {
     return fallback;
   }, [historicoDetalhe, contratoDetalhe]);
 
-  /* ── Parcelas já liquidadas (aba Pagamentos) ── */
-  const pagamentosDetalhe = useMemo(
+  /* ── Parcelas já liquidadas (fallback caso ainda não haja extrato) ── */
+  const parcelasLiquidadas = useMemo(
     () =>
       parcelasDetalhe.filter(
         (p) =>
@@ -1391,24 +1486,20 @@ export default function Contratos() {
                               size="small"
                               variant="contained"
                               color="success"
-                              onClick={handlePagarSelecionadas}
+                              onClick={() => setModalLoteAberto(true)}
                               disabled={processandoPagamento}
-                              startIcon={
-                                processandoPagamento ? (
-                                  <CircularProgress size={14} color="inherit" />
-                                ) : (
-                                  <CheckRoundedIcon sx={{ fontSize: 16 }} />
-                                )
-                              }
+                              startIcon={<PlaylistAddCheckRoundedIcon sx={{ fontSize: 16 }} />}
                               sx={{
                                 textTransform: "none",
                                 fontSize: "12px",
                                 fontWeight: 700,
                                 borderRadius: "8px",
                                 px: 1.8,
+                                bgcolor: "#16a34a",
+                                "&:hover": { bgcolor: "#15803d" },
                               }}
                             >
-                              Pagar Selecionadas ({parcelasSelecionadas.length})
+                              Liquidar Selecionadas ({parcelasSelecionadas.length}) · {formatBRL(totalSelecionado)}
                             </Button>
                           )}
 
@@ -1416,12 +1507,9 @@ export default function Contratos() {
                             size="small"
                             variant="outlined"
                             onClick={() => {
-                              setAteParcelaLote(
-                                Math.min(
-                                  parcelasDetalhe.length,
-                                  parcelasDetalhe.filter((p) => p.status === "PAGA" || p.situacao === "PAGA").length + 1
-                                )
-                              );
+                              if (parcelasSelecionadas.length === 0) {
+                                toggleSelecionarTodasPendentes();
+                              }
                               setModalLoteAberto(true);
                             }}
                             startIcon={<PlaylistAddCheckRoundedIcon sx={{ fontSize: 17 }} />}
@@ -1657,7 +1745,8 @@ export default function Contratos() {
                 {/* Conteúdo da Aba Pagamentos */}
                 {abaDetalhe === "PAGAMENTOS" && (
                   <Box sx={sx.tableCard}>
-                    {parcelasDetalhe.filter((p) => p.status === "PAGA" || p.situacao === "PAGA").length === 0 ? (
+                    {pagamentosDetalhe.length === 0 &&
+                    parcelasDetalhe.filter((p) => p.status === "PAGA" || p.situacao === "PAGA").length === 0 ? (
                       <Box sx={{ p: 4, textAlign: "center", color: "#67728a" }}>
                         <Typography sx={{ fontSize: "14.5px", fontWeight: 700, color: "#1e293b" }}>
                           Nenhum pagamento registrado
@@ -1668,58 +1757,116 @@ export default function Contratos() {
                       </Box>
                     ) : (
                       <Box sx={{ overflowX: "auto" }}>
-                        <Box sx={{ p: 2, bgcolor: "#f8fafc", borderBottom: "1px solid #eaeff6" }}>
+                        <Box sx={{ p: 2, bgcolor: "#f8fafc", borderBottom: "1px solid #eaeff6", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#1e293b" }}>
-                            Extrato de Pagamentos Liquidados (
-                            {parcelasDetalhe.filter((p) => p.status === "PAGA" || p.situacao === "PAGA").length} parcelas)
+                            Extrato de Pagamentos e Auditoria (
+                            {pagamentosDetalhe.length > 0 ? pagamentosDetalhe.length : parcelasDetalhe.filter((p) => p.status === "PAGA" || p.situacao === "PAGA").length} registros)
+                          </Typography>
+                          <Typography sx={{ fontSize: "11.5px", color: "#64748b" }}>
+                            Estornos atuam como marcadores de controle interno
                           </Typography>
                         </Box>
                         <Box component="table" sx={sx.table}>
                           <thead>
                             <tr>
                               <th style={sx.th}>PARCELA</th>
-                              <th style={sx.th}>VALOR LIQUIDADO</th>
-                              <th style={sx.th}>DATA VENCIMENTO</th>
+                              <th style={sx.th}>VALOR</th>
+                              <th style={sx.th}>DATA PAGAMENTO</th>
+                              <th style={sx.th}>MÉTODO</th>
                               <th style={{ ...sx.th, textAlign: "center" }}>SITUAÇÃO</th>
                               <th style={{ ...sx.th, textAlign: "center" }}>AÇÕES</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {parcelasDetalhe
-                              .filter((p) => p.status === "PAGA" || p.situacao === "PAGA")
-                              .map((p, idx) => (
-                                <tr key={p.id || idx} style={sx.tr}>
-                                  <td style={sx.tdNumeroParcela}>#{p.numero || idx + 1}</td>
-                                  <td style={{ ...sx.tdValor, color: "#16a34a" }}>{formatBRL(p.valor)}</td>
-                                  <td style={sx.tdSecundario}>{formatDate(p.data_vencimento)}</td>
+                            {(pagamentosDetalhe.length > 0
+                              ? pagamentosDetalhe
+                              : parcelasDetalhe
+                                  .filter((p) => p.status === "PAGA" || p.situacao === "PAGA")
+                                  .map((p) => ({
+                                    id: p.id,
+                                    parcela_id: p.id,
+                                    parcela_numero: p.numero,
+                                    valor: p.valor,
+                                    data_pagamento: p.data_vencimento,
+                                    forma_pagamento: "PIX",
+                                    status: "CONCLUIDO",
+                                  }))
+                            ).map((p, idx) => {
+                              const isEstornado = p.status === "ESTORNADO" || p.status === "REVERSED";
+
+                              return (
+                                <tr
+                                  key={p.id || idx}
+                                  style={{
+                                    ...sx.tr,
+                                    opacity: isEstornado ? 0.55 : 1,
+                                    backgroundColor: isEstornado ? "rgba(239, 68, 68, 0.03)" : "transparent",
+                                    transition: "opacity 0.2s ease",
+                                  }}
+                                >
+                                  <td style={sx.tdNumeroParcela}>
+                                    #{p.parcela_numero || p.numero || idx + 1}
+                                  </td>
+                                  <td style={{ ...sx.tdValor, color: isEstornado ? "#94a3b8" : "#16a34a" }}>
+                                    {formatBRL(p.valor)}
+                                  </td>
+                                  <td style={sx.tdSecundario}>
+                                    {formatDate(p.data_pagamento || p.created_at)}
+                                  </td>
+                                  <td style={sx.tdSecundario}>
+                                    {p.forma_pagamento || "PIX"}
+                                  </td>
                                   <td style={{ ...sx.td, textAlign: "center" }}>
-                                    <Box
-                                      component="span"
-                                      sx={{
-                                        ...sx.statusChip,
-                                        bgcolor: "#e7f9ef",
-                                        color: "#1f9d55",
-                                      }}
-                                    >
-                                      PAGO / LIQUIDADO
+                                    <Box sx={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 0.3 }}>
+                                      <Box
+                                        component="span"
+                                        sx={{
+                                          ...sx.statusChip,
+                                          bgcolor: isEstornado ? "#fee2e2" : "#e7f9ef",
+                                          color: isEstornado ? "#dc2626" : "#1f9d55",
+                                          fontWeight: 700,
+                                        }}
+                                      >
+                                        {isEstornado ? "ESTORNADO" : "PAGO / CONCLUÍDO"}
+                                      </Box>
+                                      {isEstornado && p.motivo_estorno && (
+                                        <Typography sx={{ fontSize: "10.5px", color: "#b91c1c", maxWidth: 180 }} noWrap title={p.motivo_estorno}>
+                                          {p.motivo_estorno}
+                                        </Typography>
+                                      )}
                                     </Box>
                                   </td>
                                   <td style={{ ...sx.td, textAlign: "center" }}>
-                                    <Tooltip title="Estornar pagamento">
+                                    {isEstornado ? (
+                                      <Typography sx={{ fontSize: "11px", color: "#94a3b8", fontStyle: "italic" }}>
+                                        Estornado
+                                      </Typography>
+                                    ) : (
                                       <Button
                                         size="small"
                                         variant="outlined"
                                         color="error"
-                                        onClick={() => handleEstornarParcela(p)}
-                                        startIcon={<UndoRoundedIcon sx={{ fontSize: 14 }} />}
-                                        sx={{ textTransform: "none", fontSize: "11.5px", py: 0.2 }}
+                                        onClick={() => abrirModalEstorno(p)}
+                                        startIcon={<UndoRoundedIcon sx={{ fontSize: 13 }} />}
+                                        sx={{
+                                          textTransform: "none",
+                                          fontSize: "11.5px",
+                                          py: 0.3,
+                                          px: 1.2,
+                                          borderRadius: "6px",
+                                          fontWeight: 600,
+                                          borderColor: "#fca5a5",
+                                          color: "#dc2626",
+                                          "&:hover": { bgcolor: "#fee2e2", borderColor: "#f87171" },
+                                        }}
                                       >
-                                        Estornar
+                                        Marcar Estorno
                                       </Button>
-                                    </Tooltip>
+                                    )}
                                   </td>
                                 </tr>
-                              ))}
+                              );
+                            })}
                           </tbody>
                         </Box>
                       </Box>
@@ -1832,6 +1979,81 @@ export default function Contratos() {
                   </Box>
                 </Box>
               </Box>
+            </Box>
+          </Box>
+        )}
+
+        {/* ── Action Bar Flutuante para Liquidação em Lote (Bulk Actions) ── */}
+        {parcelasSelecionadas.length > 0 && (
+          <Box
+            sx={{
+              position: "fixed",
+              bottom: 24,
+              left: { xs: "50%", md: "calc(50% + 110px)" },
+              transform: "translateX(-50%)",
+              bgcolor: "#0f172a",
+              color: "#fff",
+              px: 3,
+              py: 1.5,
+              borderRadius: "14px",
+              boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+              display: "flex",
+              alignItems: "center",
+              gap: 3,
+              zIndex: 1300,
+              border: "1px solid rgba(255,255,255,0.14)",
+              animation: "slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+              "@keyframes slideUp": {
+                from: { transform: "translate(-50%, 30px)", opacity: 0 },
+                to: { transform: "translate(-50%, 0)", opacity: 1 },
+              },
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
+              <CheckCircleRoundedIcon sx={{ color: "#22c55e", fontSize: 22 }} />
+              <Box>
+                <Typography sx={{ fontSize: "13px", fontWeight: 700, color: "#fff" }}>
+                  {parcelasSelecionadas.length} {parcelasSelecionadas.length === 1 ? "parcela selecionada" : "parcelas selecionadas"}
+                </Typography>
+                <Typography sx={{ fontSize: "12px", color: "#94a3b8" }}>
+                  Valor total: <strong style={{ color: "#38bdf8" }}>{formatBRL(totalSelecionado)}</strong>
+                </Typography>
+              </Box>
+            </Box>
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <Button
+                size="small"
+                onClick={() => setParcelasSelecionadas([])}
+                sx={{
+                  color: "#94a3b8",
+                  textTransform: "none",
+                  fontSize: "12.5px",
+                  "&:hover": { color: "#fff", bgcolor: "rgba(255,255,255,0.08)" },
+                }}
+              >
+                Limpar
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                color="success"
+                onClick={() => setModalLoteAberto(true)}
+                startIcon={<PlaylistAddCheckRoundedIcon />}
+                sx={{
+                  textTransform: "none",
+                  fontWeight: 700,
+                  fontSize: "13px",
+                  bgcolor: "#16a34a",
+                  borderRadius: "8px",
+                  px: 2.2,
+                  py: 0.8,
+                  boxShadow: "0 2px 10px rgba(22,163,74,0.4)",
+                  "&:hover": { bgcolor: "#15803d" },
+                }}
+              >
+                Liquidar Selecionadas
+              </Button>
             </Box>
           </Box>
         )}
@@ -2124,7 +2346,7 @@ export default function Contratos() {
         </form>
       </Dialog>
 
-      {/* ══════════ MODAL BAIXA EM LOTE DE PARCELAS ══════════ */}
+      {/* ══════════ MODAL BAIXA EM LOTE DE PARCELAS (BULK PAY) ══════════ */}
       <Dialog
         open={modalLoteAberto}
         onClose={() => !processandoPagamento && setModalLoteAberto(false)}
@@ -2141,7 +2363,7 @@ export default function Contratos() {
             color: "#182338",
           }}
         >
-          Baixa em Lote de Parcelas
+          Liquidação em Lote de Parcelas
           <Box
             component="button"
             onClick={() => setModalLoteAberto(false)}
@@ -2151,40 +2373,187 @@ export default function Contratos() {
           </Box>
         </DialogTitle>
 
+        <form onSubmit={handleConfirmarBaixaEmLote}>
+          <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
+            <Box
+              sx={{
+                p: 2,
+                bgcolor: "#f0fdf4",
+                border: "1px solid #bbf7d0",
+                borderRadius: "10px",
+              }}
+            >
+              <Typography sx={{ fontSize: "12.5px", color: "#166534" }}>
+                Você está liquidando <strong>{parcelasSelecionadas.length} parcela(s)</strong> no valor total de:
+              </Typography>
+              <Typography sx={{ fontSize: "20px", fontWeight: 800, color: "#15803d", mt: 0.5 }}>
+                {formatBRL(totalSelecionado)}
+              </Typography>
+            </Box>
+
+            <TextField
+              select
+              label="Forma de Pagamento *"
+              size="small"
+              fullWidth
+              value={loteForm.paymentMethod}
+              onChange={(e) => setLoteForm({ ...loteForm, paymentMethod: e.target.value })}
+            >
+              <MenuItem value="PIX">PIX</MenuItem>
+              <MenuItem value="BOLETO">Boleto Bancário</MenuItem>
+              <MenuItem value="CARTAO">Cartão de Crédito</MenuItem>
+              <MenuItem value="TRANSFERENCIA">Transferência Bancária</MenuItem>
+              <MenuItem value="DINHEIRO">Dinheiro / Espécie</MenuItem>
+            </TextField>
+
+            <TextField
+              label="Data de Recebimento *"
+              type="date"
+              size="small"
+              fullWidth
+              InputLabelProps={{ shrink: true }}
+              value={loteForm.paymentDate}
+              onChange={(e) => setLoteForm({ ...loteForm, paymentDate: e.target.value })}
+            />
+
+            <TextField
+              label="Observações / Identificador do Lote"
+              size="small"
+              fullWidth
+              multiline
+              rows={2}
+              value={loteForm.observacoes}
+              onChange={(e) => setLoteForm({ ...loteForm, observacoes: e.target.value })}
+              placeholder="Opcional (ex: Lote liquidado via PIX corporativo)"
+            />
+          </DialogContent>
+
+          <DialogActions sx={{ p: 2, gap: 1 }}>
+            <Button
+              onClick={() => setModalLoteAberto(false)}
+              disabled={processandoPagamento}
+              sx={{ textTransform: "none", color: "#64748b" }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              color="success"
+              disabled={processandoPagamento || parcelasSelecionadas.length === 0}
+              startIcon={
+                processandoPagamento ? (
+                  <CircularProgress size={16} color="inherit" />
+                ) : (
+                  <CheckRoundedIcon />
+                )
+              }
+              sx={{
+                textTransform: "none",
+                fontWeight: 700,
+                px: 2.5,
+                bgcolor: "#16a34a",
+                "&:hover": { bgcolor: "#15803d" },
+              }}
+            >
+              {processandoPagamento ? "Processando..." : "Confirmar Liquidação"}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+
+      {/* ══════════ MODAL MARCAR ESTORNO (CONTROLE INTERNO) ══════════ */}
+      <Dialog
+        open={modalEstornoAberto}
+        onClose={() => !salvandoEstorno && setModalEstornoAberto(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: "14px", p: 1 } }}
+      >
+        <DialogTitle
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            fontWeight: 700,
+            color: "#182338",
+          }}
+        >
+          Marcar Estorno de Pagamento
+          <Box
+            component="button"
+            onClick={() => setModalEstornoAberto(false)}
+            sx={{ border: "none", background: "none", cursor: "pointer", color: "#67728a" }}
+          >
+            <CloseRoundedIcon />
+          </Box>
+        </DialogTitle>
+
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
-          <Typography sx={{ fontSize: "13px", color: "#64748b" }}>
-            Selecione até qual parcela você deseja marcar como <strong>PAGA</strong> de uma só vez (útil para contratos em andamento que já tiveram parcelas liquidadas):
-          </Typography>
+          <Box sx={{ p: 2, bgcolor: "#fef2f2", border: "1px solid #fecaca", borderRadius: "10px" }}>
+            <Typography sx={{ fontSize: "12px", color: "#991b1b", fontWeight: 700 }}>
+              Marcador de Controle Interno
+            </Typography>
+            <Typography sx={{ fontSize: "12px", color: "#7f1d1d", mt: 0.5 }}>
+              O estorno atua exclusivamente como controle interno e auditoria para correção de baixas indevidas, revertendo o status da parcela para Em Aberto. Não dispara transações financeiras em gateways externos.
+            </Typography>
+            {pagamentoParaEstorno && (
+              <Box
+                sx={{
+                  mt: 1.5,
+                  pt: 1,
+                  borderTop: "1px dashed #fca5a5",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: "12.5px",
+                  color: "#991b1b",
+                }}
+              >
+                <span>
+                  Parcela #{pagamentoParaEstorno.parcela_numero || pagamentoParaEstorno.parcela_id}
+                </span>
+                <strong>{formatBRL(pagamentoParaEstorno.valor)}</strong>
+              </Box>
+            )}
+          </Box>
 
           <TextField
-            label="Marcar como pagas até a parcela número"
-            type="number"
+            label="Justificativa do Estorno *"
+            placeholder="Ex: Baixa duplicada, erro de digitação, cliente cancelou comprovante..."
             size="small"
             fullWidth
-            value={ateParcelaLote}
-            onChange={(e) => setAteParcelaLote(Math.max(1, Math.min(parcelasDetalhe.length, Number(e.target.value))))}
-            inputProps={{ min: 1, max: parcelasDetalhe.length }}
-            helperText={`Serão marcadas como pagas as parcelas de #1 até #${ateParcelaLote}.`}
+            multiline
+            rows={3}
+            required
+            value={motivoEstorno}
+            onChange={(e) => setMotivoEstorno(e.target.value)}
+            helperText="Obrigatório informar a justificativa antes de liberar a confirmação."
           />
         </DialogContent>
 
         <DialogActions sx={{ p: 2, gap: 1 }}>
           <Button
-            onClick={() => setModalLoteAberto(false)}
-            disabled={processandoPagamento}
+            onClick={() => setModalEstornoAberto(false)}
+            disabled={salvandoEstorno}
             sx={{ textTransform: "none", color: "#64748b" }}
           >
             Cancelar
           </Button>
           <Button
             variant="contained"
-            color="success"
-            onClick={handleBaixaEmLote}
-            disabled={processandoPagamento}
-            startIcon={processandoPagamento ? <CircularProgress size={16} color="inherit" /> : <PlaylistAddCheckRoundedIcon />}
-            sx={{ textTransform: "none", fontWeight: 600, px: 2.5 }}
+            color="error"
+            onClick={handleConfirmarEstorno}
+            disabled={salvandoEstorno || !motivoEstorno.trim()}
+            startIcon={
+              salvandoEstorno ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <UndoRoundedIcon />
+              )
+            }
+            sx={{ textTransform: "none", fontWeight: 700, px: 2.5 }}
           >
-            {processandoPagamento ? "Processando..." : "Confirmar Baixa em Lote"}
+            {salvandoEstorno ? "Estornando..." : "Confirmar Estorno"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -2255,176 +2624,6 @@ export default function Contratos() {
         </form>
       </Dialog>
 
-      {/* ══════════ MODAL REGISTRAR PAGAMENTO DA PARCELA ══════════ */}
-      <Dialog
-        open={modalPagarAberto}
-        onClose={() => !processandoPagamento && setModalPagarAberto(false)}
-        maxWidth="xs"
-        fullWidth
-        PaperProps={{ sx: { borderRadius: "14px", p: 1 } }}
-      >
-        <DialogTitle
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            fontWeight: 700,
-            color: "#182338",
-          }}
-        >
-          Registrar Pagamento
-          <Box
-            component="button"
-            onClick={() => setModalPagarAberto(false)}
-            sx={{ border: "none", background: "none", cursor: "pointer", color: "#67728a" }}
-          >
-            <CloseRoundedIcon />
-          </Box>
-        </DialogTitle>
-
-        <form onSubmit={handleConfirmarPagamento}>
-          <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
-            <Box sx={{ p: 2, bgcolor: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
-              <Typography sx={{ fontSize: "12px", color: "#64748b" }}>Parcela Selecionada:</Typography>
-              <Typography sx={{ fontSize: "15px", fontWeight: 700, color: "#1e293b" }}>
-                Parcela #{parcelaSelecionadaParaPagar?.numero} — Vencimento: {formatDate(parcelaSelecionadaParaPagar?.data_vencimento)}
-              </Typography>
-            </Box>
-
-            <TextField
-              label="Valor Pago (R$) *"
-              type="number"
-              size="small"
-              fullWidth
-              value={pagamentoForm.valor}
-              onChange={(e) => setPagamentoForm({ ...pagamentoForm, valor: e.target.value })}
-              required
-            />
-
-            <TextField
-              label="Data do Pagamento *"
-              type="date"
-              size="small"
-              InputLabelProps={{ shrink: true }}
-              fullWidth
-              value={pagamentoForm.data_pagamento}
-              onChange={(e) => setPagamentoForm({ ...pagamentoForm, data_pagamento: e.target.value })}
-              required
-            />
-
-            <TextField
-              select
-              label="Forma de Pagamento *"
-              size="small"
-              fullWidth
-              value={pagamentoForm.forma_pagamento}
-              onChange={(e) => setPagamentoForm({ ...pagamentoForm, forma_pagamento: e.target.value })}
-            >
-              <MenuItem value="PIX">PIX</MenuItem>
-              <MenuItem value="BOLETO">Boleto Bancário</MenuItem>
-              <MenuItem value="CARTAO">Cartão de Crédito</MenuItem>
-              <MenuItem value="TRANSFERENCIA">Transferência Bancária</MenuItem>
-              <MenuItem value="DINHEIRO">Dinheiro / Espécie</MenuItem>
-            </TextField>
-
-            <TextField
-              label="Observações / Comprovante"
-              size="small"
-              multiline
-              rows={2}
-              fullWidth
-              value={pagamentoForm.observacoes}
-              onChange={(e) => setPagamentoForm({ ...pagamentoForm, observacoes: e.target.value })}
-              placeholder="Opcional (ex: Pago via Pix Banco do Brasil)"
-            />
-          </DialogContent>
-
-          <DialogActions sx={{ p: 2, gap: 1 }}>
-            <Button
-              onClick={() => setModalPagarAberto(false)}
-              disabled={processandoPagamento}
-              sx={{ textTransform: "none", color: "#64748b" }}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              variant="contained"
-              color="success"
-              disabled={processandoPagamento}
-              startIcon={processandoPagamento ? <CircularProgress size={16} color="inherit" /> : <CheckCircleRoundedIcon />}
-              sx={{ textTransform: "none", fontWeight: 600, px: 2.5 }}
-            >
-              {processandoPagamento ? "Registrando..." : "Confirmar Pagamento"}
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
-
-      {/* ══════════ MODAL BAIXA EM LOTE DE PARCELAS ══════════ */}
-      <Dialog
-        open={modalLoteAberto}
-        onClose={() => !processandoPagamento && setModalLoteAberto(false)}
-        maxWidth="xs"
-        fullWidth
-        PaperProps={{ sx: { borderRadius: "14px", p: 1 } }}
-      >
-        <DialogTitle
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            fontWeight: 700,
-            color: "#182338",
-          }}
-        >
-          Baixa em Lote de Parcelas
-          <Box
-            component="button"
-            onClick={() => setModalLoteAberto(false)}
-            sx={{ border: "none", background: "none", cursor: "pointer", color: "#67728a" }}
-          >
-            <CloseRoundedIcon />
-          </Box>
-        </DialogTitle>
-
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
-          <Typography sx={{ fontSize: "13px", color: "#64748b" }}>
-            Selecione até qual parcela você deseja marcar como <strong>PAGA</strong> de uma só vez (útil para contratos em andamento que já tiveram parcelas liquidadas):
-          </Typography>
-
-          <TextField
-            label="Marcar como pagas até a parcela número"
-            type="number"
-            size="small"
-            fullWidth
-            value={ateParcelaLote}
-            onChange={(e) => setAteParcelaLote(Math.max(1, Math.min(parcelasDetalhe.length, Number(e.target.value))))}
-            inputProps={{ min: 1, max: parcelasDetalhe.length }}
-            helperText={`Serão marcadas como pagas as parcelas de #1 até #${ateParcelaLote}.`}
-          />
-        </DialogContent>
-
-        <DialogActions sx={{ p: 2, gap: 1 }}>
-          <Button
-            onClick={() => setModalLoteAberto(false)}
-            disabled={processandoPagamento}
-            sx={{ textTransform: "none", color: "#64748b" }}
-          >
-            Cancelar
-          </Button>
-          <Button
-            variant="contained"
-            color="success"
-            onClick={handleBaixaEmLote}
-            disabled={processandoPagamento}
-            startIcon={processandoPagamento ? <CircularProgress size={16} color="inherit" /> : <PlaylistAddCheckRoundedIcon />}
-            sx={{ textTransform: "none", fontWeight: 600, px: 2.5 }}
-          >
-            {processandoPagamento ? "Processando..." : "Confirmar Baixa em Lote"}
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {/* ══════════ SNACKBAR DE FEEDBACK ══════════ */}
       <Snackbar
