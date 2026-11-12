@@ -1,4 +1,5 @@
-const { parseValor, parseData, parseCpfCnpj, extrairDados } = require('../../src/services/ocrService');
+const path = require('path');
+const { parseValor, parseData, parseCpfCnpj, extrairDados, extrairTextoDeArquivo } = require('../../src/services/ocrService');
 
 describe('ocrService.parseValor', () => {
   test('parseia "R$ 1.234,56"', () => {
@@ -27,11 +28,11 @@ describe('ocrService.parseData', () => {
 
 describe('ocrService.parseCpfCnpj', () => {
   test('identifica CPF com máscara', () => {
-    expect(parseCpfCnpj('529.982.247-25')).toBe('529.982.247-25');
+    expect(parseCpfCnpj('529.982.247-25')).toBe('52998224725');
   });
 
   test('identifica CNPJ com máscara', () => {
-    expect(parseCpfCnpj('11.222.333/0001-81')).toBe('11.222.333/0001-81');
+    expect(parseCpfCnpj('11.222.333/0001-81')).toBe('11222333000181');
   });
 
   test('retorna null quando não encontra', () => {
@@ -54,7 +55,7 @@ describe('ocrService.extrairDados (RF11/RNF17)', () => {
   test('extrai campos relevantes e informa campos encontrados', () => {
     const { dados, campos, confianca } = extrairDados(textoContrato);
     expect(dados.cliente_nome).toContain('Empresa Exemplo');
-    expect(dados.cpf_cnpj).toBe('11.222.333/0001-81');
+    expect(dados.cpf_cnpj).toBe('11222333000181');
     expect(dados.numero).toBe('2026-001');
     expect(dados.valor_total).toBe(10000);
     expect(dados.quantidade_parcelas).toBe(10);
@@ -78,5 +79,15 @@ describe('ocrService.extrairDados (RF11/RNF17)', () => {
     const { dados, confianca } = extrairDados('');
     expect(Object.keys(dados)).toHaveLength(0);
     expect(confianca).toBe(0);
+  });
+});
+
+
+describe('ocrService.extrairTextoDeArquivo PDF digital', () => {
+  test('extrai camada de texto diretamente do PDF, sem rasterização', async () => {
+    const caminho = path.join(__dirname, '..', 'fixtures', 'contrato-digital.pdf');
+    const leitura = await extrairTextoDeArquivo({ caminho, tipoArquivo: 'application/pdf' });
+    expect(leitura.origem).toBe('pdf-texto');
+    expect(leitura.text.length).toBeGreaterThanOrEqual(40);
   });
 });
