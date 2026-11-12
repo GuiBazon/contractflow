@@ -168,7 +168,7 @@ jobs:
               const login=await request(app).post('/api/auth/login').send({email:'apresentacao@contractflow.com',senha:'demo123'});
               if(login.status!==200||!login.body.token)throw new Error('Login demo falhou '+login.status);
               const auth={Authorization:'Bearer '+login.body.token};
-              for(const route of ['/api/clientes','/api/contratos','/api/dashboard','/api/recebiveis','/api/calendario','/api/despesas','/api/receitas']){
+              for(const route of ['/api/clientes','/api/contratos','/api/dashboard','/api/recebiveis','/api/calendario?de=2026-09-01&ate=2027-02-28','/api/despesas','/api/receitas']){
                 const response=await request(app).get(route).set(auth);
                 if(response.status!==200)throw new Error(route+' retornou HTTP '+response.status+' '+JSON.stringify(response.body).slice(0,200));
               }
