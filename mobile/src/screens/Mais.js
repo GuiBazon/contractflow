@@ -47,7 +47,7 @@ export function Mais() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <Header title="Mais" />
+      <Header title="Mais" leftIcon="arrow-back" onLeftPress={() => navigation.goBack()} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <View style={styles.perfilCard}>
           <View style={styles.avatar}>
