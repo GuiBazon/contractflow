@@ -177,11 +177,11 @@ const sheets = {
 
   // USUÁRIO / PERFIL
 
-  getPerfilUsuario: (id) =>
+  getPerfilUsuario: () =>
     api.get('/perfil'),
 
-  updatePerfilUsuario: (id, data) =>
-    api.patch('/perfil', data),
+  updatePerfilUsuario: (...args) =>
+    api.patch('/perfil', args[1]),
 
   updateSenha: (data) =>
     api.patch("/auth/password", { senha_atual: data.senhaAtual, nova_senha: data.novaSenha }),
