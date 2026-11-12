@@ -86,7 +86,7 @@ const sheets = {
     api.put(`/contratos/${id}`, data),
 
   updateContract: (id, data) =>
-    api.put(`/contracts/${id}`, data),
+    api.put(`/contratos/${id}`, data),
 
   patchContrato: (id, data) =>
     api.patch(`/contratos/${id}`, data),
@@ -150,7 +150,7 @@ const sheets = {
     api.patch(`/pagamentos/${id}/estornar`, data),
 
   reversePayment: (id, data) =>
-    api.patch(`/payments/${id}/reverse`, data),
+    api.post(`/pagamentos/${id}/estorno`, { motivo: data?.motivo || data?.reason || data?.justificativa }),
 
   // OCR / IMPORTAÇÃO INTELIGENTE COM IA
 
@@ -178,13 +178,13 @@ const sheets = {
   // USUÁRIO / PERFIL
 
   getPerfilUsuario: (id) =>
-    api.get(`/usuarios/${id}`),
+    api.get('/perfil'),
 
   updatePerfilUsuario: (id, data) =>
-    api.put(`/usuarios/${id}`, data),
+    api.patch('/perfil', data),
 
   updateSenha: (data) =>
-    api.patch("/usuarios/senha", data),
+    api.patch("/auth/password", { senha_atual: data.senhaAtual, nova_senha: data.novaSenha }),
 
   // CALCULADORA
 

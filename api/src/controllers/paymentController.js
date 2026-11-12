@@ -218,4 +218,22 @@ async function listAllPagamentos(req, res) {
   }
 }
 
-module.exports = { listPagamentos: asyncHandler(listPagamentos),createPagamento: asyncHandler(createPagamento),listAllPagamentos: asyncHandler(listAllPagamentos) };
+
+async function estornarPagamento(req, res) {
+  const id = String(req.params.id || req.params.pagamentoId || '');
+  const motivo = req.body?.motivo ?? req.body?.reason ?? req.body?.justificativa;
+  if (!/^[1-9]\d*$/.test(id)) return res.status(400).json({ message: 'ID do pagamento inválido' });
+  if (typeof motivo !== 'string' || motivo.trim().length < 5) {
+    return res.status(400).json({ message: 'Informe a justificativa do estorno com pelo menos 5 caracteres' });
+  }
+  try {
+    const result = await require('../services/paymentReversalService').reverse(req.user.id, id, motivo);
+    return res.json(result);
+  } catch (error) {
+    const status = error.status || 500;
+    if (status >= 500) console.error('Falha no estorno:', error);
+    return res.status(status).json({ message: status >= 500 ? 'Erro ao estornar pagamento' : error.message });
+  }
+}
+
+module.exports = { estornarPagamento, listPagamentos: asyncHandler(listPagamentos),createPagamento: asyncHandler(createPagamento),listAllPagamentos: asyncHandler(listAllPagamentos) };

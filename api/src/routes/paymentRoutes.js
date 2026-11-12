@@ -3,6 +3,7 @@ const {
   listPagamentos,
   createPagamento,
   listAllPagamentos,
+  estornarPagamento,
 } = require('../controllers/paymentController');
 const authMiddleware = require('../middlewares/authMiddleware');
 
@@ -14,6 +15,8 @@ allRouter.use(authMiddleware);
 
 // Compatibilidade com o cliente Web da Sprint 1.
 router.get('/', listAllPagamentos);
+router.patch('/:id/estornar', estornarPagamento);
+router.patch('/:id/reverse', estornarPagamento);
 router.post('/:pagamentoId/estorno', require('../utils/http').asyncHandler(require('../controllers/paymentReversalController').reverse));
 router.get('/:contratoId/pagamentos', listPagamentos);
 router.post('/:contratoId/pagamentos', createPagamento);
