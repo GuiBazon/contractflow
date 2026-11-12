@@ -3,12 +3,14 @@
 
 const db = require('../config/db');
 const { isDate, isDecimal, isInteger, str } = require('../utils/validators');
+const { money, integer } = require('../utils/query');
+const { HttpError } = require('../utils/http');
 const { registrarHistorico } = require('./historicoService');
 
 const VALID_STATUS = ['ATIVO', 'PENDENTE', 'ENCERRADO', 'CANCELADO', 'EM_RENOVACAO'];
 
-async function obterContratoDono(contratoId, usuarioId) {
-  const [rows] = await db.execute(
+async function obterContratoDono(contratoId, usuarioId, connection = db) {
+  const [rows] = await connection.execute(
     `SELECT c.*, cl.nome_razao_social AS cliente_nome, cl.cpf_cnpj AS cliente_cpf_cnpj
      FROM contratos c
      JOIN clientes cl ON cl.id = c.cliente_id
@@ -18,16 +20,36 @@ async function obterContratoDono(contratoId, usuarioId) {
   return rows[0] || null;
 }
 
+// As escritas financeiras bloqueiam primeiro o contrato e depois suas parcelas.
+// A ordem comum evita o ciclo pagamento -> histórico -> edição do contrato.
+async function bloquearContratoDono(connection, contratoId, usuarioId) {
+  integer(contratoId,'Contrato');
+  const [[contrato]] = await connection.query(
+    'SELECT * FROM contratos WHERE id=? AND usuario_id=? FOR UPDATE',
+    [contratoId, usuarioId]
+  );
+  if (!contrato) throw new HttpError(404, 'Contrato não encontrado');
+  return contrato;
+}
+
 // monta o objeto de dados validado; lanca Error com campo message quando invalido
-function validarDados({ cliente_id, numero, valor_total, data_inicio, data_fim, status }) {
+function validarDados({ cliente_id, numero, valor_total, data_inicio, data_fim, status, tipo, descricao, forma_pagamento, observacoes }) {
+  integer(cliente_id, 'Cliente');
+  money(valor_total, 'Valor total', { zero: true });
   const erros = [];
 
   if (!Number(cliente_id)) erros.push('Cliente é obrigatório');
-  if (!numero) erros.push('Número do contrato é obrigatório');
+  if (!numero || str(numero).length > 50) erros.push('Número do contrato é obrigatório (até 50 caracteres)');
   if (!isDecimal(valor_total)) erros.push('Valor total deve ser um número válido maior ou igual a zero');
   if (data_inicio && !isDate(data_inicio)) erros.push('Data de início inválida');
   if (data_fim && !isDate(data_fim)) erros.push('Data de fim inválida');
   if (data_inicio && data_fim && data_fim < data_inicio) erros.push('Data de fim anterior à data de início');
+  for (const [name, value, max] of [
+    ['tipo', tipo, 100], ['descricao', descricao, 5000],
+    ['forma_pagamento', forma_pagamento, 50], ['observacoes', observacoes, 5000],
+  ]) {
+    if (value != null && String(value).length > max) erros.push(`${name} excede o tamanho permitido`);
+  }
 
   if (status && !VALID_STATUS.includes(status)) {
     erros.push('Status inválido');
@@ -41,7 +63,7 @@ function validarDados({ cliente_id, numero, valor_total, data_inicio, data_fim, 
 }
 
 // gera lista de vencimentos; aceita lista fornecida ou gera mensalmente a partir da data base
-function calcularVencimentos({ quantidade_parcelas, vencimentos, data_inicio }) {
+function calcularVencimentos({ quantidade_parcelas, vencimentos, data_inicio, dia_base }) {
   if (vencimentos && Array.isArray(vencimentos)) {
     const vals = vencimentos.map((v) => (v && isDate(v) ? v : null));
     if (vals.some((v) => v === null)) {
@@ -65,6 +87,7 @@ function calcularVencimentos({ quantidade_parcelas, vencimentos, data_inicio }) 
 
   const resultados = [];
   let [year, month, day] = data_inicio.split('-').map(Number);
+  if (dia_base !== undefined) day = dia_base;
   for (let i = 0; i < quantidade_parcelas; i++) {
     const ultimoDia = new Date(Date.UTC(year, month, 0)).getUTCDate();
     const dia = Math.min(day, ultimoDia);
@@ -83,19 +106,23 @@ function calcularVencimentos({ quantidade_parcelas, vencimentos, data_inicio }) 
 // distribui o valor total entre as parcelas (a ultima absorve o centavo da divisao)
 function calcularValoresParcelas({ valor_total, valor_parcela, quantidade_parcelas }) {
   if (valor_parcela) return Array(quantidade_parcelas).fill(Number(valor_parcela));
-
-  const base = Number((valor_total / quantidade_parcelas).toFixed(2));
-  const valores = Array(quantidade_parcelas).fill(base);
-  const soma = base * quantidade_parcelas;
-  const diferenca = Number((valor_total - soma).toFixed(2));
-  valores[valores.length - 1] = Number((valores[valores.length - 1] + diferenca).toFixed(2));
+  const centavos = Math.round(valor_total * 100);
+  const base = Math.floor(centavos / quantidade_parcelas);
+  const valores = Array(quantidade_parcelas).fill(base / 100);
+  valores[valores.length - 1] = (centavos - base * (quantidade_parcelas - 1)) / 100;
   return valores;
 }
 
 // cria contrato + parcelas + historico em transacao (RN06/RF14/RF15)
-async function criarContratoComParcelas({ usuarioId, dados }) {
+async function criarContratoComParcelas({ usuarioId, dados, connection }) {
   try {
     validarDados(dados);
+    if (dados.vencimentos !== undefined && !Array.isArray(dados.vencimentos)) throw new HttpError(400, 'Vencimentos devem ser uma lista de datas');
+    integer(dados.quantidade_parcelas ?? dados.vencimentos?.length, 'Quantidade de parcelas', { max: 120 });
+    for (const rate of ['juros_percentual', 'multa_percentual']) {
+      if (money(dados[rate] ?? 0, rate, { zero: true }) > 100) throw new HttpError(400, `${rate} deve estar entre 0 e 100`);
+    }
+    if (dados.valor_parcela !== undefined && Math.round(money(dados.valor_parcela) * 100) * Number(dados.quantidade_parcelas ?? dados.vencimentos?.length) !== Math.round(Number(dados.valor_total) * 100)) throw new HttpError(400, 'Soma das parcelas deve corresponder ao valor total');
   } catch (e) {
     return { erro: e };
   }
@@ -123,9 +150,11 @@ async function criarContratoComParcelas({ usuarioId, dados }) {
     quantidade_parcelas,
   });
 
-  const conn = await db.getConnection();
+  const conn = connection || await db.getConnection();
   try {
-    await conn.beginTransaction();
+    if (!connection) await conn.beginTransaction();
+    const [[cliente]] = await conn.query('SELECT id FROM clientes WHERE id = ? AND usuario_id = ?', [dados.cliente_id, usuarioId]);
+    if (!cliente) throw new HttpError(400, 'Cliente inválido');
 
     const [result] = await conn.execute(
       `INSERT INTO contratos (
@@ -167,16 +196,16 @@ async function criarContratoComParcelas({ usuarioId, dados }) {
       descricao: `Contrato criado com ${quantidade_parcelas} parcela(s) e ${vencimentos.length} vencimento(s)`,
     });
 
-    await conn.commit();
-
-    const contrato = await obterContratoDono(contratoId, usuarioId);
+    const contrato = await obterContratoDono(contratoId, usuarioId, conn);
+    if (!connection) await conn.commit();
     return { contrato };
   } catch (error) {
-    await conn.rollback();
-    console.error('erro ao criar contrato:', error);
+    if (!connection) await conn.rollback();
+    if (error.code === 'ER_DUP_ENTRY') error.status = 409;
+    if (!error.status) console.error('erro ao criar contrato:', error);
     return { erro: error };
   } finally {
-    conn.release();
+    if (!connection) conn.release();
   }
 }
 
@@ -185,40 +214,13 @@ function podeGerarParcelas(status) {
   return status !== 'ENCERRADO' && status !== 'CANCELADO';
 }
 
-// Reconciliacao usada na IMPORTACAO por OCR (RF10/RF11): contratos reais
-// frequentemente listam apenas alguns vencimentos de amostra (ex.: "12 parcelas"
-// com 3-4 datas visiveis). Quando a lista nao corresponde a quantidade de
-// parcelas, gera a agenda mensal completa a partir da data de inicio e ajusta a
-// data final. Nao altera a validacao estrita do cadastro manual (validarDados).
-function normalizarVencimentosImportados({ quantidade_parcelas, vencimentos, data_inicio, data_fim }) {
-  const quantidade = Number(quantidade_parcelas) || 0;
-  const lista = Array.isArray(vencimentos) ? vencimentos.filter((v) => v && isDate(v)) : [];
-  const inicio = data_inicio && isDate(data_inicio) ? data_inicio : lista[0] || null;
-
-  if (quantidade > 0 && lista.length !== quantidade && inicio) {
-    const gerados = calcularVencimentos({ quantidade_parcelas: quantidade, data_inicio: inicio });
-    return {
-      vencimentos: gerados,
-      data_inicio: inicio,
-      data_fim: gerados[gerados.length - 1],
-    };
-  }
-
-  const fim = data_fim && isDate(data_fim) ? data_fim : lista.length ? lista[lista.length - 1] : null;
-  return {
-    vencimentos: lista.length ? lista : undefined,
-    data_inicio: inicio,
-    data_fim: fim,
-  };
-}
-
 module.exports = {
   VALID_STATUS,
   obterContratoDono,
+  bloquearContratoDono,
   validarDados,
   calcularVencimentos,
   calcularValoresParcelas,
   criarContratoComParcelas,
   podeGerarParcelas,
-  normalizarVencimentosImportados,
 };

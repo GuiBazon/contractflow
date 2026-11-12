@@ -9,12 +9,13 @@ const {
 } = require('../controllers/ocrController');
 
 const router = express.Router();
+const { asyncHandler } = require('../utils/http');
 router.use(authMiddleware);
 
 router.post('/extract', extract);
-router.get('/:id', getExtracao);
-router.patch('/:id', updateExtracao);
-router.post('/:id/confirmar', confirmar);
-router.delete('/:id', cancelarExtracao);
+router.get('/:id', asyncHandler(getExtracao));
+router.patch('/:id', asyncHandler(updateExtracao));
+router.post('/:id/confirmar', asyncHandler(confirmar));
+router.delete('/:id', asyncHandler(cancelarExtracao));
 
 module.exports = router;

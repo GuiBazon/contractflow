@@ -36,12 +36,14 @@ ensureUploadDirs();
 // Nome de arquivo controlado: uuid + extensao validada (evita path traversal e nomes maliciosos)
 function fileFilter(req, file, cb) {
   const ext = path.extname(file.originalname).toLowerCase();
+  const extensions = { 'application/pdf': ['.pdf'], 'image/jpeg': ['.jpg','.jpeg'], 'image/png': ['.png'], 'image/webp': ['.webp'] };
   if (!ALLOWED_MIMES.has(file.mimetype)) {
     return cb(Object.assign(new Error('Formato de arquivo não permitido (use PDF, JPEG, PNG ou WebP)'), { status: 400 }));
   }
   if (!ALLOWED_EXTENSIONS.has(ext)) {
     return cb(Object.assign(new Error('Extensão de arquivo não permitida'), { status: 400 }));
   }
+  if (!extensions[file.mimetype].includes(ext)) return cb(Object.assign(new Error('Extensão e formato do arquivo não correspondem'), { status: 400 }));
   file.safeExt = ext;
   cb(null, true);
 }
@@ -64,14 +66,15 @@ function buildUploader(subdir, fieldName) {
   }).single(fieldName);
 }
 
-// Overflow de tamanho -> erro com status 400 (Multer lança LimitFileSize por padrão)
+// Erros de entrada têm status 400/413; falhas internas não expõem caminhos.
 function uploadSizeHandler(err, req, res, next) {
   if (err) {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(413).json({ message: 'Arquivo muito grande (máximo 10MB)' });
     }
-    const status = err.status || 500;
-    return res.status(status).json({ message: err.message });
+    const status = err.status || (err.name === 'MulterError' ? 400 : 500);
+    if (status >= 500) console.error('erro ao receber arquivo:', err.code || err.name);
+    return res.status(status).json({ message: status >= 500 ? 'Erro ao receber arquivo' : err.message });
   }
   next();
 }

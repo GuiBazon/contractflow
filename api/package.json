@@ -4,11 +4,16 @@
   "description": "Backend inicial do ContractFlow",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
-    "test": "jest --runInBand",
+    "start": "node scripts/migrate.js && node src/server.js",
+    "dev": "node scripts/migrate.js && node --watch src/server.js",
+    "test": "jest",
     "test:unit": "jest tests/unit",
-    "test:api": "jest tests/integration"
+    "test:api": "jest tests/integration",
+    "test:mysql": "jest --config jest.mysql.config.js --runInBand",
+    "db:migrate": "node scripts/migrate.js",
+    "coverage:merge": "node scripts/coverage.js",
+    "docs:validate": "node scripts/validate-openapi.js",
+    "test:coverage": "npm test -- --ci --runInBand --coverage && npm run test:mysql -- --ci --coverage && npm run coverage:merge"
   },
   "keywords": [
     "contractflow",
@@ -19,22 +24,37 @@
   "author": "Bazon",
   "license": "MIT",
   "dependencies": {
+    "@tesseract.js-data/por": "^1.0.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
     "express": "^4.19.2",
+    "express-rate-limit": "8.7.1",
+    "fontkit": "^2.0.4",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.3.0",
     "mysql2": "^3.2.0",
+    "nodemailer": "10.1.7",
     "pdf-parse": "^1.1.4",
-    "pdf-to-img": "^7.0.0",
+    "pdfkit": "^0.17.2",
     "sharp": "^0.35.5",
+    "swagger-ui-express": "5.0.1",
     "tesseract.js": "^5.1.1"
   },
   "devDependencies": {
-    "jest": "^30.5.2",
+    "@apidevtools/swagger-parser": "13.1.0",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "istanbul-lib-coverage": "^3.2.2",
+    "istanbul-lib-report": "^3.0.1",
+    "istanbul-reports": "^3.2.0",
+    "jest": "^30.5.1",
     "nodemon": "^3.1.4",
-    "pdfkit": "^0.20.2",
-    "supertest": "^7.3.0"
+    "supertest": "^7.2.2"
+  },
+  "overrides": {
+    "uuid": "11.1.1",
+    "qs": "6.16.0"
   }
 }

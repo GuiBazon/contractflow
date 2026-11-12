@@ -1,13 +1,16 @@
 const db = require('../config/db');
 const { SITUACAO_SQL, recalcSituacaoParcela } = require('../services/financeiroService');
 const { registrarHistorico } = require('../services/historicoService');
-const { obterContratoDono } = require('../services/contratoService');
-const { isDate, isDecimal, str } = require('../utils/validators');
+const { obterContratoDono, bloquearContratoDono } = require('../services/contratoService');
+const { isDate } = require('../utils/validators');
+const { integer,choice } = require('../utils/query');
+const { asyncHandler } = require('../utils/http');
 
 // listagem sempre restrita ao dono do contrato (RNF04)
 async function listParcelas(req, res) {
   const { contratoId } = req.params;
-  const filtro = str(req.query.filtro).toUpperCase(); // PENDENTE | PAGA | VENCIDA | CANCELADA
+  integer(contratoId,'Contrato');
+  const filtro = req.query.filtro === undefined ? null : choice(req.query.filtro,['PENDENTE','PAGA','VENCIDA','CANCELADA'],'Situação');
 
   try {
     const contrato = await obterContratoDono(contratoId, req.user.id);
@@ -32,8 +35,7 @@ async function listParcelas(req, res) {
        FROM parcelas p
        LEFT JOIN (
          SELECT parcela_id, COALESCE(SUM(valor),0) AS valor
-         FROM pagamentos
-         WHERE status IS NULL OR (status != 'ESTORNADO' AND status != 'REVERSED')
+         FROM pagamentos WHERE estornado_em IS NULL
          GROUP BY parcela_id
        ) pg_sum ON pg_sum.parcela_id = p.id
        WHERE ${where.join(' AND ')}
@@ -49,227 +51,54 @@ async function listParcelas(req, res) {
 }
 
 async function updateParcela(req, res) {
+  const { integer, money, choice } = require('../utils/query');
+  const { HttpError } = require('../utils/http');
   const { contratoId, parcelaId } = req.params;
-
+  let conn;
   try {
+    integer(parcelaId, 'Parcela');
     const contrato = await obterContratoDono(contratoId, req.user.id);
-    if (!contrato) {
-      return res.status(404).json({ message: 'Contrato não encontrado' });
-    }
-
-    const [parcelas] = await db.execute(
-      'SELECT * FROM parcelas WHERE id = ? AND contrato_id = ?',
-      [parcelaId, contratoId]
-    );
-    if (parcelas.length === 0) {
-      return res.status(404).json({ message: 'Parcela não encontrada' });
-    }
+    if (!contrato) throw new HttpError(404, 'Contrato não encontrado');
+    conn = await db.getConnection();
+    await conn.beginTransaction();
+    const lockedContract = await bloquearContratoDono(conn, contratoId, req.user.id);
+    const [parcelas] = await conn.execute('SELECT * FROM parcelas WHERE id = ? AND contrato_id = ? FOR UPDATE', [parcelaId, contratoId]);
+    if (!parcelas.length) throw new HttpError(404, 'Parcela não encontrada');
     const parcela = parcelas[0];
-
-    const [pags] = await db.execute(
-      'SELECT COUNT(*) AS total FROM pagamentos WHERE parcela_id = ?',
-      [parcelaId]
-    );
-    const haPagamentos = Number(pags[0].total) > 0;
-
+    const [[{ pago }]] = await conn.query('SELECT COALESCE(SUM(valor),0) AS pago FROM pagamentos WHERE parcela_id = ? AND estornado_em IS NULL', [parcelaId]);
     const updates = [];
     const values = [];
-
-    if (Object.prototype.hasOwnProperty.call(req.body, 'data_vencimento')) {
-      if (!isDate(req.body.data_vencimento)) {
-        return res.status(400).json({ message: 'Data de vencimento inválida' });
-      }
-      updates.push('data_vencimento = ?');
-      values.push(req.body.data_vencimento);
+    if (Object.hasOwn(req.body, 'data_vencimento')) {
+      if (!isDate(req.body.data_vencimento)) throw new HttpError(400, 'Data de vencimento inválida');
+      updates.push('data_vencimento = ?'); values.push(req.body.data_vencimento);
     }
-
-    if (Object.prototype.hasOwnProperty.call(req.body, 'valor')) {
-      if (haPagamentos) {
-        return res.status(400).json({ message: 'Valor da parcela não pode ser alterado após pagamentos' });
-      }
-      if (!isDecimal(req.body.valor)) {
-        return res.status(400).json({ message: 'Valor da parcela inválido' });
-      }
-      updates.push('valor = ?');
-      values.push(Number(req.body.valor));
+    if (Object.hasOwn(req.body, 'valor')) {
+      if (Number(pago) > 0) throw new HttpError(400, 'Valor da parcela não pode ser alterado após pagamentos');
+      updates.push('valor = ?'); values.push(money(req.body.valor, 'Valor da parcela', { zero: true }));
     }
-
-    if (Object.prototype.hasOwnProperty.call(req.body, 'status')) {
-      const novoStatus = str(req.body.status).toUpperCase();
-      if (!['PENDENTE', 'PAGA', 'VENCIDA', 'CANCELADA'].includes(novoStatus)) {
-        return res.status(400).json({ message: 'Status da parcela inválido' });
-      }
-      if (novoStatus === 'CANCELADA' && haPagamentos) {
-        return res.status(400).json({ message: 'Parcela com pagamentos não pode ser cancelada' });
-      }
-      updates.push('status = ?');
-      values.push(novoStatus);
+    if (Object.hasOwn(req.body, 'status')) {
+      const status = choice(req.body.status, ['PENDENTE', 'PAGA', 'VENCIDA', 'CANCELADA'], 'Status da parcela');
+      if (status === 'CANCELADA' && Number(pago) > 0) throw new HttpError(400, 'Parcela com pagamentos não pode ser cancelada');
+      if (status === 'PAGA' && Number(pago) < Number(parcela.valor)) throw new HttpError(400, 'Registre o pagamento para quitar a parcela');
+      updates.push('status = ?'); values.push(status);
     }
-
-    if (updates.length === 0) {
-      return res.status(400).json({ message: 'Nenhum campo válido enviado' });
+    if (!updates.length) throw new HttpError(400, 'Nenhum campo válido enviado');
+    if (Object.hasOwn(req.body, 'valor')) {
+      const total = money((Math.round(Number(lockedContract.valor_total) * 100) - Math.round(Number(parcela.valor) * 100) + Math.round(Number(req.body.valor) * 100)) / 100, 'Novo valor total', { zero: true });
+      await conn.execute('UPDATE contratos SET valor_total=? WHERE id=?', [total, contratoId]);
     }
-
-    values.push(parcelaId, contratoId);
-    const updatesComAlias = updates.map((u) => u.replace(/^(\w+)\s*=/, 'p.$1 ='));
-    await db.execute(
-      `UPDATE parcelas p
-       JOIN contratos c ON c.id = p.contrato_id
-       JOIN clientes cl ON cl.id = c.cliente_id
-       SET ${updatesComAlias.join(', ')}
-       WHERE p.id = ? AND p.contrato_id = ? AND cl.usuario_id = ?`,
-      values
-    );
-
-    await registrarHistorico(db, {
-      contratoId: Number(contratoId),
-      usuarioId: req.user.id,
-      acao: 'PARCELA_ALTERADA',
-      descricao: `Parcela ${parcela.numero} atualizada (${updates.join(', ')})`,
-    });
-
-    const [atualizada] = await db.execute(
-      `SELECT id, numero, valor, data_vencimento, status FROM parcelas WHERE id = ?`,
-      [parcelaId]
-    );
-
-    return res.json({ message: 'Parcela atualizada com sucesso', parcela: atualizada[0] });
+    await conn.execute(`UPDATE parcelas SET ${updates.join(', ')} WHERE id = ? AND contrato_id = ?`, [...values, parcelaId, contratoId]);
+    await recalcSituacaoParcela(conn, parcelaId);
+    await registrarHistorico(conn, { contratoId: Number(contratoId), usuarioId: req.user.id, acao: 'PARCELA_ALTERADA', descricao: `Parcela ${parcela.numero} atualizada (${updates.join(', ')})` });
+    const [[atualizada]] = await conn.query('SELECT id, numero, valor, data_vencimento, status FROM parcelas WHERE id = ?', [parcelaId]);
+    await conn.commit();
+    return res.json({ message: 'Parcela atualizada com sucesso', parcela: atualizada });
   } catch (error) {
-    console.error('erro ao atualizar parcela:', error);
-    return res.status(500).json({ message: 'Erro ao atualizar parcela' });
-  }
+    if (conn) await conn.rollback();
+    const status = error.status || 500;
+    if (status >= 500) console.error('erro ao atualizar parcela:', error);
+    return res.status(status).json({ message: status >= 500 ? 'Erro ao atualizar parcela' : error.message });
+  } finally { if (conn) conn.release(); }
 }
 
-// Processamento de baixa em lote de múltiplas parcelas com transação atômica (Bulk Actions)
-async function bulkPayParcelas(req, res) {
-  const contractIdRaw = req.params.contratoId || req.body.contractId || req.body.contrato_id || req.body.contratoId;
-  const contractId = Number(contractIdRaw);
-
-  const installmentIdsRaw = req.body.installmentIds || req.body.parcelas_ids || req.body.parcelasIds;
-  const paymentMethod = str(req.body.paymentMethod || req.body.forma_pagamento) || 'PIX';
-  const paymentDate = str(req.body.paymentDate || req.body.data_pagamento) || new Date().toISOString().split('T')[0];
-  const totalPaid = req.body.totalPaid !== undefined ? Number(req.body.totalPaid) : (req.body.valor_total !== undefined ? Number(req.body.valor_total) : null);
-  const observacoes = str(req.body.observacoes) || 'Baixa realizada em lote';
-
-  if (!contractId || Number.isNaN(contractId) || contractId <= 0) {
-    return res.status(400).json({ message: 'ID do contrato é obrigatório' });
-  }
-
-  if (!Array.isArray(installmentIdsRaw) || installmentIdsRaw.length === 0) {
-    return res.status(400).json({ message: 'Informe a lista de parcelas para liquidação em lote' });
-  }
-
-  const installmentIds = installmentIdsRaw.map(Number).filter((id) => !Number.isNaN(id) && id > 0);
-  if (installmentIds.length === 0) {
-    return res.status(400).json({ message: 'Nenhuma parcela válida selecionada' });
-  }
-
-  if (!isDate(paymentDate)) {
-    return res.status(400).json({ message: 'Data de pagamento inválida' });
-  }
-
-  try {
-    const contrato = await obterContratoDono(contractId, req.user.id);
-    if (!contrato) {
-      return res.status(404).json({ message: 'Contrato não encontrado' });
-    }
-
-    if (typeof db.garantirColunasPagamentos === 'function') {
-      await db.garantirColunasPagamentos();
-    }
-
-    // Busca todas as parcelas informadas garantindo que pertençam a este contrato
-    const placeholders = installmentIds.map(() => '?').join(', ');
-    const [parcelas] = await db.query(
-      `SELECT id, numero, valor, status, data_vencimento
-       FROM parcelas
-       WHERE contrato_id = ? AND id IN (${placeholders})`,
-      [contractId, ...installmentIds]
-    );
-
-    if (parcelas.length !== installmentIds.length) {
-      return res.status(400).json({
-        message: 'Algumas parcelas informadas não pertencem a este contrato ou não foram encontradas',
-      });
-    }
-
-    // Valida se há parcelas já quitadas ou canceladas
-    for (const p of parcelas) {
-      if (p.status === 'PAGA') {
-        return res.status(400).json({ message: `A parcela #${p.numero} já está quitada` });
-      }
-      if (p.status === 'CANCELADA') {
-        return res.status(400).json({ message: `A parcela #${p.numero} está cancelada e não aceita liquidação` });
-      }
-    }
-
-    // Somatório das parcelas
-    const somaValores = parcelas.reduce((acc, p) => acc + Number(p.valor), 0);
-
-    // Se o cliente forneceu totalPaid, valida com margem para centavos
-    if (totalPaid !== null && !Number.isNaN(totalPaid) && totalPaid > 0) {
-      if (Math.abs(somaValores - totalPaid) > 0.05) {
-        return res.status(400).json({
-          message: `Divergência de valores: o somatório das parcelas (R$ ${somaValores.toFixed(2)}) difere do total informado (R$ ${totalPaid.toFixed(2)})`,
-        });
-      }
-    }
-
-    const conn = await db.getConnection();
-    try {
-      await conn.beginTransaction();
-
-      const pagamentosCriados = [];
-
-      for (const p of parcelas) {
-        const [result] = await conn.execute(
-          `INSERT INTO pagamentos (parcela_id, valor, data_pagamento, forma_pagamento, observacoes, status)
-           VALUES (?, ?, ?, ?, ?, 'CONCLUIDO')`,
-          [p.id, Number(Number(p.valor).toFixed(2)), paymentDate, paymentMethod, observacoes]
-        );
-
-        await conn.execute(
-          "UPDATE parcelas SET status = 'PAGA' WHERE id = ?",
-          [p.id]
-        );
-
-        pagamentosCriados.push({
-          pagamento_id: result.insertId,
-          parcela_id: p.id,
-          parcela_numero: p.numero,
-          valor: Number(p.valor),
-        });
-      }
-
-      const numerosParcelas = parcelas.map((p) => `#${p.numero}`).join(', ');
-      await registrarHistorico(conn, {
-        contratoId: contractId,
-        usuarioId: req.user.id,
-        acao: 'PAGAMENTO_LOTE',
-        descricao: `Baixa em lote de ${parcelas.length} parcelas (${numerosParcelas}) totalizando R$ ${somaValores.toFixed(2)} via ${paymentMethod} em ${paymentDate}`,
-      });
-
-      await conn.commit();
-
-      return res.status(200).json({
-        message: `${parcelas.length} parcelas liquidadas com sucesso`,
-        contractId,
-        parcelas_liquidadas: parcelas.length,
-        total_pago: Number(somaValores.toFixed(2)),
-        data_pagamento: paymentDate,
-        forma_pagamento: paymentMethod,
-        pagamentos: pagamentosCriados,
-      });
-    } catch (err) {
-      await conn.rollback();
-      throw err;
-    } finally {
-      conn.release();
-    }
-  } catch (error) {
-    console.error('erro ao realizar baixa em lote:', error);
-    return res.status(500).json({ message: 'Erro ao processar baixa em lote' });
-  }
-}
-
-module.exports = { listParcelas, updateParcela, bulkPayParcelas, recalcSituacaoParcela };
+module.exports = { listParcelas: asyncHandler(listParcelas),updateParcela: asyncHandler(updateParcela),recalcSituacaoParcela };

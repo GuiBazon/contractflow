@@ -50,7 +50,7 @@ function normalizarOrigem(origin) {
 function validarRespostaPython(json) {
   if (!json || typeof json !== 'object') return null;
   if (typeof json.text !== 'string') return null;
-  if (!Number.isInteger(json.pages)) return null;
+  if (!Number.isInteger(json.pages) || json.pages < 1 || json.pages > 10) return null;
   return json;
 }
 

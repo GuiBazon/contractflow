@@ -6,8 +6,8 @@
 -- Parcelas, pagamentos e documentos são acessados sempre através
 -- da cadeia contrato -> cliente -> usuário.
 --
--- Para um banco já existente, execute: DROP DATABASE contractflow;
--- e rode este script novamente.
+-- Este script inicializa bancos novos. Para bancos existentes,
+-- execute npm run db:migrate na API; não remova o banco para atualizar.
 -- ============================================================
 
 CREATE DATABASE IF NOT EXISTS contractflow
@@ -24,8 +24,52 @@ CREATE TABLE IF NOT EXISTS usuarios (
   senha_hash VARCHAR(255) NOT NULL,
   perfil ENUM('ADMIN', 'USUARIO') DEFAULT 'USUARIO',
   ativo TINYINT(1) NOT NULL DEFAULT 1,
+  token_version INT UNSIGNED NOT NULL DEFAULT 0,
+  cargo VARCHAR(150) NULL,
+  telefone VARCHAR(30) NULL,
+  razao_social VARCHAR(150) NULL,
+  cnpj VARCHAR(14) NULL,
+  inscricao_estadual VARCHAR(30) NULL,
+  foto_arquivo VARCHAR(80) NULL,
+  foto_mime VARCHAR(20) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Reenvios da mesma operação financeira usam a resposta já confirmada.
+CREATE TABLE IF NOT EXISTS chaves_idempotencia (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  usuario_id INT NOT NULL,
+  chave VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  request_hash CHAR(64) NOT NULL,
+  response_status SMALLINT UNSIGNED NULL,
+  response_json JSON NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_idempotencia_usuario_chave (usuario_id, chave),
+  CONSTRAINT fk_idempotencia_usuario FOREIGN KEY (usuario_id)
+    REFERENCES usuarios(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS recuperacoes_senha (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  usuario_id INT NOT NULL,
+  token_hash CHAR(64) NOT NULL UNIQUE,
+  expira_em DATETIME NOT NULL,
+  usado_em DATETIME NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_recuperacoes_usuario (usuario_id),
+  CONSTRAINT fk_recuperacao_usuario FOREIGN KEY (usuario_id)
+    REFERENCES usuarios(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE IF NOT EXISTS notificacoes_leituras (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  usuario_id INT NOT NULL,
+  chave_evento VARCHAR(120) NOT NULL,
+  lida_em DATETIME NOT NULL,
+  UNIQUE KEY uq_notificacao_usuario_evento (usuario_id, chave_evento),
+  CONSTRAINT fk_notificacao_usuario FOREIGN KEY (usuario_id)
+    REFERENCES usuarios(id) ON DELETE RESTRICT
 );
 
 -- RF05 / RF06: clientes (pertencentes a um usuário)
@@ -109,15 +153,20 @@ CREATE TABLE IF NOT EXISTS pagamentos (
   data_pagamento DATE NOT NULL,
   forma_pagamento VARCHAR(50),
   observacoes TEXT,
-  status ENUM('CONCLUIDO', 'ESTORNADO') DEFAULT 'CONCLUIDO',
-  motivo_estorno TEXT,
-  data_estorno DATETIME,
+  estornado_em DATETIME NULL,
+  estornado_por INT NULL,
+  motivo_estorno VARCHAR(500) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY idx_pagamentos_parcela_id (parcela_id),
   KEY idx_pagamentos_data (data_pagamento),
-  KEY idx_pagamentos_status (status),
   CONSTRAINT chk_pagamentos_valor CHECK (valor >= 0),
+  CONSTRAINT chk_pagamento_estorno CHECK (
+    (estornado_em IS NULL AND estornado_por IS NULL AND motivo_estorno IS NULL) OR
+    (estornado_em IS NOT NULL AND estornado_por IS NOT NULL AND motivo_estorno IS NOT NULL AND CHAR_LENGTH(TRIM(motivo_estorno)) >= 5)
+  ),
+  CONSTRAINT fk_pagamento_estornado_por FOREIGN KEY (estornado_por)
+    REFERENCES usuarios(id) ON DELETE RESTRICT,
   CONSTRAINT fk_pagamentos_parcela
     FOREIGN KEY (parcela_id) REFERENCES parcelas(id) ON DELETE RESTRICT
 );

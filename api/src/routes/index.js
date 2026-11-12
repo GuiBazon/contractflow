@@ -6,20 +6,25 @@ const parcelaRoutes = require('./parcelaRoutes');
 const { router: paymentRoutes, allRouter: paymentAllRoutes } = require('./paymentRoutes');
 const documentRoutes = require('./documentRoutes');
 const ocrRoutes = require('./ocrRoutes');
-const usuarioRoutes = require('./usuarioRoutes');
 
 const router = express.Router();
 
 router.use('/auth', authRoutes);
-router.use('/usuarios', usuarioRoutes);
+router.use('/perfil', require('./profileRoutes'));
+router.use('/usuarios', require('./userRoutes'));
 router.use('/clientes', clientRoutes);
 router.use('/contratos', contractRoutes);
-router.use('/contracts', contractRoutes);
 router.use('/parcelas', parcelaRoutes);
-router.use('/installments', parcelaRoutes);
 router.use('/pagamentos', paymentRoutes);
-router.use('/payments', paymentRoutes);
 router.use('/receitas', paymentAllRoutes);
+router.use('/recebiveis', require('./recebivelRoutes'));
+router.use('/despesas', require('./expenseRoutes'));
+router.use('/dashboard', require('./dashboardRoutes'));
+router.use('/calendario', require('./calendarRoutes'));
+router.use('/calculadora', require('./calculatorRoutes'));
+router.use('/alertas', require('./alertRoutes'));
+router.use('/notificacoes', require('./notificationRoutes'));
+router.use('/relatorios', require('./reportRoutes'));
 router.use('/documentos', documentRoutes);
 router.use('/ocr', ocrRoutes);
 

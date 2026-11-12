@@ -1,6 +1,6 @@
 require('dotenv').config();
 const http = require('http');
-const app = require('./app');
+const { validJwtSecret } = require('./utils/jwtSecret');
 
 // Fail-fast: nao sobe a API com ambiente incompleto ou segredo fraco (RNF01/RNF03)
 const REQUIRED_ENV = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME', 'JWT_SECRET'];
@@ -10,14 +10,12 @@ if (missing.length > 0) {
   process.exit(1);
 }
 
-if (process.env.JWT_SECRET === 'secret'
-    || process.env.JWT_SECRET === 'troque-por-um-segredo-longo-e-aleatorio'
-    || process.env.JWT_SECRET === 'troque-este-segredo-em-producao'
-    || process.env.JWT_SECRET === 'coloque-um-segredo-longo-e-seguro') {
-  console.error('JWT_SECRET deve ser alterado para um valor seguro');
+if (!validJwtSecret(process.env.JWT_SECRET)) {
+  console.error('JWT_SECRET deve ter pelo menos 32 bytes e não pode ser um placeholder');
   process.exit(1);
 }
 
+const app = require('./app');
 const PORT = Number(process.env.PORT) || 3000;
 const APP_SIGNATURE = 'ContractFlow API funcionando';
 
