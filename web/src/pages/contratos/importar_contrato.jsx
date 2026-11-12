@@ -243,7 +243,7 @@ export default function ImportarContrato() {
     try {
       if (!extracaoId) throw new Error("Extração OCR não confirmada. Reenvie o documento.");
       const valorNumerico = parseCurrency(valorTotalStr);
-      const matchParcelas = String(parcelamentoStr).match(/(\\d+)/);
+      const matchParcelas = String(parcelamentoStr).match(/(\d+)/);
       const qtdParcelas = matchParcelas ? Number(matchParcelas[1]) : 0;
       if (!Number.isFinite(valorNumerico) || valorNumerico <= 0 || !Number.isSafeInteger(qtdParcelas) || qtdParcelas < 1 || qtdParcelas > 120) {
         throw new Error("Informe valor total e quantidade de parcelas válidos.");
@@ -251,7 +251,7 @@ export default function ImportarContrato() {
       if (!clienteNome.trim()) throw new Error("Informe o nome do cliente.");
       // Geração mensal com dia-base fixo, ajustando automaticamente o último dia de cada mês.
       const vencimentoBase = primeiroVencimento || dataInicio;
-      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(vencimentoBase)) throw new Error("Informe o primeiro vencimento.");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(vencimentoBase)) throw new Error("Informe o primeiro vencimento.");
       const [anoBase, mesBase, diaBase] = vencimentoBase.split("-").map(Number);
       const vencimentosGerados = Array.from({ length: qtdParcelas }, (_, i) => {
         const ano = anoBase + Math.floor((mesBase - 1 + i) / 12);
