@@ -1,11 +1,12 @@
 # ContractFlow — Entrega do backend da Sprint 2
 
+> **Estado final em 12/11/2026:** código de API/Web/Mobile integrado à `main`; backend/MySQL e seed demonstrativo validados, CI da API aprovado e builds Web/Mobile aprovados. A publicação estática na Vercel não tem API/MySQL públicos; usar o ambiente local para demonstração funcional. Este documento contém seções de histórico da fase anterior à integração; interpretações de 20/10 não substituem as verificações de 12/11.
+
 Responsabilidade confirmada: **Guilherme Bazon, todo o backend**.
 Implementação preparada com assistência do Codex; revisar o código e ensaiar os
 fluxos antes da apresentação individual. Referência inicial: Sprint 1 `e753de5`.
 
-Backend implementado e validado localmente. Produto final Web/Mobile ainda depende
-da integração da equipe; não marcar essas telas/fluxos como concluídos nesta entrega.
+Backend da Sprint 2 implementado e integrado ao código Web/Mobile na `main` em 12/11/2026. O banco de demonstração, a API local, os testes com MySQL e os builds das interfaces foram validados; **o teste manual de todos os fluxos pela Web e pelo Mobile ainda requer comprovação**.
 
 ## Links e estado verificável
 
@@ -17,17 +18,9 @@ da integração da equipe; não marcar essas telas/fluxos como concluídos nesta
 - [Trello](https://trello.com/b/FMilhTuN/contractflow)
 - [Figma](https://www.figma.com/design/aNfKBROulxyewRPhmNkW4l/ContractFlow?node-id=0-1)
 
-A branch foi publicada sem merge em main. GitHub Actions remoto ainda precisa de
-verificação pelo link: o acesso à API do GitHub no ambiente não foi validado.
-A tentativa de abrir PR pela API GraphQL recebeu `Forbidden`; a consulta do
-CLI também não validou a autenticação. O push via Git funcionou, mas não foi
-possível abrir PR ou conferir a execução remota por esses caminhos.
-Não afirmar que CI remoto passou com base nos testes locais.
+**Atualização de 12/11/2026:** o [PR #5](https://github.com/GuiBazon/contractflow/pull/5) foi integrado na `main` pelo commit `6af217a`. O [GitHub Actions do backend na main](https://github.com/GuiBazon/contractflow/actions/runs/43212979047) terminou com sucesso, incluindo suíte MySQL e seed de apresentação; [build Web/Mobile](https://github.com/GuiBazon/contractflow/actions/runs/43212475702) também aprovado. A dificuldade anterior com a API GraphQL relatada abaixo ocorreu na fase original da Sprint 2 e já não representa o estado de entrega.
 
-Notion recebeu 403 pelo proxy; Trello/Figma vieram da documentação versionada.
-Nenhum card/documento externo foi criado, movido ou atualizado. Os IDs BE-S2 são
-referências locais; [cards preparados](CARDS_SPRINT_2.csv) permitem copiar aceite,
-testes e evidências para os cards reais e vincular os membros da equipe.
+**Atualização de 12/11/2026:** o [Notion](https://wild-toaster-3fa.notion.site/contractflow) foi acessado pela integração e atualizado com a versão final; o [card real do backend no Trello](https://trello.com/c/rjpDKLhD/9-back-end-sprint-2) recebeu comentário com PR, CI e evidências locais. Os IDs BE-S2 abaixo continuam sendo referências internas; [cards preparados](CARDS_SPRINT_2.csv) permanecem arquivados como material auxiliar.
 
 ## Entregas e commits
 
@@ -46,7 +39,7 @@ Os oito primeiros commits foram preservados até `ad30989`. As entregas de teste
 | [3a3f14b](https://github.com/GuiBazon/contractflow/commit/3a3f14b) | Cobertura combinada e Docker | 117 testes, filtros/exports vazios e runtime offline como node |
 
 Última documentação complementa esses commits com os requisitos, cards e roteiro.
-`main` permanece como referência da Sprint 1 até revisão/merge pela equipe.
+Histórico: a referência original era a Sprint 1; em 12/11/2026 a `main` passou a reunir a versão integrada da Sprint 2 (PR #5).
 
 ## Validação realizada
 
@@ -70,8 +63,8 @@ em `api/coverage/combined/index.html` e artifacts previstos no workflow.
 
 ## Cards de backend e integração
 
-Estado comum do backend: **implementado e validado localmente**.
-Estado dos cards externos/CI remoto/telas: **pendente de vinculação/validação**.
+Estado atual do backend: **implementado, testado e integrado na main**.
+Card individual e CI remoto: **vinculados e aprovados**. Fluxos completos das telas Web/Mobile: **ainda necessitam validação manual**.
 Responsável backend: Bazon; a equipe deve vincular responsáveis reais de Web/Mobile.
 
 | ID local | Entrega | Commits / testes | Próximo aceite conjunto |
@@ -93,7 +86,7 @@ Registrar em cada card real: responsável → link da branch/commit/PR → funci
 → cenário de teste → resultado → conclusão da API. Marcar dependência de tela
 separadamente. Não registrar movimentações/participação em dias que não ocorreram.
 
-## Integrações ainda necessárias
+## Integrações e riscos identificados na análise original (20/10)
 
 1. **Web**: no checkout inspecionado, login/cadastro/listagem de contratos não
    cobrem os CRUDs e módulos previstos. Integrar os endpoints de clientes,
@@ -192,4 +185,4 @@ Localize [middleware](../api/src/middlewares/authMiddleware.js),
 
 Apresentar a funcionalidade individual **na interface em funcionamento**, conforme
 a rubrica. Postman/curl e código servem de evidência técnica complementar.
-Ensaiar em equipe e reservar margem até 03/11 para falhas de integração/rede.
+Ensaiar em equipe antes da apresentação final de 12/11, especialmente para detectar problemas de integração e rede.
