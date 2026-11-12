@@ -508,7 +508,7 @@ function interpretarTexto(texto, opcoes = {}) {
   // "Numero do contrato: CTR-2026-001" seja aproveitada.
   const PALAVRAS_SEM_NUMERO =
     /^(?:de|do|da|dos|das|para|com|entre|em|a|o|e|prestacao|servico|servicos|locacao|arrendamento|adocao|fornecimento|compra|venda|obra|honorarios|empreitada|anexo|clausula)$/i;
-  const RE_NUMERO = /(?:contrato\s*n[ºo°.]?|n[ºo°.]?\s*(?:do\s*)?contrato|numero\s*(?:do\s*)?contrato|contrato)\s*[.:-]?\s*([A-Z0-9][A-Z0-9\-/]{1,30})/gi;
+  const RE_NUMERO = /(?:contrato\s*n[ºo°.]?|n[ºo°.]?\s*(?:do\s*)?contrato|n[uú]mero(?:\s*(?:do\s*)?contrato)?|contrato)\s*[.:-]?\s*([A-Z0-9][A-Z0-9\-/]{1,30})/gi;
 
   for (const achado of t.matchAll(RE_NUMERO)) {
     const candidato = achado[1].trim().toUpperCase();
@@ -670,7 +670,7 @@ function calcularConfianca({ confiancaPorCampo, campos, origem }) {
 
 async function lerTextoDePdf(caminho) {
   try {
-    const buffer = await pdfParse(caminho);
+    const buffer = await pdfParse(fs.readFileSync(caminho));
     return (buffer.text || '').trim();
   } catch (error) {
     // PDF corrompido/inexistente: cai no OCR (rasterizacao), que da erro proprio.
