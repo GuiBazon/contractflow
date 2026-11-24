@@ -3,17 +3,14 @@ FROM node:24-bookworm-slim
 
 # PDF escaneado é convertido em imagem antes do OCR.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends poppler-utils \
+    && apt-get install -y --no-install-recommends ca-certificates poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 # Instala dependencias de producao primeiro (melhor cache)
 COPY --chown=node:node package*.json ./
-RUN --mount=type=secret,id=environment_ca \
-    if [ -s /run/secrets/environment_ca ]; then \
-      NODE_EXTRA_CA_CERTS=/run/secrets/environment_ca npm ci --omit=dev; \
-    else npm ci --omit=dev; fi
+RUN npm ci --omit=dev
 
 # Copia o codigo-fonte
 COPY --chown=node:node src ./src
