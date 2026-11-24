@@ -15,6 +15,7 @@ RUN npm ci --omit=dev
 # Copia o codigo-fonte
 COPY --chown=node:node src ./src
 COPY --chown=node:node scripts ./scripts
+COPY --chown=node:node database/schema.sql ./database/schema.sql
 COPY --chown=node:node database/migrations ./database/migrations
 # Diretorio de uploads (criado em runtime se nao existir)
 RUN mkdir -p /app/uploads /app/.cache \
