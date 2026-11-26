@@ -70,18 +70,24 @@ function SettingsSubMenu({ active }) {
 
 const styles = {
   menu: {
-    width: 220,
-    minWidth: 220,
+    width: { xs: "100%", md: 220 },
+    minWidth: { xs: 0, md: 220 },
     bgcolor: "#fff",
     border: "1px solid #eef1f6",
     borderRadius: "12px",
-    p: 1.5,
+    p: { xs: 1, md: 1.5 },
     boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
     alignSelf: "flex-start",
     flexShrink: 0,
+    display: { xs: "flex", md: "block" },
+    flexDirection: { xs: "row", md: "column" },
+    gap: { xs: 0.75, md: 0 },
+    overflowX: { xs: "auto", md: "visible" },
+    WebkitOverflowScrolling: "touch",
   },
 
   menuTitle: {
+    display: { xs: "none", md: "block" },
     fontSize: "11px",
     fontWeight: 700,
     color: "#9aa5b8",
@@ -95,11 +101,13 @@ const styles = {
   menuItem: {
     display: "flex",
     alignItems: "center",
-    gap: 1.2,
+    gap: 1,
     px: 1.5,
-    py: 1.2,
+    py: { xs: 1, md: 1.2 },
     borderRadius: "8px",
     cursor: "pointer",
+    whiteSpace: { xs: "nowrap", md: "normal" },
+    flexShrink: 0,
     transition: "all 0.15s",
     "&:hover": { bgcolor: "#f4f7fb" },
   },

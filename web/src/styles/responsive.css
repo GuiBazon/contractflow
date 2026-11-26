@@ -1,0 +1,75 @@
+/* Mobile-first responsiveness overrides (< 900px, matching MUI md breakpoint).
+   Desktop (>= 900px) remains 100% untouched. */
+
+html,
+body,
+#root {
+  max-width: 100%;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 899.95px) {
+  * {
+    touch-action: manipulation;
+  }
+
+  /* Prevent iOS Safari auto-zoom when focusing inputs */
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  /* Authenticated pages shell: hide desktop fixed 220px sidebar (replaced by mobile Bottom Tab Bar + Drawer) */
+  .cf-app-shell > div {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: calc(100dvh - 56px) !important;
+    overflow-x: hidden !important;
+  }
+
+  .cf-app-shell > div > div:first-of-type {
+    display: none !important;
+  }
+
+  .cf-app-shell > div > div:nth-of-type(2) {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: calc(100dvh - 56px) !important;
+    padding: 16px 14px calc(92px + env(safe-area-inset-bottom, 0px)) !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+  }
+
+  /* Smooth horizontal scroll for data tables on narrow screens */
+  .cf-app-shell table {
+    min-width: 560px;
+  }
+
+  .cf-app-shell .MuiTableContainer-root,
+  .cf-app-shell div:has(> table) {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  /* Comfortable, thumb-friendly dialogs on mobile viewports */
+  .MuiDialog-paper {
+    margin: 12px !important;
+    width: calc(100% - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+    max-height: calc(100dvh - 24px) !important;
+    border-radius: 16px !important;
+  }
+
+  /* Keep action buttons comfortable to tap on mobile */
+  .cf-app-shell .MuiButton-root {
+    min-height: 40px;
+  }
+}

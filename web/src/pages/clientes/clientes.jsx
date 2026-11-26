@@ -781,7 +781,7 @@ export default function Clientes() {
               required
             />
 
-            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
               <TextField
                 label="CPF ou CNPJ *"
                 size="small"
@@ -801,7 +801,7 @@ export default function Clientes() {
               />
             </Box>
 
-            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
               <TextField
                 label="Telefone"
                 size="small"
@@ -818,7 +818,7 @@ export default function Clientes() {
               />
             </Box>
 
-            <Box sx={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 2 }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "2fr 1fr" }, gap: 2 }}>
               <TextField
                 label="Logradouro"
                 size="small"
@@ -835,7 +835,7 @@ export default function Clientes() {
               />
             </Box>
 
-            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 2 }}>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr 1fr" }, gap: 2 }}>
               <TextField
                 label="Bairro"
                 size="small"

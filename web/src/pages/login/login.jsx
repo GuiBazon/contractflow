@@ -356,8 +356,8 @@ const styles = {
   ========================== */
 
   leftSide: {
-    width: "53%",
-    minHeight: "100vh",
+    width: { xs: "100%", md: "53%" },
+    minHeight: "100dvh",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",

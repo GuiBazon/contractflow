@@ -871,7 +871,7 @@ const sx = {
   searchBox: {
     display: "flex", alignItems: "center", gap: 1,
     bgcolor: "#fff", border: "1px solid #e3e7ee",
-    borderRadius: "8px", px: 1.5, height: 38, width: 260,
+    borderRadius: "8px", px: 1.5, height: 38, width: { xs: "100%", sm: 260 },
     boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
   },
 
@@ -931,9 +931,9 @@ const sx = {
   kpiGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(4,1fr)",
-    gap: 2,
+    gap: { xs: 1.25, sm: 2 },
     "@media (max-width:1100px)": { gridTemplateColumns: "repeat(2,1fr)" },
-    "@media (max-width:600px)": { gridTemplateColumns: "1fr" },
+    "@media (max-width:360px)": { gridTemplateColumns: "1fr" },
   },
 
   kpiCard: {
@@ -1024,7 +1024,7 @@ const sx = {
 
   vRow: {
     display: "grid",
-    gridTemplateColumns: "1.9fr 1fr 0.9fr auto",
+    gridTemplateColumns: { xs: "1fr auto", sm: "1.9fr 1fr 0.9fr auto" },
     alignItems: "center",
     gap: 1, py: 1.3,
     borderBottom: "1px solid #f2f4f8",

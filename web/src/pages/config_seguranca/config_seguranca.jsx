@@ -617,8 +617,9 @@ const styles = {
 
   contentLayout: {
     display: "flex",
+    flexDirection: { xs: "column", md: "row" },
     gap: 3,
-    alignItems: "flex-start",
+    alignItems: { xs: "stretch", md: "flex-start" },
   },
 
   cardsCol: {

@@ -87,8 +87,8 @@ const styles = {
     borderBottom: "1px solid #eaeff6",
     display: "flex",
     alignItems: "center",
-    gap: 2,
-    px: 3,
+    gap: { xs: 1, sm: 2 },
+    px: { xs: 2, sm: 3 },
     position: "sticky",
     top: 0,
     zIndex: 99,
@@ -121,7 +121,8 @@ const styles = {
   },
 
   searchField: {
-    width: "240px",
+    display: { xs: "none", sm: "block" },
+    width: { sm: "180px", md: "240px" },
     flexShrink: 0,
 
     "& .MuiOutlinedInput-root": {
