@@ -1,0 +1,110 @@
+name: ContractFlow Android para apresentação
+
+on:
+  push:
+    branches: [release/mobile-apresentacao]
+    paths: ['mobile/**', '.github/workflows/mobile-apresentacao.yml', '.github/mobile-demo/**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contractflow-mobile-apresentacao
+  cancel-in-progress: false
+
+env:
+  EXPO_PUBLIC_API_URL: https://contractflow-production.up.railway.app/api
+  EXPO_NO_TELEMETRY: '1'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Instalar Android SDK necessário
+        run: |
+          sdkmanager 'platforms;android-37.0' 'build-tools;37.0.0' 'ndk;27.1.12297006' 'cmake;3.22.1'
+      - run: npm ci
+      - run: npx expo prebuild --platform android --no-install
+      - name: Gerar APK independente do Metro
+        run: |
+          cd android
+          ./gradlew --no-daemon --max-workers=3 :app:assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a
+      - name: Assinar e verificar APK
+        run: |
+          umask 077
+          signing_dir=$(mktemp -d)
+          trap 'rm -r "$signing_dir"' EXIT
+          apk_source=android/app/build/outputs/apk/release/app-release.apk
+          apksigner="$ANDROID_HOME/build-tools/37.0.0/apksigner"
+          mkdir -p "$RUNNER_TEMP/contractflow-release"
+          apk="$RUNNER_TEMP/contractflow-release/contractflow-android.apk"
+          openssl rand -hex 32 > "$signing_dir/storepass"
+          keytool -genkeypair -keystore "$signing_dir/contractflow-demo.p12" -storetype PKCS12 \
+            -storepass:file "$signing_dir/storepass" -alias contractflow-demo \
+            -keyalg RSA -keysize 3072 -validity 3650 -dname 'CN=ContractFlow Demo'
+          "$apksigner" sign --ks "$signing_dir/contractflow-demo.p12" \
+            --ks-pass "file:$signing_dir/storepass" --ks-key-alias contractflow-demo \
+            --out "$apk" "$apk_source"
+          "$apksigner" verify --verbose --print-certs "$apk"
+          unzip -p "$apk" assets/index.android.bundle > "$RUNNER_TEMP/contractflow-embedded.bundle"
+          grep -aFq -- "$EXPO_PUBLIC_API_URL" "$RUNNER_TEMP/contractflow-embedded.bundle"
+          "$ANDROID_HOME/build-tools/37.0.0/aapt" dump badging "$apk" > "$RUNNER_TEMP/contractflow-badging.txt"
+          grep -Fq "package: name='com.guibazon.contractflow'" "$RUNNER_TEMP/contractflow-badging.txt"
+          (cd "$RUNNER_TEMP/contractflow-release" && sha256sum contractflow-android.apk > SHA256SUMS.txt)
+          tar -C "$signing_dir" -cf "$signing_dir/backup.tar" contractflow-demo.p12 storepass
+          openssl cms -encrypt -binary -aes256 -outform DER -in "$signing_dir/backup.tar" \
+            -out "$RUNNER_TEMP/contractflow-signing-backup.cms" "$GITHUB_WORKSPACE/.github/mobile-demo/backup-recipient.pem"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: contractflow-android
+          path: ${{ runner.temp }}/contractflow-release/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: contractflow-signing-backup-encrypted
+          path: ${{ runner.temp }}/contractflow-signing-backup.cms
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: contractflow-android
+          path: release
+      - name: Publicar APK da apresentação
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cd release
+          sha256sum -c SHA256SUMS.txt
+          cat > "$RUNNER_TEMP/contractflow-release-notes.md" <<'EOF'
+          **Android:** baixe `contractflow-android.apk` em Assets e abra o arquivo para instalar.
+
+          **iPhone:** abra o [ContractFlow no Safari](https://contractflow360.vercel.app).
+
+          Use a mesma conta do ContractFlow que você já usa na Web.
+          EOF
+          gh release create mobile-demo-1.0.0 contractflow-android.apk SHA256SUMS.txt \
+            --target "$GITHUB_SHA" --title 'ContractFlow Mobile · Demonstração 1.0.0' \
+            --prerelease --notes-file "$RUNNER_TEMP/contractflow-release-notes.md"

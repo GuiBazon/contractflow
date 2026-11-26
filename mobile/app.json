@@ -12,7 +12,9 @@
     "ios": {
       "supportsTablet": true
     },
-    "android": {},
+    "android": {
+      "package": "com.guibazon.contractflow"
+    },
     "web": {
       "bundler": "metro"
     },
