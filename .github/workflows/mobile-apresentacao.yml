@@ -38,7 +38,18 @@ jobs:
           java-version: '17'
       - name: Instalar Android SDK necessário
         run: |
-          sdkmanager 'platforms;android-37.0' 'build-tools;37.0.0' 'ndk;27.1.12297006' 'cmake;3.22.1'
+          sdk_root="${ANDROID_HOME:-$RUNNER_TEMP/android-sdk}"
+          tools_dir="$RUNNER_TEMP/contractflow-sdk-tools"
+          mkdir -p "$sdk_root" "$tools_dir"
+          curl --fail --silent --show-error --location --retry 3 \
+            https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip \
+            --output "$tools_dir/cmdline.zip"
+          printf '%s  %s\n' '4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583' "$tools_dir/cmdline.zip" | sha256sum -c -
+          unzip -q "$tools_dir/cmdline.zip" -d "$tools_dir"
+          sdkmanager="$tools_dir/cmdline-tools/bin/sdkmanager"
+          yes | "$sdkmanager" --sdk_root="$sdk_root" --licenses
+          "$sdkmanager" --sdk_root="$sdk_root" 'platforms;android-37.0' 'build-tools;37.0.0' 'ndk;27.1.12297006' 'cmake;3.22.1'
+          printf 'ANDROID_HOME=%s\n' "$sdk_root" >> "$GITHUB_ENV"
       - run: npm ci
       - run: npx expo prebuild --platform android --no-install
       - name: Gerar APK independente do Metro
@@ -99,9 +110,9 @@ jobs:
           cd release
           sha256sum -c SHA256SUMS.txt
           cat > "$RUNNER_TEMP/contractflow-release-notes.md" <<'EOF'
-          **Android:** baixe `contractflow-android.apk` em Assets e abra o arquivo para instalar.
+          **Android** — baixe `contractflow-android.apk` em Assets e abra o arquivo para instalar.
 
-          **iPhone:** abra o [ContractFlow no Safari](https://contractflow360.vercel.app).
+          **iPhone** — abra o [ContractFlow no Safari](https://contractflow360.vercel.app).
 
           Use a mesma conta do ContractFlow que você já usa na Web.
           EOF
